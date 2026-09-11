@@ -7,6 +7,12 @@ export type MarketplaceProvider = "ginee" | "jubelio";
 export type MarketplaceChannel = "tokopedia" | "shopee" | "lazada" | "tiktok_shop";
 export type FulfillmentType = "delivery" | "click_and_collect";
 export type OrderStatus =
+  | "order_received"
+  | "order_accepted"
+  | "finding_stock"
+  | "finding_courier"
+  | "on_delivery"
+  | "delivery_arrived"
   | "pending_payment"
   | "payment_received"
   | "assembly_in_progress"
@@ -16,6 +22,21 @@ export type OrderStatus =
   | "shipped"
   | "cancelled"
   | "refunded";
+
+export interface CourierDispatchInfo {
+  provider: "gojek" | "grab" | "custom";
+  service_code: string;
+  service_name: string;
+  driver_name: string;
+  driver_phone: string;
+  vehicle_plate: string;
+  tracking_id: string;
+  tracking_url?: string;
+  dispatched_at: string;
+  estimated_arrival?: string;
+  delivered_at?: string;
+  status: "dispatched" | "in_transit" | "arrived" | "failed";
+}
 
 export type CustomerCrmStatus = "lead" | "active_customer" | "vip" | "inactive";
 export type CustomerSegment = "gamer" | "pc_builder" | "creator" | "enterprise" | "general";
@@ -156,10 +177,12 @@ export interface Order {
   assembly_fee: number;
   total: number;
   status: OrderStatus;
+  courier_info?: CourierDispatchInfo | null;
   payment_method?: string | null;
   payment_reference?: string | null;
   notes?: string | null;
   created_at?: string;
+  updated_at?: string;
   paid_at?: string | null;
 }
 
@@ -250,3 +273,45 @@ export interface MarketplaceSyncLog {
   response?: Record<string, any> | null;
   created_at?: string;
 }
+
+// 13. Promotions Table
+export interface Promotion {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  discount_type: "percentage" | "fixed_amount";
+  discount_value: number; // e.g. 15 for 15% or 500000 for Rp 500.000
+  min_spend?: number;
+  max_discount?: number;
+  is_active: boolean;
+  start_date: string;
+  end_date: string;
+  usage_count: number;
+  usage_limit?: number;
+  created_at?: string;
+}
+
+// 14. Promotional Banners Table
+export interface DynamicBannerSlide {
+  id: string;
+  type: "content" | "image";
+  title: string;
+  highlight?: string;
+  description?: string;
+  badge?: string;
+  badge_type?: "hot" | "flagship" | "event" | "bundle" | "partner";
+  cta_text?: string;
+  cta_link: string;
+  secondary_cta_text?: string;
+  secondary_cta_link?: string;
+  image_url?: string;
+  hide_overlay?: boolean;
+  perk?: string;
+  bg_gradient?: string;
+  tag_color?: string;
+  is_active: boolean;
+  display_order: number;
+  created_at?: string;
+}
+

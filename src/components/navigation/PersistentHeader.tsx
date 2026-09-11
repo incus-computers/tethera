@@ -25,6 +25,7 @@ import {
   ArrowRight,
   ChevronRight,
   Truck,
+  ShieldCheck,
 } from "lucide-react";
 import { FlagshipStoreModal } from "./FlagshipStoreModal";
 import { PredictiveSearchModal } from "./PredictiveSearchModal";
@@ -146,10 +147,17 @@ export function PersistentHeader() {
               <span className="hidden md:inline">WhatsApp Tech Line:</span>
               <span>+62 812-3456-7890</span>
             </a>
-            <span className="text-slate-300 hidden md:inline">•</span>
             <span className="hidden md:inline text-slate-500 font-medium">
               Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat
             </span>
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <Link
+              href="/admin"
+              className="flex items-center gap-1 text-slate-600 hover:text-cyan-700 font-semibold transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-cyan-600" />
+              <span>Admin Portal</span>
+            </Link>
           </div>
         </div>
       </div>
