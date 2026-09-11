@@ -5,7 +5,7 @@
  * Integrates with Supabase when configured, with built-in resilient mock storage for local dev.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { getServerSupabase } from "@/lib/db";
 import {
   CustomerProfile,
   RegistrationInput,
@@ -138,12 +138,7 @@ class CrmDatabase {
   }
 
   private getSupabaseClient() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (url && key && !url.includes("placeholder")) {
-      return createClient(url, key);
-    }
-    return null;
+    return getServerSupabase();
   }
 
   async register(input: RegistrationInput): Promise<{ user: CustomerProfile; error?: string }> {

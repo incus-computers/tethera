@@ -3,7 +3,7 @@
  * Supports Ginee Open API and Jubelio Omnichannel API for Tokopedia, Shopee, and Lazada.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { getServerSupabase } from "@/lib/db";
 
 export type MarketplaceProvider = "ginee" | "jubelio";
 
@@ -22,14 +22,11 @@ export interface InboundStockWebhook {
 }
 
 export class MarketplaceSyncService {
-  private supabase;
-
-  constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+  private get supabase() {
+    return getServerSupabase();
   }
+
+  constructor() {}
 
   /**
    * Pulls real-time inventory from Ginee Open API
@@ -163,6 +160,13 @@ export class MarketplaceSyncService {
    */
   async handleInboundMarketplaceWebhook(webhook: InboundStockWebhook) {
     const flagshipStoreId = "00000000-0000-0000-0000-000000000001";
+
+    if (!this.supabase) {
+      console.warn(
+        `[MARKETPLACE WEBHOOK] Supabase not configured. Simulated sync for SKU: ${webhook.externalSku} (${webhook.newStockOnHand} units)`
+      );
+      return;
+    }
 
     // 1. Locate product mapping
     const { data: mapping } = await this.supabase
