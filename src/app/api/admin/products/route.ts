@@ -120,7 +120,24 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Product ID is required." }, { status: 400 });
     }
 
-    // Update product fields (name, description, price, specs, images, etc.)
+    // Map category to pc_builder_slot if category_slug is updated
+    if (updates.category_slug && !updates.pc_builder_slot) {
+      const slotMap: Record<string, any> = {
+        cpu: "cpu",
+        gpu: "gpu",
+        motherboards: "motherboard",
+        cooling: "cooler",
+        ram: "ram",
+        storage: "storage_primary",
+        cases: "case",
+        "power-supplies": "psu",
+      };
+      if (slotMap[updates.category_slug]) {
+        updates.pc_builder_slot = slotMap[updates.category_slug];
+      }
+    }
+
+    // Update product fields (name, description, price, specs, images, category, etc.)
     const updatedProduct = await db.products.update(id, updates);
 
     // If stock_on_hand was updated, synchronize with store_inventory

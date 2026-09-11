@@ -7,14 +7,15 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const clearance = verifyAdminClearance(req, "admin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 401 });
-    }
+    const isAdmin = clearance.authorized;
 
-    const banners = await db.banners.findMany(undefined, {
-      orderBy: "display_order",
-      orderDirection: "asc",
-    });
+    const banners = await db.banners.findMany(
+      isAdmin ? undefined : { is_active: true },
+      {
+        orderBy: "display_order",
+        orderDirection: "asc",
+      }
+    );
 
     return NextResponse.json({ success: true, count: banners.length, banners });
   } catch (error: any) {

@@ -96,6 +96,25 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    // If order is rejected/cancelled, release any reserved stock back to available inventory
+    if (nextStatus === "cancelled") {
+      try {
+        const { items } = await db.orders.getOrderWithItems(orderId);
+        for (const it of items) {
+          if (it.product_id) {
+            const inv = await db.inventory.getByProductAndStore(it.product_id);
+            if (inv && inv.stock_reserved > 0) {
+              await db.inventory.update(inv.id, {
+                stock_reserved: Math.max(0, inv.stock_reserved - (it.quantity || 1)),
+              });
+            }
+          }
+        }
+      } catch (stockErr) {
+        console.warn("[ADMIN ORDERS] Could not release reserved stock on rejection:", stockErr);
+      }
+    }
+
     const updated = await db.orders.update(orderId, {
       status: nextStatus,
       notes: notes !== undefined ? notes : undefined,
@@ -106,9 +125,14 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Order not found." }, { status: 404 });
     }
 
+    const msg =
+      nextStatus === "cancelled"
+        ? `Order #${updated.order_number} has been rejected / cancelled. Reason logged: ${notes || "Warehouse out of stock"}.`
+        : `Order #${updated.order_number} transitioned to '${nextStatus.replace(/_/g, " ").toUpperCase()}'.`;
+
     return NextResponse.json({
       success: true,
-      message: `Order #${updated.order_number} transitioned to '${nextStatus.replace(/_/g, " ").toUpperCase()}'.`,
+      message: msg,
       order: updated,
     });
   } catch (error: any) {

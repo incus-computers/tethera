@@ -174,24 +174,55 @@ const PROMO_SLIDES: PromoSlide[] = [
 ];
 
 export function PromotionalBanners() {
+  const [slides, setSlides] = useState<PromoSlide[]>(PROMO_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
+  useEffect(() => {
+    fetch("/api/admin/banners")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.banners) && data.banners.length > 0) {
+          const mapped: PromoSlide[] = data.banners.map((b: any) => ({
+            id: b.id,
+            type: b.type || (b.image_url ? "image" : "content"),
+            title: b.title,
+            highlight: b.highlight,
+            description: b.description,
+            badge: b.badge,
+            badgeType: b.badge_type || "event",
+            ctaText: b.cta_text || "Explore Now",
+            ctaLink: b.cta_link || "/components",
+            secondaryCtaText: b.secondary_cta_text,
+            secondaryCtaLink: b.secondary_cta_link,
+            imageUrl: b.image_url,
+            hideOverlay: b.hide_overlay,
+            perk: b.perk,
+            bgGradient: b.bg_gradient || "from-slate-50 via-white to-slate-100",
+            tagColor: b.tag_color || "bg-zinc-900 text-white",
+          }));
+          setSlides(mapped);
+        }
+      })
+      .catch((err) => console.log("Using fallback promotional banners:", err));
+  }, []);
+
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % PROMO_SLIDES.length);
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + PROMO_SLIDES.length) % PROMO_SLIDES.length);
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
   // Auto-advance timer: cycles continuously without pausing on hover
   useEffect(() => {
+    if (slides.length === 0) return;
     const timer = setInterval(() => {
       nextSlide();
     }, 6500);
     return () => clearInterval(timer);
-  }, [currentSlide]);
+  }, [currentSlide, slides.length]);
 
   // Touch handlers for mobile swipe navigation
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -228,7 +259,7 @@ export function PromotionalBanners() {
             className="flex transition-transform duration-500 ease-out h-full min-h-[340px] sm:min-h-[360px]"
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
-            {PROMO_SLIDES.map((slide) => (
+            {slides.map((slide) => (
               <div
                 key={slide.id}
                 className="min-w-full w-full shrink-0 h-full flex flex-col justify-between"
@@ -416,7 +447,7 @@ export function PromotionalBanners() {
 
             {/* Indicator Dots */}
             <div className="flex items-center gap-1.5 px-1">
-              {PROMO_SLIDES.map((_, idx) => (
+              {slides.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentSlide(idx)}

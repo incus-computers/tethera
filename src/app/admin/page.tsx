@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -32,10 +32,27 @@ import {
   Zap,
   Check,
   ArrowRight,
+  Upload,
+  ArrowUp,
+  ArrowDown,
+  Ban,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useAdminStore } from "@/lib/store/useAdminStore";
 import { formatRupiah } from "@/lib/utils/currency";
 import { Product, Order, Promotion, DynamicBannerSlide, CustomerProfileRow } from "@/lib/db/types";
+
+const HARDWARE_CATEGORIES = [
+  { slug: "cpu", name: "Processors (CPUs)", slot: "cpu" },
+  { slug: "gpu", name: "Graphics Cards (GPUs)", slot: "gpu" },
+  { slug: "motherboards", name: "Motherboards", slot: "motherboard" },
+  { slug: "cooling", name: "Cooling & Fans", slot: "cooler" },
+  { slug: "ram", name: "Memory (RAM)", slot: "ram" },
+  { slug: "storage", name: "Solid State Storage (SSD)", slot: "storage_primary" },
+  { slug: "cases", name: "PC Cases / Chassis", slot: "case" },
+  { slug: "power-supplies", name: "Power Supplies (PSU)", slot: "psu" },
+];
 
 export default function AdminPortalPage() {
   const { user, token, isAuthenticated, isSuperAdmin, isLoading, error, login, logout, initSession } =
@@ -60,20 +77,48 @@ export default function AdminPortalPage() {
 
   const [loadingData, setLoadingData] = useState(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Modals State
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [newProductModalOpen, setNewProductModalOpen] = useState(false);
+  const [newProductImageUrl, setNewProductImageUrl] = useState("");
+
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
   const [selectedCourierProvider, setSelectedCourierProvider] = useState<"gojek" | "grab">("gojek");
+
+  // Reject Order Modal State
+  const [rejectModalOrder, setRejectModalOrder] = useState<any | null>(null);
+  const [rejectReason, setRejectReason] = useState("Out of stock in warehouse");
+  const [customRejectReason, setCustomRejectReason] = useState("");
+  const [rejectingSubmitting, setRejectingSubmitting] = useState(false);
+
+  // Promotions & Banners Modal State
   const [newPromoModalOpen, setNewPromoModalOpen] = useState(false);
   const [newBannerModalOpen, setNewBannerModalOpen] = useState(false);
+  const [newBannerForm, setNewBannerForm] = useState({
+    title: "New High-Performance Drop",
+    highlight: "Exclusive Allocation • Limited Supply",
+    description: "Experience ultra-fast gaming and computing with official manufacturer guaranteed hardware.",
+    badge: "Special Promotion",
+    badge_type: "event" as const,
+    cta_text: "Explore Collection",
+    cta_link: "/components",
+    image_url: "",
+    hide_overlay: false,
+    perk: "Full 3-Year Official Manufacturer Warranty",
+    display_order: 1,
+  });
 
   // Filters
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>("all");
   const [productSearch, setProductSearch] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("all");
   const [newImageUrlInput, setNewImageUrlInput] = useState("");
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
+  const newProductFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Initialize Session
   useEffect(() => {
@@ -173,7 +218,55 @@ export default function AdminPortalPage() {
   };
 
   // --------------------------------------------------------------------------
-  // ORDER STAGES MANAGEMENT
+  // LOCAL PC IMAGE UPLOAD HANDLER
+  // --------------------------------------------------------------------------
+  const handleUploadFileFromPC = async (
+    file: File,
+    destination: "edit_product" | "new_product" | "banner"
+  ) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Image upload failed.");
+        setUploadingImage(false);
+        return;
+      }
+
+      const finalUrl = data.url || data.dataUrl;
+
+      if (destination === "edit_product" && editingProduct) {
+        const existingImages = editingProduct.images || [];
+        setEditingProduct({
+          ...editingProduct,
+          images: [...existingImages, finalUrl],
+        });
+        showToast("Image uploaded from PC and added to product gallery.");
+      } else if (destination === "new_product") {
+        setNewProductImageUrl(finalUrl);
+        showToast("Image uploaded from PC and assigned to new product.");
+      } else if (destination === "banner") {
+        setNewBannerForm((prev) => ({ ...prev, image_url: finalUrl }));
+        showToast("Banner image uploaded from PC.");
+      }
+    } catch (err: any) {
+      alert("Error uploading image: " + err.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // ORDER STAGES MANAGEMENT & REJECTION
   // --------------------------------------------------------------------------
   const advanceOrderStage = async (orderId: string, nextStatus: string) => {
     try {
@@ -196,6 +289,51 @@ export default function AdminPortalPage() {
       }
     } catch (err: any) {
       alert(err.message);
+    }
+  };
+
+  const handleConfirmRejectOrder = async () => {
+    if (!rejectModalOrder) return;
+    setRejectingSubmitting(true);
+
+    const finalReason =
+      rejectReason === "Other" && customRejectReason.trim()
+        ? customRejectReason.trim()
+        : rejectReason;
+
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          orderId: rejectModalOrder.id,
+          nextStatus: "cancelled",
+          notes: `[ORDER REJECTED]: ${finalReason}`,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message);
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === rejectModalOrder.id
+              ? { ...o, status: "cancelled", notes: `[ORDER REJECTED]: ${finalReason}` }
+              : o
+          )
+        );
+        setRejectModalOrder(null);
+        setCustomRejectReason("");
+      } else {
+        alert(data.error || "Failed to reject order.");
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setRejectingSubmitting(false);
     }
   };
 
@@ -258,7 +396,7 @@ export default function AdminPortalPage() {
   };
 
   // --------------------------------------------------------------------------
-  // PRODUCT MANIPULATION (EDIT / IMAGES / DELETE / CREATE)
+  // PRODUCT MANIPULATION (EDIT / CATEGORY / IMAGES / DELETE / CREATE)
   // --------------------------------------------------------------------------
   const handleSaveProductEdit = async () => {
     if (!editingProduct) return;
@@ -274,7 +412,7 @@ export default function AdminPortalPage() {
 
       const data = await res.json();
       if (data.success) {
-        showToast("Product changes and images saved successfully.");
+        showToast("Product changes, category, and images saved successfully.");
         setProducts((prev) =>
           prev.map((p) => (p.id === editingProduct.id ? data.product : p))
         );
@@ -314,16 +452,24 @@ export default function AdminPortalPage() {
     const form = e.currentTarget;
     const formData = new FormData(form);
 
+    const categorySlug = (formData.get("category_slug") as string) || "cpu";
+    const selectedCat = HARDWARE_CATEGORIES.find((c) => c.slug === categorySlug);
+
+    const primaryImg =
+      newProductImageUrl ||
+      (formData.get("image_url") as string) ||
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60";
+
     const payload = {
       name: formData.get("name") as string,
       brand: formData.get("brand") as string,
       sku: formData.get("sku") as string,
-      category_slug: formData.get("category_slug") as string,
+      category_slug: categorySlug,
+      pc_builder_slot: selectedCat?.slot || null,
       retail_price: Number(formData.get("retail_price")),
       initial_stock: Number(formData.get("initial_stock")),
       description: formData.get("description") as string,
-      images: [formData.get("image_url") as string || "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60"],
-      pc_builder_slot: (formData.get("pc_builder_slot") as string) || null,
+      images: [primaryImg],
       specs: {
         socket: (formData.get("spec_socket") as string) || undefined,
         tdpWatts: Number(formData.get("spec_tdp")) || undefined,
@@ -345,6 +491,7 @@ export default function AdminPortalPage() {
         showToast(data.message);
         setProducts((prev) => [data.product, ...prev]);
         setNewProductModalOpen(false);
+        setNewProductImageUrl("");
       } else {
         alert(data.error || "Failed to create product");
       }
@@ -433,18 +580,117 @@ export default function AdminPortalPage() {
     }
   };
 
+  // BANNER CREATION & REORDERING
+  const handleSaveNewBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBannerForm.title || !newBannerForm.cta_link) {
+      alert("Banner Title and CTA link are required.");
+      return;
+    }
+
+    try {
+      const payload = {
+        ...newBannerForm,
+        type: newBannerForm.image_url ? "image" : "content",
+      };
+
+      const res = await fetch("/api/admin/banners", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        showToast("New promotional banner added successfully.");
+        setBanners((prev) => [...prev, data.banner].sort((a, b) => a.display_order - b.display_order));
+        setNewBannerModalOpen(false);
+        setNewBannerForm({
+          title: "New High-Performance Drop",
+          highlight: "Exclusive Allocation • Limited Supply",
+          description: "Experience ultra-fast gaming and computing with official manufacturer guaranteed hardware.",
+          badge: "Special Promotion",
+          badge_type: "event",
+          cta_text: "Explore Collection",
+          cta_link: "/components",
+          image_url: "",
+          hide_overlay: false,
+          perk: "Full 3-Year Official Manufacturer Warranty",
+          display_order: banners.length + 1,
+        });
+      } else {
+        alert(data.error || "Failed to create banner");
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleMoveBannerOrder = async (bannerId: string, direction: "up" | "down") => {
+    const sorted = [...banners].sort((a, b) => a.display_order - b.display_order);
+    const index = sorted.findIndex((b) => b.id === bannerId);
+    if (index === -1) return;
+
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === sorted.length - 1) return;
+
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const currentBanner = sorted[index];
+    const swapBanner = sorted[targetIndex];
+
+    const currentNewOrder = swapBanner.display_order;
+    const swapNewOrder = currentBanner.display_order;
+
+    try {
+      // Update both orders
+      await Promise.all([
+        fetch("/api/admin/banners", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ id: currentBanner.id, display_order: currentNewOrder }),
+        }),
+        fetch("/api/admin/banners", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ id: swapBanner.id, display_order: swapNewOrder }),
+        }),
+      ]);
+
+      setBanners((prev) =>
+        prev
+          .map((b) => {
+            if (b.id === currentBanner.id) return { ...b, display_order: currentNewOrder };
+            if (b.id === swapBanner.id) return { ...b, display_order: swapNewOrder };
+            return b;
+          })
+          .sort((a, b) => a.display_order - b.display_order)
+      );
+
+      showToast(`Banner display order updated (${direction === "up" ? "moved up" : "moved down"}).`);
+    } catch (err: any) {
+      alert("Failed to reorder banners: " + err.message);
+    }
+  };
+
   // ==========================================================================
   // RENDER: LOGIN GATEWAY (IF UNAUTHENTICATED)
   // ==========================================================================
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
-        {/* Background glow accents */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-md w-full relative z-10">
-          {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 p-3.5 shadow-xl shadow-cyan-500/20 mb-4 border border-cyan-400/30">
               <ShieldCheck className="w-9 h-9 text-white" />
@@ -457,7 +703,6 @@ export default function AdminPortalPage() {
             </p>
           </div>
 
-          {/* Login Card */}
           <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-2xl">
             {loginError && (
               <div className="mb-5 p-3 rounded-lg bg-red-950/60 border border-red-800/80 text-red-300 text-xs flex items-center gap-2">
@@ -509,7 +754,7 @@ export default function AdminPortalPage() {
               </button>
             </form>
 
-            {/* Quick Demo Fill Buttons for Testing */}
+            {/* Quick Demo Fill Buttons */}
             <div className="mt-6 pt-5 border-t border-slate-800">
               <p className="text-xs text-slate-400 text-center font-medium mb-3">
                 Quick-Access Demo Clearance:
@@ -531,11 +776,6 @@ export default function AdminPortalPage() {
                   <Crown className="w-3.5 h-3.5 text-purple-400" />
                   <span>Superadmin</span>
                 </button>
-              </div>
-              <div className="mt-3 text-[11px] text-slate-500 text-center">
-                Admin: Edit products, manage stock & pictures, advance order stages.
-                <br />
-                Superadmin: Full access + add/delete products, promotions, banners & CRM.
               </div>
             </div>
           </div>
@@ -580,7 +820,6 @@ export default function AdminPortalPage() {
             </div>
           </Link>
 
-          {/* Role Clearance Badge */}
           <div className="hidden sm:flex items-center gap-1.5 ml-3">
             {isSuperAdmin ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-950 border border-purple-700 text-purple-300">
@@ -596,7 +835,6 @@ export default function AdminPortalPage() {
           </div>
         </div>
 
-        {/* User Info & Actions */}
         <div className="flex items-center gap-4">
           <button
             onClick={loadAllDashboardData}
@@ -624,7 +862,6 @@ export default function AdminPortalPage() {
 
       {/* Main Container & Navigation Tabs */}
       <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
-        {/* Navigation Tabs Bar */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-4 mb-6">
           <button
             onClick={() => setActiveTab("orders")}
@@ -656,7 +893,6 @@ export default function AdminPortalPage() {
             </span>
           </button>
 
-          {/* Superadmin-Only Tabs */}
           <button
             onClick={() => {
               if (!isSuperAdmin) {
@@ -701,7 +937,7 @@ export default function AdminPortalPage() {
         </div>
 
         {/* ==================================================================== */}
-        {/* TAB 1: ORDERS & FULFILLMENT PIPELINE */}
+        {/* TAB 1: ORDERS & FULFILLMENT PIPELINE (WITH REJECT BUTTON)             */}
         {/* ==================================================================== */}
         {activeTab === "orders" && (
           <div className="space-y-6">
@@ -717,6 +953,7 @@ export default function AdminPortalPage() {
                   { id: "finding_courier", label: "4. Finding Courier" },
                   { id: "on_delivery", label: "5. On Delivery (Gojek/Grab)" },
                   { id: "delivery_arrived", label: "6. Delivery Arrived" },
+                  { id: "cancelled", label: "Cancelled / Rejected" },
                   { id: "ready_for_pickup", label: "Click & Collect" },
                 ].map((st) => (
                   <button
@@ -746,11 +983,16 @@ export default function AdminPortalPage() {
                   const isCnC = order.fulfillment_type === "click_and_collect";
                   const isDelivered = order.status === "delivery_arrived" || order.status === "collected";
                   const isOnDelivery = order.status === "on_delivery";
+                  const isCancelled = order.status === "cancelled";
 
                   return (
                     <div
                       key={order.id}
-                      className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition space-y-4"
+                      className={`bg-slate-900 border rounded-2xl p-5 space-y-4 transition ${
+                        isCancelled
+                          ? "border-red-900/60 bg-red-950/10"
+                          : "border-slate-800 hover:border-slate-700"
+                      }`}
                     >
                       {/* Order Header */}
                       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -759,7 +1001,12 @@ export default function AdminPortalPage() {
                             <span className="font-mono text-base font-bold text-white">
                               #{order.order_number}
                             </span>
-                            {isCnC ? (
+                            {isCancelled ? (
+                              <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-red-950 border border-red-700 text-red-300 flex items-center gap-1">
+                                <Ban className="w-3 h-3 text-red-400" />
+                                <span>ORDER REJECTED / CANCELLED</span>
+                              </span>
+                            ) : isCnC ? (
                               <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-950 border border-amber-700 text-amber-300">
                                 Click & Collect (Flagship Counter)
                               </span>
@@ -806,62 +1053,78 @@ export default function AdminPortalPage() {
                         </div>
                       </div>
 
-                      {/* STAGES PROGRESS STEPPER */}
-                      <div className="pt-3 pb-1 border-t border-slate-800/80">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                          Fulfillment Pipeline Stage:
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center">
-                          {[
-                            { key: "order_received", num: 1, label: "Order Received" },
-                            { key: "order_accepted", num: 2, label: "Order Accepted" },
-                            { key: "finding_stock", num: 3, label: "Finding Stock" },
-                            { key: "finding_courier", num: 4, label: "Finding Courier" },
-                            { key: "on_delivery", num: 5, label: "On Delivery" },
-                            { key: "delivery_arrived", num: 6, label: "Arrived" },
-                          ].map((step, idx) => {
-                            const stagesList = [
-                              "order_received",
-                              "order_accepted",
-                              "finding_stock",
-                              "finding_courier",
-                              "on_delivery",
-                              "delivery_arrived",
-                            ];
-                            const currentIdx = stagesList.indexOf(order.status);
-                            const stepIdx = stagesList.indexOf(step.key);
-                            const isPassed = currentIdx >= stepIdx && currentIdx !== -1;
-                            const isCurrent = order.status === step.key;
+                      {/* STAGES PROGRESS STEPPER (Only for non-cancelled orders) */}
+                      {!isCancelled && (
+                        <div className="pt-3 pb-1 border-t border-slate-800/80">
+                          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                            Fulfillment Pipeline Stage:
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center">
+                            {[
+                              { key: "order_received", num: 1, label: "Order Received" },
+                              { key: "order_accepted", num: 2, label: "Order Accepted" },
+                              { key: "finding_stock", num: 3, label: "Finding Stock" },
+                              { key: "finding_courier", num: 4, label: "Finding Courier" },
+                              { key: "on_delivery", num: 5, label: "On Delivery" },
+                              { key: "delivery_arrived", num: 6, label: "Arrived" },
+                            ].map((step) => {
+                              const stagesList = [
+                                "order_received",
+                                "order_accepted",
+                                "finding_stock",
+                                "finding_courier",
+                                "on_delivery",
+                                "delivery_arrived",
+                              ];
+                              const currentIdx = stagesList.indexOf(order.status);
+                              const stepIdx = stagesList.indexOf(step.key);
+                              const isPassed = currentIdx >= stepIdx && currentIdx !== -1;
+                              const isCurrent = order.status === step.key;
 
-                            return (
-                              <div
-                                key={step.key}
-                                className={`p-2 rounded-xl border text-xs flex flex-col items-center justify-center gap-1 transition ${
-                                  isCurrent
-                                    ? "bg-cyan-950/80 border-cyan-500 text-cyan-300 font-bold shadow-md shadow-cyan-500/10"
-                                    : isPassed
-                                    ? "bg-slate-800/60 border-slate-700 text-slate-300"
-                                    : "bg-slate-950/40 border-slate-800/40 text-slate-600"
-                                }`}
-                              >
-                                <div className="flex items-center gap-1">
-                                  {isPassed ? (
-                                    <Check className="w-3 h-3 text-cyan-400" />
-                                  ) : (
-                                    <span className="w-3 h-3 rounded-full border border-slate-600 flex items-center justify-center text-[9px]">
-                                      {step.num}
-                                    </span>
-                                  )}
-                                  <span className="text-[11px] font-medium">{step.label}</span>
+                              return (
+                                <div
+                                  key={step.key}
+                                  className={`p-2 rounded-xl border text-xs flex flex-col items-center justify-center gap-1 transition ${
+                                    isCurrent
+                                      ? "bg-cyan-950/80 border-cyan-500 text-cyan-300 font-bold shadow-md shadow-cyan-500/10"
+                                      : isPassed
+                                      ? "bg-slate-800/60 border-slate-700 text-slate-300"
+                                      : "bg-slate-950/40 border-slate-800/40 text-slate-600"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1">
+                                    {isPassed ? (
+                                      <Check className="w-3 h-3 text-cyan-400" />
+                                    ) : (
+                                      <span className="w-3 h-3 rounded-full border border-slate-600 flex items-center justify-center text-[9px]">
+                                        {step.num}
+                                      </span>
+                                    )}
+                                    <span className="text-[11px] font-medium">{step.label}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      {/* Courier Live Telemetry Banner if On Delivery or Arrived */}
-                      {order.courier_info && (
+                      {/* Rejection Note if Cancelled */}
+                      {isCancelled && order.notes && (
+                        <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-300 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold">Rejection Note: </span>
+                            <span>{order.notes}</span>
+                            <div className="text-[11px] text-red-400 mt-1 font-mono">
+                              Reserved stock has been automatically released back to warehouse inventory.
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Courier Live Telemetry Banner */}
+                      {order.courier_info && !isCancelled && (
                         <div
                           className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
                             order.courier_info.provider === "gojek"
@@ -890,7 +1153,6 @@ export default function AdminPortalPage() {
                             </div>
                           </div>
 
-                          {/* Simulate Arrival button if On Delivery */}
                           {isOnDelivery && (
                             <button
                               onClick={() => simulateDeliveryArrival(order.id)}
@@ -947,82 +1209,97 @@ export default function AdminPortalPage() {
                               </span>
                             </div>
                           )}
-                          {order.notes && (
-                            <div className="mt-1 text-[11px] text-slate-400 italic">Note: {order.notes}</div>
-                          )}
                         </div>
                       </div>
 
-                      {/* STAGE ACTION CONTROLS */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
-                        <div className="text-xs text-slate-400">
-                          Current Status: <strong className="text-cyan-300 uppercase font-mono">{order.status.replace(/_/g, " ")}</strong>
+                      {/* STAGE ACTION CONTROLS & REJECT BUTTON */}
+                      {!isCancelled && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                          <div className="text-xs text-slate-400">
+                            Current Status: <strong className="text-cyan-300 uppercase font-mono">{order.status.replace(/_/g, " ")}</strong>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* REJECT ORDER BUTTON (Available to Admin and Superadmin) */}
+                            {!isDelivered && (
+                              <button
+                                onClick={() => {
+                                  setRejectModalOrder(order);
+                                  setRejectReason("Out of stock in warehouse");
+                                  setCustomRejectReason("");
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800 text-xs font-semibold transition flex items-center gap-1.5"
+                                title="Reject order due to zero stock or other reasons"
+                              >
+                                <Ban className="w-3.5 h-3.5 text-red-400" />
+                                <span>Reject Order</span>
+                              </button>
+                            )}
+
+                            {/* 1. Received -> Accepted */}
+                            {order.status === "order_received" && (
+                              <button
+                                onClick={() => advanceOrderStage(order.id, "order_accepted")}
+                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-1.5"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Accept Order</span>
+                              </button>
+                            )}
+
+                            {/* 2. Accepted -> Finding Stock */}
+                            {order.status === "order_accepted" && (
+                              <button
+                                onClick={() => advanceOrderStage(order.id, "finding_stock")}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5"
+                              >
+                                <Layers className="w-3.5 h-3.5" />
+                                <span>Find & Pick Stock in Warehouse</span>
+                              </button>
+                            )}
+
+                            {/* 3. Finding Stock -> Finding Courier */}
+                            {order.status === "finding_stock" && (
+                              <button
+                                onClick={() => advanceOrderStage(order.id, "finding_courier")}
+                                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition flex items-center gap-1.5"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                                <span>Stock Ready • Request Courier</span>
+                              </button>
+                            )}
+
+                            {/* 4. Finding Courier -> Dispatch On Delivery */}
+                            {order.status === "finding_courier" && (
+                              <button
+                                onClick={() => setDispatchModalOrder(order)}
+                                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-semibold text-xs shadow-md transition flex items-center gap-1.5"
+                              >
+                                <Truck className="w-3.5 h-3.5" />
+                                <span>Dispatch Courier (Gojek / Grab)</span>
+                              </button>
+                            )}
+
+                            {/* Click & Collect specific transitions */}
+                            {isCnC && order.status === "order_accepted" && (
+                              <button
+                                onClick={() => advanceOrderStage(order.id, "ready_for_pickup")}
+                                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition"
+                              >
+                                Mark Ready for Counter Pickup
+                              </button>
+                            )}
+                            {isCnC && order.status === "ready_for_pickup" && (
+                              <button
+                                onClick={() => advanceOrderStage(order.id, "collected")}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
+                              >
+                                Complete Counter Handover
+                              </button>
+                            )}
+                          </div>
                         </div>
-
-                        <div className="flex items-center gap-2">
-                          {/* 1. Received -> Accepted */}
-                          {order.status === "order_received" && (
-                            <button
-                              onClick={() => advanceOrderStage(order.id, "order_accepted")}
-                              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-1.5"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Accept Order</span>
-                            </button>
-                          )}
-
-                          {/* 2. Accepted -> Finding Stock */}
-                          {order.status === "order_accepted" && (
-                            <button
-                              onClick={() => advanceOrderStage(order.id, "finding_stock")}
-                              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5"
-                            >
-                              <Layers className="w-3.5 h-3.5" />
-                              <span>Find & Pick Stock in Warehouse</span>
-                            </button>
-                          )}
-
-                          {/* 3. Finding Stock -> Finding Courier */}
-                          {order.status === "finding_stock" && (
-                            <button
-                              onClick={() => advanceOrderStage(order.id, "finding_courier")}
-                              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition flex items-center gap-1.5"
-                            >
-                              <Truck className="w-3.5 h-3.5" />
-                              <span>Stock Ready • Request Courier</span>
-                            </button>
-                          )}
-
-                          {/* 4. Finding Courier -> Dispatch On Delivery */}
-                          {order.status === "finding_courier" && (
-                            <button
-                              onClick={() => setDispatchModalOrder(order)}
-                              className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-semibold text-xs shadow-md transition flex items-center gap-1.5"
-                            >
-                              <Truck className="w-3.5 h-3.5" />
-                              <span>Dispatch Courier (Gojek / Grab)</span>
-                            </button>
-                          )}
-
-                          {/* Click & Collect specific transitions */}
-                          {isCnC && order.status === "order_accepted" && (
-                            <button
-                              onClick={() => advanceOrderStage(order.id, "ready_for_pickup")}
-                              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition"
-                            >
-                              Mark Ready for Counter Pickup
-                            </button>
-                          )}
-                          {isCnC && order.status === "ready_for_pickup" && (
-                            <button
-                              onClick={() => advanceOrderStage(order.id, "collected")}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
-                            >
-                              Complete Counter Handover
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1031,11 +1308,10 @@ export default function AdminPortalPage() {
         )}
 
         {/* ==================================================================== */}
-        {/* TAB 2: PRODUCT CATALOG & IMAGE MANAGEMENT */}
+        {/* TAB 2: PRODUCT CATALOG & IMAGE MANAGEMENT (PC UPLOAD & CATEGORY)     */}
         {/* ==================================================================== */}
         {activeTab === "products" && (
           <div className="space-y-6">
-            {/* Top Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
               <div className="flex items-center gap-3 flex-1 min-w-[280px]">
                 <div className="relative flex-1">
@@ -1055,18 +1331,14 @@ export default function AdminPortalPage() {
                   className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
                 >
                   <option value="all">All Categories</option>
-                  <option value="cpu">Processors (CPUs)</option>
-                  <option value="gpu">Graphics Cards (GPUs)</option>
-                  <option value="motherboards">Motherboards</option>
-                  <option value="cooling">Cooling</option>
-                  <option value="ram">Memory</option>
-                  <option value="storage">Storage</option>
-                  <option value="cases">Chassis</option>
-                  <option value="power-supplies">Power Supplies</option>
+                  {HARDWARE_CATEGORIES.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* SUPERADMIN: ADD NEW PRODUCT BUTTON */}
               {isSuperAdmin ? (
                 <button
                   onClick={() => setNewProductModalOpen(true)}
@@ -1089,9 +1361,10 @@ export default function AdminPortalPage() {
                   <thead className="bg-slate-950 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="py-3.5 px-4">Hardware Product</th>
+                      <th className="py-3.5 px-4">Category</th>
                       <th className="py-3.5 px-4">SKU / Brand</th>
                       <th className="py-3.5 px-4">Retail Price</th>
-                      <th className="py-3.5 px-4">Stock On Hand</th>
+                      <th className="py-3.5 px-4">Stock on Hand</th>
                       <th className="py-3.5 px-4">Available</th>
                       <th className="py-3.5 px-4">Pictures</th>
                       <th className="py-3.5 px-4 text-right">Actions</th>
@@ -1111,90 +1384,100 @@ export default function AdminPortalPage() {
                           p.pc_builder_slot === productCategoryFilter;
                         return matchesSearch && matchesCat;
                       })
-                      .map((prod) => (
-                        <tr key={prod.id} className="hover:bg-slate-800/40 transition">
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex-shrink-0 relative">
-                                {prod.images?.[0] ? (
-                                  <img
-                                    src={prod.images[0]}
-                                    alt={prod.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <Package className="w-6 h-6 text-slate-600 m-auto" />
+                      .map((prod) => {
+                        const catObj = HARDWARE_CATEGORIES.find(
+                          (c) => c.slug === prod.category_slug || c.slot === prod.pc_builder_slot
+                        );
+
+                        return (
+                          <tr key={prod.id} className="hover:bg-slate-800/40 transition">
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex-shrink-0 relative">
+                                  {prod.images?.[0] ? (
+                                    <img
+                                      src={prod.images[0]}
+                                      alt={prod.name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Package className="w-6 h-6 text-slate-600 m-auto" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-semibold text-white max-w-xs truncate">{prod.name}</div>
+                                  <div className="text-[11px] text-slate-400">{prod.brand}</div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-cyan-300 border border-slate-700">
+                                {catObj?.name || prod.category_slug || "Hardware"}
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <div className="font-mono text-cyan-400">{prod.sku}</div>
+                              <div className="text-[11px] text-slate-400">{prod.brand}</div>
+                            </td>
+
+                            <td className="py-3.5 px-4 font-mono font-bold text-white">
+                              {formatRupiah(prod.retail_price)}
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span className="font-mono font-semibold text-slate-200">
+                                {prod.stock_on_hand}
+                              </span>
+                              <span className="text-[10px] text-slate-500 block">units in store</span>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                  prod.stock_available > 3
+                                    ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                                    : prod.stock_available > 0
+                                    ? "bg-amber-950 text-amber-300 border border-amber-800"
+                                    : "bg-red-950 text-red-300 border border-red-800"
+                                }`}
+                              >
+                                {prod.stock_available} available
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4">
+                              <span className="text-slate-400 text-xs">
+                                {prod.images?.length || 0} picture(s)
+                              </span>
+                            </td>
+
+                            <td className="py-3.5 px-4 text-right">
+                              <div className="inline-flex items-center gap-1.5">
+                                <button
+                                  onClick={() => setEditingProduct({ ...prod })}
+                                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 transition flex items-center gap-1"
+                                  title="Edit category, price, stock & pictures"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>Edit</span>
+                                </button>
+
+                                {isSuperAdmin && (
+                                  <button
+                                    onClick={() => handleDeleteProduct(prod.id, prod.name)}
+                                    className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800 transition"
+                                    title="Delete Product (Superadmin)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 )}
                               </div>
-                              <div>
-                                <div className="font-semibold text-white max-w-xs truncate">{prod.name}</div>
-                                <div className="text-[11px] text-slate-400 capitalize">{prod.category_slug || "hardware"}</div>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <div className="font-mono text-cyan-400">{prod.sku}</div>
-                            <div className="text-[11px] text-slate-400">{prod.brand}</div>
-                          </td>
-
-                          <td className="py-3.5 px-4 font-mono font-bold text-white">
-                            {formatRupiah(prod.retail_price)}
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <span className="font-mono font-semibold text-slate-200">
-                              {prod.stock_on_hand}
-                            </span>
-                            <span className="text-[10px] text-slate-500 block">units in store</span>
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
-                                prod.stock_available > 3
-                                  ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-                                  : prod.stock_available > 0
-                                  ? "bg-amber-950 text-amber-300 border border-amber-800"
-                                  : "bg-red-950 text-red-300 border border-red-800"
-                              }`}
-                            >
-                              {prod.stock_available} available
-                            </span>
-                          </td>
-
-                          <td className="py-3.5 px-4">
-                            <span className="text-slate-400 text-xs">
-                              {prod.images?.length || 0} image(s)
-                            </span>
-                          </td>
-
-                          <td className="py-3.5 px-4 text-right">
-                            <div className="inline-flex items-center gap-1.5">
-                              {/* Edit button: Admin & Superadmin */}
-                              <button
-                                onClick={() => setEditingProduct({ ...prod })}
-                                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 transition flex items-center gap-1"
-                                title="Edit elements & pictures"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                                <span>Edit</span>
-                              </button>
-
-                              {/* Delete button: Superadmin only */}
-                              {isSuperAdmin && (
-                                <button
-                                  onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                                  className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800 transition"
-                                  title="Delete Product (Superadmin)"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -1203,7 +1486,7 @@ export default function AdminPortalPage() {
         )}
 
         {/* ==================================================================== */}
-        {/* TAB 3: PROMOTIONS & BANNERS (SUPERADMIN ONLY) */}
+        {/* TAB 3: PROMOTIONS & BANNERS (SUPERADMIN ONLY - REORDERING & UPLOAD)   */}
         {/* ==================================================================== */}
         {activeTab === "promotions" && isSuperAdmin && (
           <div className="space-y-8">
@@ -1284,16 +1567,16 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* 2. Promotional Banners Manager */}
+            {/* 2. Dynamic Promotional Banners (With PC Upload, Overlay Writing & Reordering) */}
             <div className="space-y-4 pt-4 border-t border-slate-800">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-cyan-400" />
-                    <span>Dynamic Homepage Hero Banners</span>
+                    <span>Homepage Rotating Banners (Dynamic Order)</span>
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Live rotating banner slides displayed on the Tethera storefront homepage.
+                    Upload pictures, configure headline writing on top, and click Move Up / Move Down to change the rotation order on the main screen.
                   </p>
                 </div>
 
@@ -1302,76 +1585,115 @@ export default function AdminPortalPage() {
                   className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add Banner Slide</span>
+                  <span>Add Banner Slide with Overlay</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {banners.map((slide, idx) => (
-                  <div
-                    key={slide.id}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between"
-                  >
-                    <div>
-                      {slide.image_url ? (
-                        <div className="h-32 w-full bg-slate-950 relative overflow-hidden">
-                          <img
-                            src={slide.image_url}
-                            alt={slide.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-white font-mono">
-                            Slide #{idx + 1} • Picture Banner
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="h-32 w-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-950 p-3 flex flex-col justify-center">
-                          <span className="text-[10px] text-cyan-400 uppercase font-mono font-bold">
-                            {slide.badge || "Hero Campaign"}
-                          </span>
-                          <span className="text-sm font-bold text-white line-clamp-1">{slide.title}</span>
-                          <span className="text-xs text-slate-300 line-clamp-2 mt-1">{slide.highlight}</span>
-                        </div>
-                      )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {banners
+                  .sort((a, b) => a.display_order - b.display_order)
+                  .map((slide, idx) => (
+                    <div
+                      key={slide.id}
+                      className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between group hover:border-slate-700 transition"
+                    >
+                      <div>
+                        {/* Picture with Writing on Top */}
+                        <div className="h-44 w-full bg-slate-950 relative overflow-hidden">
+                          {slide.image_url ? (
+                            <img
+                              src={slide.image_url}
+                              alt={slide.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-950" />
+                          )}
 
-                      <div className="p-4 space-y-2">
-                        <div className="font-semibold text-white text-sm">{slide.title}</div>
-                        <div className="text-xs text-slate-400 line-clamp-2">{slide.description}</div>
-                        <div className="text-[11px] text-cyan-400 font-mono">CTA: {slide.cta_link}</div>
+                          {/* Writing Overlaid on top of picture */}
+                          {!slide.hide_overlay && (
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/30 p-3.5 flex flex-col justify-between">
+                              <div className="flex items-center justify-between">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500 text-slate-950 uppercase font-mono">
+                                  {slide.badge || "FEATURED"}
+                                </span>
+                                <span className="px-2 py-0.5 rounded bg-black/60 text-[10px] text-white font-mono font-bold">
+                                  Position #{idx + 1}
+                                </span>
+                              </div>
+
+                              <div>
+                                <h4 className="text-white font-black text-sm line-clamp-1">{slide.title}</h4>
+                                <p className="text-cyan-300 text-[11px] font-medium line-clamp-1">{slide.highlight}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Banner Description & Details */}
+                        <div className="p-4 space-y-2 text-xs">
+                          <div className="font-semibold text-white text-sm">{slide.title}</div>
+                          <p className="text-slate-400 line-clamp-2 text-[11px]">{slide.description}</p>
+                          {slide.perk && (
+                            <div className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span>{slide.perk}</span>
+                            </div>
+                          )}
+                          <div className="text-[11px] text-cyan-400 font-mono">CTA Link: {slide.cta_link}</div>
+                        </div>
+                      </div>
+
+                      {/* Reorder Buttons (Move Up / Down) & Remove */}
+                      <div className="p-3 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-slate-500 mr-1 font-mono">Order:</span>
+                          <button
+                            onClick={() => handleMoveBannerOrder(slide.id, "up")}
+                            disabled={idx === 0}
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move Earlier in Rotation (Main Screen)"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveBannerOrder(slide.id, "down")}
+                            disabled={idx === banners.length - 1}
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move Later in Rotation (Main Screen)"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Delete this banner slide?")) return;
+                            await fetch(`/api/admin/banners?id=${slide.id}`, {
+                              method: "DELETE",
+                              headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            setBanners((prev) => prev.filter((b) => b.id !== slide.id));
+                            showToast("Banner deleted.");
+                          }}
+                          className="text-red-400 hover:text-red-300 text-xs flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remove</span>
+                        </button>
                       </div>
                     </div>
-
-                    <div className="p-3 border-t border-slate-800 flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Order: {slide.display_order}</span>
-                      <button
-                        onClick={async () => {
-                          if (!confirm("Delete this banner slide?")) return;
-                          await fetch(`/api/admin/banners?id=${slide.id}`, {
-                            method: "DELETE",
-                            headers: token ? { Authorization: `Bearer ${token}` } : {},
-                          });
-                          setBanners((prev) => prev.filter((b) => b.id !== slide.id));
-                          showToast("Banner deleted.");
-                        }}
-                        className="text-red-400 hover:text-red-300 flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Remove</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>
         )}
 
         {/* ==================================================================== */}
-        {/* TAB 4: CUSTOMER CRM SUITE (SUPERADMIN ONLY) */}
+        {/* TAB 4: CUSTOMER CRM SUITE (SUPERADMIN ONLY)                          */}
         {/* ==================================================================== */}
         {activeTab === "crm" && isSuperAdmin && (
           <div className="space-y-6">
-            {/* High-level CRM Stats */}
             {crmStats && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
@@ -1395,7 +1717,6 @@ export default function AdminPortalPage() {
               </div>
             )}
 
-            {/* Customers Table */}
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="p-4 border-b border-slate-800 flex items-center justify-between">
                 <div>
@@ -1466,7 +1787,7 @@ export default function AdminPortalPage() {
       </div>
 
       {/* ====================================================================== */}
-      {/* MODAL 1: EDIT PRODUCT ELEMENTS & PICTURE GALLERY (ADMIN & SUPERADMIN)   */}
+      {/* MODAL 1: EDIT PRODUCT (CATEGORY SELECTOR & PC IMAGE UPLOAD)            */}
       {/* ====================================================================== */}
       {editingProduct && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -1474,7 +1795,9 @@ export default function AdminPortalPage() {
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-bold text-white text-base">Edit Product Elements</h3>
-                <p className="text-xs text-slate-400">Modify name, price, stock, specs, and picture gallery.</p>
+                <p className="text-xs text-slate-400">
+                  Modify name, category, price, stock, specs, and picture gallery.
+                </p>
               </div>
               <button
                 onClick={() => setEditingProduct(null)}
@@ -1485,7 +1808,7 @@ export default function AdminPortalPage() {
             </div>
 
             <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-              {/* Name & Brand */}
+              {/* Product Name & Brand */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Product Name</label>
@@ -1507,7 +1830,48 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              {/* Price & Stock On Hand */}
+              {/* CATEGORY SELECTOR (NOW EDITABLE AS REQUESTED) & SKU */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-cyan-400 mb-1">
+                    Product Category (Hardware Slot)
+                  </label>
+                  <select
+                    value={editingProduct.category_slug || "cpu"}
+                    onChange={(e) => {
+                      const newSlug = e.target.value;
+                      const matched = HARDWARE_CATEGORIES.find((c) => c.slug === newSlug);
+                      setEditingProduct({
+                        ...editingProduct,
+                        category_slug: newSlug,
+                        pc_builder_slot: matched?.slot || editingProduct.pc_builder_slot,
+                      });
+                    }}
+                    className="w-full bg-slate-950 border border-cyan-600/70 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                  >
+                    {HARDWARE_CATEGORIES.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.name} (Slot: {c.slot})
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Assigned Builder Slot: <strong className="text-cyan-300 font-mono">{editingProduct.pc_builder_slot || "none"}</strong>
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">SKU</label>
+                  <input
+                    type="text"
+                    value={editingProduct.sku}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Price & Stock on Hand */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Retail Price (IDR)</label>
@@ -1546,14 +1910,14 @@ export default function AdminPortalPage() {
                 />
               </div>
 
-              {/* PICTURE GALLERY: INSERT & DELETE PICTURES */}
+              {/* PICTURE GALLERY: INSERT FROM PC (LOCAL COMPUTER) & DELETE PICTURES */}
               <div className="border-t border-slate-800 pt-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                    <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
                     <span>Product Pictures Gallery ({editingProduct.images?.length || 0})</span>
                   </label>
-                  <span className="text-[11px] text-slate-400">Admins can insert or delete pictures</span>
+                  <span className="text-[11px] text-cyan-400">Upload pictures directly from your PC</span>
                 </div>
 
                 {/* Thumbnails Strip with Delete button */}
@@ -1561,7 +1925,7 @@ export default function AdminPortalPage() {
                   {editingProduct.images?.map((imgUrl: string, idx: number) => (
                     <div
                       key={idx}
-                      className="relative w-20 h-20 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden group"
+                      className="relative w-20 h-20 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden group shadow-sm"
                     >
                       <img src={imgUrl} alt="Product" className="w-full h-full object-cover" />
                       <button
@@ -1570,39 +1934,73 @@ export default function AdminPortalPage() {
                           const filtered = editingProduct.images.filter((_: any, i: number) => i !== idx);
                           setEditingProduct({ ...editingProduct, images: filtered });
                         }}
-                        className="absolute inset-0 bg-red-950/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                        title="Delete this picture"
+                        className="absolute inset-0 bg-red-950/85 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                        title="Delete picture"
                       >
-                        <Trash2 className="w-5 h-5 text-red-400" />
+                        <Trash2 className="w-5 h-5 text-red-400 mb-0.5" />
+                        <span className="text-[9px] font-bold">Remove</span>
                       </button>
                     </div>
                   ))}
                 </div>
 
-                {/* Insert Picture URL */}
-                <div className="flex items-center gap-2 pt-1">
-                  <input
-                    type="url"
-                    placeholder="Paste image URL (e.g. https://images.unsplash.com/... or /products/gpu.png)"
-                    value={newImageUrlInput}
-                    onChange={(e) => setNewImageUrlInput(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!newImageUrlInput.trim()) return;
-                      const currentImages = editingProduct.images || [];
-                      setEditingProduct({
-                        ...editingProduct,
-                        images: [...currentImages, newImageUrlInput.trim()],
-                      });
-                      setNewImageUrlInput("");
-                    }}
-                    className="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs transition"
-                  >
-                    Insert Picture
-                  </button>
+                {/* Upload from Local PC or paste URL */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Local Computer File Upload Button */}
+                  <div>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleUploadFileFromPC(file, "edit_product");
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={uploadingImage}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-9 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+                    >
+                      {uploadingImage ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      <span>📁 Upload Picture from Computer (PC)</span>
+                    </button>
+                  </div>
+
+                  {/* Image URL fallback */}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      placeholder="Or paste image URL..."
+                      value={newImageUrlInput}
+                      onChange={(e) => setNewImageUrlInput(e.target.value)}
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 h-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newImageUrlInput.trim()) return;
+                        const currentImages = editingProduct.images || [];
+                        setEditingProduct({
+                          ...editingProduct,
+                          images: [...currentImages, newImageUrlInput.trim()],
+                        });
+                        setNewImageUrlInput("");
+                      }}
+                      className="px-3 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs transition whitespace-nowrap"
+                    >
+                      Add URL
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1628,7 +2026,95 @@ export default function AdminPortalPage() {
       )}
 
       {/* ====================================================================== */}
-      {/* MODAL 2: DISPATCH ON-DEMAND COURIER (GOJEK / GRAB)                     */}
+      {/* MODAL 2: REJECT ORDER (STOCK OUT OR OTHER REASON)                      */}
+      {/* ====================================================================== */}
+      {rejectModalOrder && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-red-800/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-red-400">
+                <Ban className="w-5 h-5" />
+                <h3 className="font-bold text-white text-base">Reject / Cancel Order</h3>
+              </div>
+              <button onClick={() => setRejectModalOrder(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="text-xs text-slate-300">
+              You are rejecting Order <strong className="text-white font-mono">#{rejectModalOrder.order_number}</strong> placed by <strong className="text-white">{rejectModalOrder.customer_name}</strong> ({formatRupiah(rejectModalOrder.total)}).
+            </div>
+
+            {/* Predefined Rejection Reasons */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-300">Select Rejection Reason:</label>
+              {[
+                "Out of stock in warehouse",
+                "Defective / damaged unit discovered during inspection",
+                "Item discontinued by distributor",
+                "Customer requested cancellation",
+                "Delivery address unreachable by Gojek / Grab couriers",
+                "Other",
+              ].map((reason) => (
+                <label
+                  key={reason}
+                  className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                    rejectReason === reason
+                      ? "bg-red-950/40 border-red-700 text-white font-medium"
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="reject_reason"
+                    checked={rejectReason === reason}
+                    onChange={() => setRejectReason(reason)}
+                    className="accent-red-500"
+                  />
+                  <span>{reason}</span>
+                </label>
+              ))}
+
+              {rejectReason === "Other" && (
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Specify custom reason for rejection..."
+                  value={customRejectReason}
+                  onChange={(e) => setCustomRejectReason(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white mt-2"
+                />
+              )}
+            </div>
+
+            <div className="p-3 bg-red-950/30 border border-red-900/50 rounded-xl text-[11px] text-red-300">
+              ⚠️ Note: Rejecting will automatically release any reserved stock back into available store inventory and notify operations.
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRejectModalOrder(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                disabled={rejectingSubmitting}
+                onClick={handleConfirmRejectOrder}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 flex items-center gap-1.5"
+              >
+                {rejectingSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
+                <span>Confirm Rejection</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================== */}
+      {/* MODAL 3: DISPATCH ON-DEMAND COURIER (GOJEK / GRAB)                     */}
       {/* ====================================================================== */}
       {dispatchModalOrder && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1638,10 +2124,7 @@ export default function AdminPortalPage() {
                 <Truck className="w-5 h-5 text-emerald-400" />
                 <h3 className="font-bold text-white text-base">Gojek & Grab Courier Dispatch</h3>
               </div>
-              <button
-                onClick={() => setDispatchModalOrder(null)}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400"
-              >
+              <button onClick={() => setDispatchModalOrder(null)} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1650,7 +2133,6 @@ export default function AdminPortalPage() {
               Order <strong>#{dispatchModalOrder.order_number}</strong> for <strong>{dispatchModalOrder.customer_name}</strong> is packed and ready at Mangga Dua Flagship Hub. Select on-demand courier partner to trigger driver assignment.
             </p>
 
-            {/* Courier Selection */}
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
@@ -1718,7 +2200,7 @@ export default function AdminPortalPage() {
       )}
 
       {/* ====================================================================== */}
-      {/* MODAL 3: ADD NEW PRODUCT (SUPERADMIN ONLY)                            */}
+      {/* MODAL 4: ADD NEW HARDWARE ITEM (SUPERADMIN ONLY - WITH PC UPLOAD)      */}
       {/* ====================================================================== */}
       {newProductModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -1728,10 +2210,7 @@ export default function AdminPortalPage() {
                 <Crown className="w-5 h-5 text-purple-400" />
                 <h3 className="font-bold text-white text-base">Add New Hardware Item (Superadmin)</h3>
               </div>
-              <button
-                onClick={() => setNewProductModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400"
-              >
+              <button onClick={() => setNewProductModalOpen(false)} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1769,19 +2248,16 @@ export default function AdminPortalPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Category</label>
+                  <label className="block font-semibold text-slate-300 mb-1">Category & Builder Slot</label>
                   <select
                     name="category_slug"
                     className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   >
-                    <option value="cpu">Processors (cpu)</option>
-                    <option value="gpu">Graphics Cards (gpu)</option>
-                    <option value="motherboards">Motherboards</option>
-                    <option value="cooling">Cooling</option>
-                    <option value="ram">Memory</option>
-                    <option value="storage">Storage</option>
-                    <option value="cases">Chassis</option>
-                    <option value="power-supplies">Power Supplies</option>
+                    {HARDWARE_CATEGORIES.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -1808,13 +2284,48 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Primary Picture URL</label>
-                <input
-                  name="image_url"
-                  placeholder="https://images.unsplash.com/... or /tethera.png"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                />
+              {/* PC Image Upload or URL */}
+              <div className="space-y-1.5">
+                <label className="block font-semibold text-slate-300">Product Picture (Upload from PC or URL)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={newProductFileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleUploadFileFromPC(file, "new_product");
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploadingImage}
+                    onClick={() => newProductFileInputRef.current?.click()}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>📁 Upload from PC</span>
+                  </button>
+
+                  <input
+                    name="image_url"
+                    value={newProductImageUrl}
+                    onChange={(e) => setNewProductImageUrl(e.target.value)}
+                    placeholder="Or paste image URL (e.g. /tethera.png)"
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                  />
+                </div>
+
+                {newProductImageUrl && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <img src={newProductImageUrl} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
+                    <span className="text-[11px] text-emerald-400">Picture attached successfully</span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1822,7 +2333,7 @@ export default function AdminPortalPage() {
                 <textarea
                   name="description"
                   rows={2}
-                  placeholder="High-performance processor designed for enthusiast computing..."
+                  placeholder="High-performance hardware component designed for enthusiast computing..."
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                 />
               </div>
@@ -1848,7 +2359,221 @@ export default function AdminPortalPage() {
       )}
 
       {/* ====================================================================== */}
-      {/* MODAL 4: CREATE PROMOTION CODE (SUPERADMIN ONLY)                       */}
+      {/* MODAL 5: ADD BANNER WITH PC UPLOAD & WRITING ON TOP (SUPERADMIN ONLY)   */}
+      {/* ====================================================================== */}
+      {newBannerModalOpen && isSuperAdmin && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-purple-800/80 rounded-2xl max-w-2xl w-full p-6 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+                <div>
+                  <h3 className="font-bold text-white text-base">Add Promotional Banner Slide</h3>
+                  <p className="text-xs text-slate-400">Upload background picture & configure writing on top.</p>
+                </div>
+              </div>
+              <button onClick={() => setNewBannerModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewBanner} className="space-y-4 text-xs">
+              {/* LIVE CARD PREVIEW WITH WRITING ON TOP */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                  Live Preview (How it will appear on the main screen):
+                </label>
+                <div className="h-44 w-full rounded-2xl bg-slate-950 border border-slate-700 relative overflow-hidden shadow-inner">
+                  {newBannerForm.image_url ? (
+                    <img src={newBannerForm.image_url} alt="Banner" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950" />
+                  )}
+
+                  {!newBannerForm.hide_overlay && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 p-4 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500 text-slate-950 uppercase font-mono">
+                          {newBannerForm.badge || "FEATURED"}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-black/60 text-[10px] text-white font-mono">
+                          Order #{newBannerForm.display_order}
+                        </span>
+                      </div>
+
+                      <div>
+                        <h3 className="text-white font-black text-base line-clamp-1">{newBannerForm.title}</h3>
+                        <p className="text-cyan-300 text-xs font-medium line-clamp-1">{newBannerForm.highlight}</p>
+                        <p className="text-slate-300 text-[11px] line-clamp-1 mt-0.5">{newBannerForm.description}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-emerald-400 font-semibold">{newBannerForm.perk}</span>
+                        <span className="px-3 py-1 bg-white text-zinc-900 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                          {newBannerForm.cta_text} →
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Picture Upload from PC */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                <label className="block font-semibold text-slate-300">Background Picture (Upload from PC or URL)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={bannerFileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleUploadFileFromPC(file, "banner");
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={uploadingImage}
+                    onClick={() => bannerFileInputRef.current?.click()}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 whitespace-nowrap shadow-sm"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>📁 Upload Picture from Computer</span>
+                  </button>
+
+                  <input
+                    type="url"
+                    placeholder="Or paste background image URL..."
+                    value={newBannerForm.image_url}
+                    onChange={(e) => setNewBannerForm({ ...newBannerForm, image_url: e.target.value })}
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Writing on Top of Picture Fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Headline Title (Writing on top)</label>
+                  <input
+                    required
+                    value={newBannerForm.title}
+                    onChange={(e) => setNewBannerForm({ ...newBannerForm, title: e.target.value })}
+                    placeholder="e.g. Tethera Apex White Edition Rig"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Highlight / Subtitle</label>
+                  <input
+                    value={newBannerForm.highlight}
+                    onChange={(e) => setNewBannerForm({ ...newBannerForm, highlight: e.target.value })}
+                    placeholder="e.g. Free 72-Hour Rig Stress Test Included"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Badge Text</label>
+                  <input
+                    value={newBannerForm.badge}
+                    onChange={(e) => setNewBannerForm({ ...newBannerForm, badge: e.target.value })}
+                    placeholder="e.g. Limited Time Event / Official Partner"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Display Order (Position on Screen)</label>
+                  <input
+                    type="number"
+                    value={newBannerForm.display_order}
+                    onChange={(e) => setNewBannerForm({ ...newBannerForm, display_order: Number(e.target.value) })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">Description Copy</label>
+                <textarea
+                  rows={2}
+                  value={newBannerForm.description}
+                  onChange={(e) => setNewBannerForm({ ...newBannerForm, description: e.target.value })}
+                  placeholder="Design your custom rig with complimentary calibration..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Perk / Warranty Line</label>
+                  <input
+                    value={newBannerForm.perk}
+                    onChange={(e) => setNewBannerForm({ ...newBannerForm, perk: e.target.value })}
+                    placeholder="e.g. Full 3-Year Official Manufacturer Warranty"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Button CTA Text & Link</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={newBannerForm.cta_text}
+                      onChange={(e) => setNewBannerForm({ ...newBannerForm, cta_text: e.target.value })}
+                      placeholder="Shop Now"
+                      className="w-1/2 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    />
+                    <input
+                      value={newBannerForm.cta_link}
+                      onChange={(e) => setNewBannerForm({ ...newBannerForm, cta_link: e.target.value })}
+                      placeholder="/components/gpu"
+                      className="w-1/2 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="hide_overlay"
+                  checked={newBannerForm.hide_overlay}
+                  onChange={(e) => setNewBannerForm({ ...newBannerForm, hide_overlay: e.target.checked })}
+                  className="accent-cyan-500 rounded"
+                />
+                <label htmlFor="hide_overlay" className="text-slate-300 cursor-pointer">
+                  Hide text overlay (Display pure raw picture with no writings on top)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setNewBannerModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold"
+                >
+                  Publish Banner to Main Screen
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================== */}
+      {/* MODAL 6: CREATE PROMOTION CODE (SUPERADMIN ONLY)                       */}
       {/* ====================================================================== */}
       {newPromoModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
