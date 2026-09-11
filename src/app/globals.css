@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F8FAFC;
+  --foreground: #18181B;
+  --surface: #FFFFFF;
+  --surface-subtle: #F1F5F9;
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom sleek scrollbar for light theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+@layer utilities {
+  .glass-header {
+    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Tactile card physics effect across all pages */
+  .tethera-card-hover {
+    transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+    will-change: transform;
+  }
+
+  .tethera-card-hover:hover {
+    transform: translateY(-4px) scale(1.015);
+    box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.09), 0 6px 14px -4px rgba(15, 23, 42, 0.04);
+    border-color: #94a3b8;
+  }
+
+  .tethera-card-hover:active {
+    transform: translateY(-1px) scale(0.99);
+    transition-duration: 0.1s;
+  }
+
+  /* Tactile press effect for buttons and actionable elements */
+  .tactile-btn {
+    transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, box-shadow 0.15s ease;
+    will-change: transform;
+  }
+
+  .tactile-btn:active {
+    transform: scale(0.95);
+  }
+
+  .tactile-item {
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
+  }
+
+  .tactile-item:hover {
+    transform: scale(1.02);
+  }
+
+  .tactile-item:active {
+    transform: scale(0.97);
+  }
+}
+
+/* ========================================================================= */
+/* TACTILE KEYFRAME ANIMATIONS */
+/* ========================================================================= */
+
+/* Pop-in animation for products & cards to pop up one by one */
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: translateY(22px) scale(0.92);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.015);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-pop-in {
+  animation: popIn 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Snappy dropdown pop animation */
+@keyframes dropdownPop {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  70% {
+    transform: translateY(2px) scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-dropdown-pop {
+  animation: dropdownPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top left;
+}
+
+/* Modal pop-in animation */
+@keyframes modalPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(16px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.012) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-pop {
+  animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Infinite Marquee Animation for Sponsors Banner */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 40s linear infinite;
+}
+
