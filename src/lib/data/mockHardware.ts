@@ -9,6 +9,8 @@ export interface ComponentItem {
   image: string;
   inStock: boolean;
   stockCount: number;
+  description?: string;
+  highlights?: string[];
   specs: {
     socket?: string;
     ramType?: "DDR4" | "DDR5";
@@ -542,6 +544,198 @@ export function getProductOrPrebuiltById(id: string): (ComponentItem | typeof PR
   const component = MOCK_COMPONENTS.find((item) => item.id === id);
   if (component) return component;
   return PREBUILT_SYSTEMS.find((pb) => pb.id === id);
+}
+
+export interface ProductOverviewInfo {
+  summary: string;
+  paragraphs: string[];
+  highlights: string[];
+}
+
+export function getProductOverviewData(
+  product: ComponentItem | (typeof PREBUILT_SYSTEMS)[0]
+): ProductOverviewInfo {
+  // If product is a prebuilt system with explicit description and highlights
+  if ("cpu" in product && "highlights" in product && product.description) {
+    return {
+      summary: product.description,
+      paragraphs: [
+        `Configured and precision-assembled by Tethera's engineering team, this turnkey system delivers exceptional high-framerate 1440p/4K gaming, Unreal Engine development, and heavy multithreaded creator workloads right out of the box.`,
+        `Includes our comprehensive 24-48 hour thermal stress burn-in verification with Prime95, FurMark, and 3DMark loop tests to ensure zero thermal throttling and rock-solid memory stability.`
+      ],
+      highlights: product.highlights || [
+        "Factory-verified thermal burn-in stress testing",
+        "Official component distributor warranties included",
+        "Ready for immediate Click & Collect or insured courier transit",
+        "Clean Windows 11 installation with latest BIOS & stable drivers"
+      ]
+    };
+  }
+
+  // If component has its own custom description
+  if ("description" in product && product.description) {
+    return {
+      summary: product.description,
+      paragraphs: [
+        `Directly sourced from authorized Indonesian principal distributors. Packaged in brand-new, factory-sealed condition with complete manufacturer accessories and documentation.`,
+        `Fully verified for electrical, dimensional, and thermal compatibility with modern PC components and the Tethera Custom PC Builder.`
+      ],
+      highlights: (product as any).highlights || [
+        "100% Genuine Authorized Distributor Stock (Distributor Resmi)",
+        "Manufacturer Limited Warranty with Local RMA Service",
+        "Verified Compatible with Tethera Custom PC Builder",
+        "Instant Flagship Pickup or Insured Fragile Courier Delivery"
+      ]
+    };
+  }
+
+  // Category-tailored dynamic rich descriptions for all components
+  const category = (product.category || "").toLowerCase();
+  const name = product.name;
+  const brand = product.brand;
+
+  if (category.includes("processor") || category.includes("cpu")) {
+    return {
+      summary: `The ${name} represents cutting-edge silicon architecture by ${brand}, purpose-built to deliver blistering single-threaded IPC responsiveness and immense multi-threaded compute throughput for modern esports, 4K triple-A titles, and demanding creative software.`,
+      paragraphs: [
+        `Engineered with advanced semiconductor fabrication and intelligent dynamic frequency scaling, this processor maximizes power efficiency while keeping operating temperatures within optimal thresholds under sustained heavy workloads.`,
+        `Compatible with modern high-bandwidth DDR5 memory subsystems and PCIe Gen 4/5 expansion buses, delivering exceptional bandwidth for high-end graphics cards and direct-storage solid state drives.`
+      ],
+      highlights: [
+        `High-performance compute microarchitecture by ${brand}`,
+        "Optimized for high-FPS gaming and heavy multitasking throughput",
+        "Native DDR5 high-bandwidth memory channel architecture",
+        "Official Indonesian Distributor Warranty with direct RMA support"
+      ]
+    };
+  }
+
+  if (category.includes("graphic") || category.includes("gpu")) {
+    return {
+      summary: `Powered by ${brand}'s high-efficiency GPU silicon, the ${name} is engineered for ultra-high-resolution gaming, hardware-accelerated real-time ray tracing, and AI-accelerated workflows.`,
+      paragraphs: [
+        `Features a heavy-duty multi-fan cooling heatsink with reinforced composite copper heatpipes and high-static-pressure fans designed to maintain low temperatures and whisper-quiet acoustics under intense gaming sessions.`,
+        `Equipped with high-bandwidth GDDR memory and next-generation video display outputs, ensuring ultra-smooth framerates on high-refresh-rate 1440p and 4K HDR gaming monitors.`
+      ],
+      highlights: [
+        "Hardware ray tracing and AI frame generation acceleration",
+        "Reinforced multi-fan thermal assembly with silent zero-RPM idle mode",
+        "High-bandwidth dedicated video memory for high-resolution gaming",
+        "Full support for modern DirectX 12 Ultimate and Vulkan APIs"
+      ]
+    };
+  }
+
+  if (category.includes("motherboard")) {
+    return {
+      summary: `The ${name} delivers a robust electrical foundation for your system, featuring premium VRM power stages, optimized PCB trace routing, and enthusiast cooling armor.`,
+      paragraphs: [
+        `Engineered to support current-generation processors with maximum power stability, extensive PCIe 4.0/5.0 expansion lanes, multi-slot M.2 NVMe thermal shields, and high-speed networking for low-latency connectivity.`,
+        `Features a comprehensive UEFI BIOS with one-click memory profile tuning (XMP / EXPO), granular fan curve management, and built-in hardware diagnostics.`
+      ],
+      highlights: [
+        "Reinforced digital VRM power delivery with thermal heatsinks",
+        "Multiple high-speed M.2 NVMe slots with integrated heatspreaders",
+        "High-speed 2.5G Ethernet and modern wireless networking",
+        "User-friendly BIOS with one-click memory profile tuning"
+      ]
+    };
+  }
+
+  if (category.includes("memory") || category.includes("ram")) {
+    return {
+      summary: `Built with tightly-screened IC memory chips, the ${name} by ${brand} provides high bandwidth, low latencies, and extreme stability under intensive gaming and rendering sessions.`,
+      paragraphs: [
+        `Crafted with a sleek anodized aluminum heat spreader that swiftly draws thermal energy away from the memory dies, preventing heat accumulation and ensuring rock-solid stability even when running heavy game engines or compilation tasks.`,
+        `Pre-configured with industry-standard overclocking profiles (Intel XMP 3.0 / AMD EXPO) for effortless, stable single-click clock speed enablement in your BIOS.`
+      ],
+      highlights: [
+        "Tightly-screened ICs for low latency and high bandwidth",
+        "High-efficiency anodized aluminum heat spreader",
+        "One-click Intel XMP 3.0 / AMD EXPO profile support",
+        "Lifetime Limited Warranty backed by official distributor"
+      ]
+    };
+  }
+
+  if (category.includes("storage") || category.includes("ssd")) {
+    return {
+      summary: `Experience instantaneous load times and seamless file transfers with the ${name}, designed for heavy gaming libraries, 4K/8K video editing, and high-throughput data tasks.`,
+      paragraphs: [
+        `Leverages a next-generation high-speed NVMe controller and advanced 3D NAND flash to provide sustained high-bandwidth sequential and random IOPS, virtually eliminating load screens in DirectStorage-enabled titles.`,
+        `Features dynamic thermal throttling management to maintain peak performance and preserve NAND endurance over years of heavy read/write cycles.`
+      ],
+      highlights: [
+        "Blazing-fast PCIe NVMe sequential read and write speeds",
+        "Drastically reduced OS boot times and instant game level loading",
+        "Advanced thermal management algorithms for sustained transfer rates",
+        "5-Year Official Distributor Limited Warranty"
+      ]
+    };
+  }
+
+  if (category.includes("cool")) {
+    return {
+      summary: `Engineered for superior thermal dissipation, the ${name} keeps high-performance processors running at peak boost clocks while maintaining remarkably quiet acoustics.`,
+      paragraphs: [
+        `Features a precision-machined micro-channel copper cold plate paired with high-static-pressure fans that efficiently draw heat away from the CPU heat spreader.`,
+        `Designed for broad socket compatibility, effortless mounting bracket installation, and long-term fluid or bearing reliability.`
+      ],
+      highlights: [
+        "High-efficiency thermal transfer with precision copper cold plate",
+        "Acoustically tuned low-noise PWM fans with fluid dynamic bearings",
+        "Broad compatibility with Intel and AMD desktop sockets",
+        "Official Indonesian distributor warranty"
+      ]
+    };
+  }
+
+  if (category.includes("case") || category.includes("chassis")) {
+    return {
+      summary: `The ${name} by ${brand} blends architectural aesthetics with precision airflow dynamics, providing an enthusiast canvas for high-end custom gaming systems and clean workstation builds.`,
+      paragraphs: [
+        `Designed with high-flow ventilation channels, magnetic removable dust filters, and versatile radiator mounting brackets accommodating top, front, and side configurations.`,
+        `Includes generous behind-the-motherboard cable management channels, velcro tie straps, and toolless panel releases for a streamlined assembly experience.`
+      ],
+      highlights: [
+        "Engineered high-airflow geometry with removable dust filters",
+        "Panoramic tempered glass and premium chassis materials",
+        "Expansive clearance for long GPUs and multi-radiator setups",
+        "Dedicated routing channels for clean, hidden cable management"
+      ]
+    };
+  }
+
+  if (category.includes("power") || category.includes("psu")) {
+    return {
+      summary: `Delivering clean, ripple-free power to demanding graphics cards and multi-core processors, the ${name} by ${brand} is engineered for peak electrical efficiency and rock-solid system stability.`,
+      paragraphs: [
+        `Built with 100% Japanese 105°C rated capacitors and an advanced LLC resonant converter design that achieves high efficiency certification (80 PLUS Gold/Platinum), reducing wasted heat and electric draw.`,
+        `Fully modular cable design allows you to connect only the leads your specific configuration requires, maximizing case airflow and keeping interior cabling pristine.`
+      ],
+      highlights: [
+        "80 PLUS certified efficiency for low heat and power waste",
+        "100% Japanese 105°C industrial-grade capacitors",
+        "Fully modular low-profile flat black cabling",
+        "Comprehensive electrical protections (OVP, UVP, OCP, OPP, SCP)"
+      ]
+    };
+  }
+
+  // Fallback for any other category
+  return {
+    summary: `The ${name} is an enthusiast-grade hardware component by ${brand}, rigorously tested and verified for stability and compatibility within Tethera custom systems.`,
+    paragraphs: [
+      `Sourced directly through authorized Indonesian principal distributors to ensure authentic provenance, sealed packaging, and complete local warranty backing.`,
+      `Ready for immediate assembly in our Custom PC Builder or rapid dispatch via Click & Collect and insured multi-courier delivery.`
+    ],
+    highlights: [
+      `Authentic ${brand} hardware from authorized distributor`,
+      "100% genuine factory sealed retail packaging",
+      "Full local warranty and technical assistance support",
+      "Insured shipping with fragile protection"
+    ]
+  };
 }
 
 export const SERVICE_TIERS = [

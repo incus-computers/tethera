@@ -46,13 +46,15 @@ export function PersistentHeader() {
 
   const { userLocation, openLocationModal, selectedRate, initLocation } = useLocationStore();
   const { user, isAuthenticated, initSession } = useAuthStore();
+  const { openCart, getTotalItemsCount, getSubtotal, initCart } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
     initSession();
     initLocation();
-  }, [initSession, initLocation]);
+    initCart();
+  }, [initSession, initLocation, initCart]);
 
   const handleCategoriesMouseEnter = () => {
     if (categoriesTimeoutRef.current) {
@@ -89,7 +91,6 @@ export function PersistentHeader() {
     };
   }, []);
 
-  const { openCart, getTotalItemsCount, getSubtotal } = useCartStore();
   const itemCount = getTotalItemsCount();
   const subtotal = getSubtotal();
 
@@ -253,11 +254,11 @@ export function PersistentHeader() {
               <ShoppingCart className="w-4 h-4" />
               <div className="text-left hidden sm:block">
                 <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-bold">
-                  Cart ({itemCount})
+                  Cart ({isMounted ? itemCount : 0})
                 </span>
-                <span className="text-xs font-black">{formatRupiah(subtotal)}</span>
+                <span className="text-xs font-black">{isMounted ? formatRupiah(subtotal) : formatRupiah(0)}</span>
               </div>
-              {itemCount > 0 && (
+              {isMounted && itemCount > 0 && (
                 <span className="sm:hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 text-zinc-900 font-black text-[10px] flex items-center justify-center border-2 border-white">
                   {itemCount}
                 </span>

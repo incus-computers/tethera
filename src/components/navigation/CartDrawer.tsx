@@ -21,6 +21,9 @@ export function CartDrawer() {
     customPCs,
     isCartOpen,
     closeCart,
+    addItem,
+    removeItem,
+    updateQuantity,
     removeStandardItem,
     removeCustomPC,
     getSubtotal,
@@ -302,22 +305,53 @@ export function CartDrawer() {
                 {items.map((cartItem) => (
                   <div
                     key={cartItem.id}
-                    className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3"
+                    className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs"
                   >
                     <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center p-1 shrink-0">
                       <img src={cartItem.item.image} alt={cartItem.item.name} className="w-full h-full object-cover rounded" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-bold text-zinc-900 truncate">{cartItem.item.name}</h4>
-                      <p className="text-[11px] text-slate-500">Qty: {cartItem.quantity} × {formatRupiah(cartItem.item.price)}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {/* Quantity Stepper */}
+                        <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(cartItem.id, cartItem.quantity - 1)}
+                            className="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-zinc-900 hover:bg-slate-200 transition-colors font-bold text-xs"
+                            title="Decrease quantity"
+                            aria-label="Decrease quantity"
+                          >
+                            -
+                          </button>
+                          <span className="w-6 text-center text-xs font-black text-zinc-900 select-none">
+                            {cartItem.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(cartItem.id, cartItem.quantity + 1)}
+                            className="w-6 h-6 flex items-center justify-center text-slate-600 hover:text-zinc-900 hover:bg-slate-200 transition-colors font-bold text-xs"
+                            title="Increase quantity"
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className="text-[10px] text-slate-400">
+                          {formatRupiah(cartItem.item.price)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-xs font-bold text-zinc-900">
+                    <div className="text-right shrink-0 flex flex-col items-end justify-between self-stretch">
+                      <div className="text-xs font-black text-zinc-900">
                         {formatRupiah(cartItem.item.price * cartItem.quantity)}
                       </div>
                       <button
-                        onClick={() => removeStandardItem(cartItem.id)}
-                        className="text-slate-400 hover:text-red-500 text-xs p-1"
+                        type="button"
+                        onClick={() => removeItem(cartItem.id)}
+                        className="text-slate-400 hover:text-red-500 text-xs p-1 rounded transition-colors"
+                        title="Remove item"
+                        aria-label="Remove item"
                       >
                         <Trash2 className="w-3.5 h-3.5 inline" />
                       </button>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   getProductOrPrebuiltById,
+  getProductOverviewData,
   MOCK_COMPONENTS,
   ComponentItem,
 } from "../../../lib/data/mockHardware";
@@ -26,6 +27,8 @@ import {
   Layers,
   ChevronRight,
   Info,
+  Sparkles,
+  FileText,
 } from "lucide-react";
 
 export default function ProductDetailPage() {
@@ -60,6 +63,7 @@ export default function ProductDetailPage() {
 
   const isComponent = "slot" in product;
   const componentItem = isComponent ? (product as ComponentItem) : null;
+  const overviewData = getProductOverviewData(product);
 
   // Handle Add to Cart
   const handleAddToCart = () => {
@@ -283,6 +287,96 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* PRODUCT OVERVIEW & ARCHITECTURE DESCRIPTION (BEFORE SPECIFICATIONS) */}
+      {/* ========================================================================= */}
+      <section className="pt-8 border-t border-slate-200 space-y-6">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 mb-1.5">
+            <Sparkles className="w-3 h-3 text-emerald-600" />
+            <span>Product Description & Architectural Overview</span>
+          </div>
+          <h2 className="text-xl font-black text-zinc-900 tracking-tight">
+            Detailed Overview & Highlights
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Main Narrative Column */}
+          <div className="lg:col-span-8 space-y-4">
+            <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 border-b border-slate-100 pb-3">
+                <FileText className="w-4 h-4 text-emerald-600" />
+                <span>Product Description</span>
+              </div>
+
+              {/* Lead Summary */}
+              <p className="text-sm sm:text-base font-semibold text-zinc-900 leading-relaxed">
+                {overviewData.summary}
+              </p>
+
+              {/* Detailed Breakdown Paragraphs */}
+              {overviewData.paragraphs.map((para, i) => (
+                <p key={i} className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  {para}
+                </p>
+              ))}
+
+              {/* Key Highlights Grid */}
+              {overviewData.highlights.length > 0 && (
+                <div className="pt-3 border-t border-slate-100">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 mb-3">
+                    Architectural & Engineering Highlights
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {overviewData.highlights.map((highlight, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50/80 p-3 rounded-xl border border-slate-200/80"
+                      >
+                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span className="font-medium">{highlight}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Guarantee & Authenticity Sidebar */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className="p-5 bg-zinc-900 rounded-2xl text-white shadow-md space-y-4">
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-black uppercase tracking-wider">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Hardware Quality Guarantee</span>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                All components and systems sold through Tethera are backed by serialized distributor verification, ensuring 100% genuine hardware with complete factory warranties.
+              </p>
+              <div className="space-y-2.5 pt-2 border-t border-zinc-800 text-xs">
+                <div className="flex items-center gap-2 text-slate-300">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Authorized Distributor Indonesian Stock</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>7-Day Store Immediate Replacement Policy</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Verified Compatible with Tethera PC Builder</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-300">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Available for 60-Minute Click & Collect</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ========================================================================= */}
       {/* TECHNICAL SPECIFICATIONS & COMPATIBILITY GUIDE */}
