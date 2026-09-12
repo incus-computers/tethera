@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FLAGSHIP_ORIGIN, calculateHaversineDistanceKm, POPULAR_LOCATIONS } from "@/lib/shipping/distance";
-import { biteship, SEEDED_INDONESIA_AREAS } from "@/lib/shipping/biteship";
+import { biteship, SEED_AREAS } from "@/lib/shipping/biteship";
 import { DeliveryLocation, BiteshipArea } from "@/lib/shipping/types";
 
 export const dynamic = "force-dynamic";
@@ -24,12 +24,20 @@ export async function GET(req: NextRequest) {
     let province = "DKI Jakarta";
     let postalCode = "";
 
-    // Case 1: Biteship synthetic fallback place_id
+    // Case A: OSM synthetic place_id containing coordinates (osm_lat_lng_idx)
+    if (placeId && placeId.startsWith("osm_")) {
+      const parts = placeId.split("_");
+      if (parts.length >= 3) {
+        latitude = parseFloat(parts[1]);
+        longitude = parseFloat(parts[2]);
+      }
+    }
+
+    // Case B: Biteship synthetic fallback place_id (biteship_areaId)
     if (placeId && placeId.startsWith("biteship_")) {
       const areaId = placeId.replace("biteship_", "");
-      const match = SEEDED_INDONESIA_AREAS.find((a: BiteshipArea) => a.id === areaId);
+      const match = SEED_AREAS.find((a: BiteshipArea) => a.id === areaId);
       if (match) {
-        // Approximate coordinates from popular locations or default
         const preset = POPULAR_LOCATIONS.find((l) => l.areaId === areaId);
         latitude = preset?.latitude || -6.2088;
         longitude = preset?.longitude || 106.8456;
@@ -57,13 +65,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Case 2: Google Maps API integration (Place Details or Reverse Geocode)
+    // Case C: Google Maps API (if key is configured)
     const hasGoogleKey = GOOGLE_API_KEY && GOOGLE_API_KEY !== "your_google_maps_api_key_here";
 
     if (hasGoogleKey) {
       try {
         let apiUrl = "";
-        if (placeId) {
+        if (placeId && !placeId.startsWith("osm_") && !placeId.startsWith("biteship_")) {
           apiUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(
             placeId
           )}&language=id&key=${encodeURIComponent(GOOGLE_API_KEY)}`;
@@ -77,7 +85,7 @@ export async function GET(req: NextRequest) {
           const res = await fetch(apiUrl);
           if (res.ok) {
             const data = await res.json();
-            const result = placeId ? data.result : data.results?.[0];
+            const result = (placeId && !placeId.startsWith("osm_")) ? data.result : data.results?.[0];
 
             if (result) {
               formattedAddress = result.formatted_address || result.name || "";
@@ -108,11 +116,42 @@ export async function GET(req: NextRequest) {
           }
         }
       } catch (gErr) {
-        console.warn("[GOOGLE GEOCODE ERROR]:", gErr);
+        console.warn("[GOOGLE GEOCODE API ERROR]:", gErr);
       }
     }
 
-    // Fallback if reverse geocode yielded no details
+    // Case D: Live Nominatim Reverse Geocoding (if Google didn't return address or key absent)
+    if (!formattedAddress && latitude !== undefined && longitude !== undefined) {
+      try {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
+        const nRes = await fetch(nominatimUrl, {
+          headers: { "User-Agent": "Tethera-Ecommerce/1.0 (contact@tethera.id)" },
+          next: { revalidate: 60 },
+        });
+
+        if (nRes.ok) {
+          const nData = await nRes.json();
+          formattedAddress = nData.display_name || "";
+          const addr = nData.address || {};
+          subdistrict =
+            addr.suburb ||
+            addr.neighbourhood ||
+            addr.quarter ||
+            addr.village ||
+            addr.city_district ||
+            addr.town ||
+            "";
+          district = subdistrict;
+          city = addr.city || addr.county || addr.regency || "Jakarta";
+          province = addr.state || "DKI Jakarta";
+          postalCode = addr.postcode || "";
+        }
+      } catch (nomErr) {
+        console.warn("Nominatim reverse geocode error:", nomErr);
+      }
+    }
+
+    // Ultimate fallback if geocoding services failed
     if (!formattedAddress) {
       if (latitude !== undefined && longitude !== undefined) {
         formattedAddress = `Location Point (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
@@ -134,13 +173,13 @@ export async function GET(req: NextRequest) {
       .replace(/^Kota\s+/i, "")
       .replace(/^Kabupaten\s+/i, "");
 
-    // Resolve Biteship Area ID for courier rating compatibility
+    // Resolve Biteship Area ID for courier rates
     let matchedArea: BiteshipArea | null = null;
     const query = cleanSubdistrict || postalCode || cleanCity;
     if (query) {
       const areas = await biteship.searchAreas(query);
       if (areas.length > 0) {
-        matchedArea = postalCode ? areas.find((a) => String(a.postal_code) === postalCode) || areas[0] : areas[0];
+        matchedArea = postalCode ? areas.find((a: BiteshipArea) => String(a.postal_code) === postalCode) || areas[0] : areas[0];
       }
     }
 
