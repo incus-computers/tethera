@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { X, Trash2, ShoppingBag, CheckCircle, ShieldCheck, QrCode, ArrowRight, Store, Truck, MapPin, User } from "lucide-react";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { useLocationStore } from "../../lib/store/useLocationStore";
@@ -32,15 +33,13 @@ export function CartDrawer() {
     clearCart,
   } = useCartStore();
 
+  const router = useRouter();
   const { userLocation, selectedRate, openLocationModal } = useLocationStore();
 
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [completedOrder, setCompletedOrder] = useState<{
-    orderNumber: string;
-    pickupCode: string;
-    method: "click_and_collect" | "delivery";
-    total: number;
-  } | null>(null);
+  const handleProceedToCheckout = () => {
+    closeCart();
+    router.push("/checkout");
+  };
 
   if (!isMounted || !isCartOpen) return null;
 
@@ -48,22 +47,6 @@ export function CartDrawer() {
   // Dynamic shipping fee in IDR based on user-selected Gojek/Grab courier rate
   const shippingFee = fulfillmentMethod === "delivery" ? (selectedRate ? selectedRate.price : 35000) : 0;
   const total = subtotal + shippingFee;
-
-  const handleSimulatePayment = () => {
-    setIsCheckingOut(true);
-    setTimeout(() => {
-      const orderNum = `TET-${Math.floor(100000 + Math.random() * 900000)}`;
-      const pin = `${Math.floor(1000 + Math.random() * 9000)}`;
-      setCompletedOrder({
-        orderNumber: orderNum,
-        pickupCode: pin,
-        method: fulfillmentMethod,
-        total,
-      });
-      clearCart();
-      setIsCheckingOut(false);
-    }, 1200);
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -94,89 +77,7 @@ export function CartDrawer() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {completedOrder ? (
-              /* Success Screen */
-              <div className="space-y-6 text-center py-6 animate-in fade-in">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle className="w-8 h-8" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    Payment Succeeded
-                  </span>
-                  <h3 className="text-xl font-black text-zinc-900 mt-2">Order Confirmed!</h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Order Ref: <strong>#{completedOrder.orderNumber}</strong>
-                  </p>
-                </div>
-
-                {completedOrder.method === "click_and_collect" ? (
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-500 uppercase">Click & Collect PIN</span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
-                        Ready at Counter
-                      </span>
-                    </div>
-                    <div className="text-center py-3 bg-zinc-900 text-white rounded-xl">
-                      <div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">
-                        Verification PIN
-                      </div>
-                      <div className="text-4xl font-black tracking-widest mt-1">
-                        {completedOrder.pickupCode}
-                      </div>
-                    </div>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <p>📍 <strong>Tethera Store - Mangga Dua Mall</strong></p>
-                      <p>🏢 Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat</p>
-                      <p>🕒 Mon-Sat 9:00 AM – 6:00 PM</p>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>This PIN & collection barcode have been sent to your WhatsApp and Email.</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-500 uppercase">Courier Dispatch</span>
-                      <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">
-                        {selectedRate ? `${selectedRate.courierName}` : "Biteship Logistics"}
-                      </span>
-                    </div>
-                    <div className="text-center py-3 bg-zinc-900 text-white rounded-xl">
-                      <div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">
-                        Biteship Waybill / Resi (AWB)
-                      </div>
-                      <div className="text-xl font-mono font-black tracking-wider mt-1 text-cyan-300">
-                        {selectedRate
-                          ? `${selectedRate.courierId.toUpperCase()}-${completedOrder.orderNumber.replace("TET-", "")}BIT`
-                          : `BIT-${completedOrder.orderNumber.replace("TET-", "")}`}
-                      </div>
-                    </div>
-                    <div className="text-xs text-slate-600 space-y-1">
-                      <p>📍 <strong>Origin:</strong> Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat</p>
-                      {userLocation && (
-                        <p>🎯 <strong>Destination:</strong> {userLocation.subdistrict ? `${userLocation.subdistrict}, ${userLocation.city || ""}` : userLocation.address}</p>
-                      )}
-                      <p>⏱️ <strong>ETA:</strong> {selectedRate?.etd ? `${selectedRate.etd}` : "1-2 business days"}</p>
-                      <p>📦 <strong>Courier Service:</strong> {selectedRate ? `${selectedRate.serviceName} (${selectedRate.courierName})` : "Biteship Partner Courier"}</p>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Official Waybill tracking resi has been sent to your WhatsApp and Email.</span>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => setCompletedOrder(null)}
-                  className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
-                >
-                  Continue Shopping
-                </button>
-              </div>
-            ) : items.length === 0 && customPCs.length === 0 ? (
+            {items.length === 0 && customPCs.length === 0 ? (
               /* Empty Cart */
               <div className="text-center py-16 text-slate-400">
                 <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -363,7 +264,7 @@ export function CartDrawer() {
           </div>
 
           {/* Footer Summary & Checkout */}
-          {!completedOrder && (items.length > 0 || customPCs.length > 0) && (
+          {(items.length > 0 || customPCs.length > 0) && (
             <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-4">
               <div className="space-y-1.5 text-xs text-slate-600">
                 <div className="flex justify-between">
@@ -434,21 +335,11 @@ export function CartDrawer() {
               </div>
 
               <button
-                onClick={handleSimulatePayment}
-                disabled={isCheckingOut}
-                className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                onClick={handleProceedToCheckout}
+                className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 active:scale-98"
               >
-                {isCheckingOut ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Processing Payment & Reserving Stock...
-                  </span>
-                ) : (
-                  <>
-                    <span>Confirm & Pay {formatRupiah(total)}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
+                <span>Confirm & Pay {formatRupiah(total)}</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           )}
