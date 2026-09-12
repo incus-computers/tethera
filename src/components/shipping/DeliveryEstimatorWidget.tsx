@@ -13,6 +13,7 @@ import {
   AlertCircle,
   RefreshCw,
   SlidersHorizontal,
+  Compass,
 } from "lucide-react";
 import { ShippingRateOption, ShippableItem } from "../../lib/shipping/types";
 import { useLocationStore } from "../../lib/store/useLocationStore";
@@ -40,7 +41,9 @@ export function DeliveryEstimatorWidget({
   const [distanceKm, setDistanceKm] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCourierFilter, setSelectedCourierFilter] = useState<"all" | "gojek" | "grab">("all");
+  const [selectedCourierFilter, setSelectedCourierFilter] = useState<
+    "all" | "instant" | "regular" | "jne" | "jnt" | "sicepat" | "anteraja" | "gojek" | "grab"
+  >("all");
 
   // Fetch estimated courier rates from API
   const fetchRates = async () => {
@@ -91,10 +94,14 @@ export function DeliveryEstimatorWidget({
 
   useEffect(() => {
     fetchRates();
-  }, [userLocation?.address, userLocation?.latitude, item?.id]);
+  }, [userLocation?.address, userLocation?.latitude, userLocation?.areaId, item?.id]);
 
   const filteredRates = rates.filter((r) => {
     if (selectedCourierFilter === "all") return true;
+    if (selectedCourierFilter === "instant") return r.courierId === "gojek" || r.courierId === "grab";
+    if (selectedCourierFilter === "regular") {
+      return ["jne", "jnt", "sicepat", "anteraja"].includes(r.courierId);
+    }
     return r.courierId === selectedCourierFilter;
   });
 
@@ -105,17 +112,30 @@ export function DeliveryEstimatorWidget({
       {/* Header: Destination & Distance indicator */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+          <div className="p-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 shrink-0">
             <Truck className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Instant Courier Dispatch
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Biteship Multi-Courier Dispatch
+              </span>
+              {userLocation?.subdistrict && (
+                <span className="text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.2 rounded">
+                  Kecamatan Mapped
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 mt-0.5">
               <MapPin className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
               <span className="text-xs font-black text-zinc-900 truncate">
-                {userLocation ? userLocation.address : "Set delivery location"}
+                {userLocation ? (
+                  userLocation.subdistrict
+                    ? `${userLocation.subdistrict}, ${userLocation.city || userLocation.district || ""}`
+                    : userLocation.address
+                ) : (
+                  "Set delivery location"
+                )}
               </span>
             </div>
           </div>
@@ -124,9 +144,11 @@ export function DeliveryEstimatorWidget({
         <button
           type="button"
           onClick={openLocationModal}
-          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-zinc-800 rounded-lg text-xs font-bold transition-all shrink-0 tactile-btn active:scale-95 shadow-2xs"
+          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-zinc-800 rounded-lg text-xs font-bold transition-all shrink-0 tactile-btn active:scale-95 shadow-2xs flex items-center gap-1.5"
+          title="Open Google Maps point picker or search autocomplete"
         >
-          Change
+          <Compass className="w-3.5 h-3.5 text-blue-600" />
+          <span>Pick on Map</span>
         </button>
       </div>
 
@@ -134,21 +156,28 @@ export function DeliveryEstimatorWidget({
       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Dispatched from: <strong>Mangga Dua Mall Lt. 3 No. 36</strong></span>
+          <span>Hub Origin: <strong>Mangga Dua Mall Lt. 3 No. 36</strong></span>
         </div>
-        {distanceKm > 0 && (
-          <span className="font-semibold text-zinc-700 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
-            {distanceKm} km distance
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {userLocation?.postalCode && (
+            <span className="font-mono text-[10px] bg-slate-200/70 text-slate-700 px-1.5 py-0.5 rounded">
+              ZIP {userLocation.postalCode}
+            </span>
+          )}
+          {distanceKm > 0 && (
+            <span className="font-semibold text-zinc-700 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
+              {distanceKm} km
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Courier Brand Filter Pills */}
-      <div className="flex items-center justify-between gap-2 pt-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-          Delivery Services
+          Courier Partners
         </span>
-        <div className="flex items-center gap-1 text-xs">
+        <div className="flex flex-wrap items-center gap-1 text-xs">
           <button
             type="button"
             onClick={() => setSelectedCourierFilter("all")}
@@ -158,29 +187,31 @@ export function DeliveryEstimatorWidget({
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             }`}
           >
-            All Couriers
+            All ({rates.length})
           </button>
           <button
             type="button"
-            onClick={() => setSelectedCourierFilter("gojek")}
+            onClick={() => setSelectedCourierFilter("instant")}
             className={`px-2.5 py-1 rounded-md font-bold text-[11px] transition-all flex items-center gap-1 ${
-              selectedCourierFilter === "gojek"
+              selectedCourierFilter === "instant"
                 ? "bg-emerald-600 text-white shadow-2xs"
                 : "bg-slate-100 text-emerald-800 hover:bg-slate-200"
             }`}
           >
-            <span>Gojek</span>
+            <Zap className="w-3 h-3" />
+            <span>Instant</span>
           </button>
           <button
             type="button"
-            onClick={() => setSelectedCourierFilter("grab")}
+            onClick={() => setSelectedCourierFilter("regular")}
             className={`px-2.5 py-1 rounded-md font-bold text-[11px] transition-all flex items-center gap-1 ${
-              selectedCourierFilter === "grab"
-                ? "bg-green-600 text-white shadow-2xs"
-                : "bg-slate-100 text-green-800 hover:bg-slate-200"
+              selectedCourierFilter === "regular"
+                ? "bg-blue-600 text-white shadow-2xs"
+                : "bg-slate-100 text-blue-800 hover:bg-slate-200"
             }`}
           >
-            <span>Grab</span>
+            <Truck className="w-3 h-3" />
+            <span>JNE / J&T / SiCepat / AnterAja</span>
           </button>
         </div>
       </div>
@@ -245,10 +276,34 @@ export function DeliveryEstimatorWidget({
                   {/* Courier Brand Emblem */}
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 shadow-2xs ${
-                      rate.courierId === "gojek" ? "bg-[#00AA13]" : "bg-[#00B14F]"
+                      rate.courierId === "jne"
+                        ? "bg-[#003399]"
+                        : rate.courierId === "jnt"
+                        ? "bg-[#ED1C24]"
+                        : rate.courierId === "sicepat"
+                        ? "bg-[#D31515]"
+                        : rate.courierId === "anteraja"
+                        ? "bg-[#E91E63]"
+                        : rate.courierId === "gojek"
+                        ? "bg-[#00AA13]"
+                        : rate.courierId === "grab"
+                        ? "bg-[#00B14F]"
+                        : "bg-zinc-800"
                     }`}
                   >
-                    {rate.courierId === "gojek" ? "GJ" : "GB"}
+                    {rate.courierId === "jne"
+                      ? "JNE"
+                      : rate.courierId === "jnt"
+                      ? "J&T"
+                      : rate.courierId === "sicepat"
+                      ? "SCP"
+                      : rate.courierId === "anteraja"
+                      ? "ANR"
+                      : rate.courierId === "gojek"
+                      ? "GJ"
+                      : rate.courierId === "grab"
+                      ? "GB"
+                      : "EXP"}
                   </div>
 
                   <div className="min-w-0">

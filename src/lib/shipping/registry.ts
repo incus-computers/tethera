@@ -1,57 +1,44 @@
-import { CourierProvider, ShippingEstimateRequest, ShippingRateOption, CourierId } from "./types";
-import { gojekCourierProvider } from "./couriers/gojek";
-import { grabCourierProvider } from "./couriers/grab";
+import { ShippingEstimateRequest, ShippingRateOption, CourierId } from "./types";
+import { biteship } from "./biteship";
 
 /**
  * =========================================================================
- * MULTI-COURIER REGISTRY
+ * BITESHIP MULTI-COURIER SHIPPING ENGINE
  * =========================================================================
- * HOW TO ADD MORE COURIERS IN THE FUTURE:
- * -------------------------------------------------------------------------
- * 1. Create a new courier provider file in `src/lib/shipping/couriers/`
- *    (e.g., `jne.ts`, `sicepat.ts`, `lalamove.ts`, or `dhl.ts`).
- * 2. Implement the `CourierProvider` interface.
- * 3. Import and add it to the `COURIER_REGISTRY` array below.
- * That's it! All product pages, location modals, and cart drawer will
- * automatically pull quotes and render the new courier options.
+ * Aggregates live and sub-district mapped rates through Biteship API across:
+ * - JNE (REG, YES)
+ * - J&T (EZ)
+ * - SiCepat (REG, BEST)
+ * - AnterAja (REG)
+ * - Gojek (GoSend Instant Motor, GoSend Instant Car)
+ * - Grab (GrabExpress Instant Motor)
  */
-export const COURIER_REGISTRY: CourierProvider[] = [
-  gojekCourierProvider,
-  grabCourierProvider,
-  // Future additions:
-  // jneCourierProvider,
-  // sicepatCourierProvider,
-  // lalamoveCourierProvider,
-];
 
-/**
- * Fetches all available shipping estimates across all registered couriers
- */
 export async function getAggregatedShippingRates(
   request: ShippingEstimateRequest,
   filterCourierId?: CourierId
 ): Promise<ShippingRateOption[]> {
-  const activeProviders = filterCourierId
-    ? COURIER_REGISTRY.filter((p) => p.id === filterCourierId)
-    : COURIER_REGISTRY;
+  try {
+    const couriersFilter = filterCourierId && filterCourierId !== "biteship"
+      ? [filterCourierId]
+      : ["jne", "jnt", "sicepat", "anteraja", "gojek", "grab"];
 
-  // Run all courier quote requests concurrently in parallel
-  const ratePromises = activeProviders.map(async (provider) => {
-    try {
-      return await provider.estimateRates(request);
-    } catch (err) {
-      console.error(`Failed to fetch rates from ${provider.name}:`, err);
-      return [];
-    }
-  });
+    const rates = await biteship.getRates({
+      destination: request.destination,
+      items: request.items,
+      totalWeightGrams: request.totalWeightGrams,
+      couriersFilter,
+    });
 
-  const results = await Promise.all(ratePromises);
-  const flattened = results.flat();
-
-  // Sort: available options first, then sorted by price ascending
-  return flattened.sort((a, b) => {
-    if (a.isAvailable && !b.isAvailable) return -1;
-    if (!a.isAvailable && b.isAvailable) return 1;
-    return a.price - b.price;
-  });
+    // Sort: available options first, then sorted by price ascending
+    return rates.sort((a, b) => {
+      if (a.isAvailable && !b.isAvailable) return -1;
+      if (!a.isAvailable && b.isAvailable) return 1;
+      return a.price - b.price;
+    });
+  } catch (err) {
+    console.error("Failed to fetch shipping rates from Biteship:", err);
+    return [];
+  }
 }
+

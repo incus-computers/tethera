@@ -6,15 +6,37 @@
  * or express couriers (JNE, SiCepat, Lalamove, DHL, FedEx) in the future.
  */
 
-export type CourierId = "gojek" | "grab" | "jne" | "sicepat" | "lalamove" | "custom" | string;
+export type CourierId =
+  | "biteship"
+  | "jne"
+  | "jnt"
+  | "sicepat"
+  | "anteraja"
+  | "gojek"
+  | "grab"
+  | "custom"
+  | string;
 
 export type ServiceType = "instant" | "sameday" | "nextday" | "regular" | "cargo";
 
 export type VehicleType = "bike" | "car" | "van" | "truck";
 
+export interface BiteshipArea {
+  id: string; // e.g. IDNP6IDNC148IDND843IDZ12250
+  name: string;
+  country_name: string;
+  country_code: string;
+  administrative_division_level_1_name: string; // Province
+  administrative_division_level_2_name: string; // City
+  administrative_division_level_3_name: string; // Sub-district / District
+  postal_code: number | string;
+}
+
 export interface DeliveryLocation {
   address: string;
+  areaId?: string; // Biteship Area ID for exact sub-district rate calculation
   subdistrict?: string;
+  district?: string;
   city?: string;
   province?: string;
   postalCode?: string;

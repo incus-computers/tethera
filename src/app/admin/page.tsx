@@ -85,7 +85,16 @@ export default function AdminPortalPage() {
   const [newProductImageUrl, setNewProductImageUrl] = useState("");
 
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
-  const [selectedCourierProvider, setSelectedCourierProvider] = useState<"gojek" | "grab">("gojek");
+  const [selectedCourierProvider, setSelectedCourierProvider] = useState<
+    "jne" | "jnt" | "sicepat" | "anteraja" | "gojek" | "grab"
+  >("jne");
+  const [selectedServiceCode, setSelectedServiceCode] = useState<string>("jne-reg");
+  const [pickupMode, setPickupMode] = useState<"now" | "scheduled">("now");
+  const [pickupDate, setPickupDate] = useState<string>(new Date().toISOString().split("T")[0]);
+  const [pickupTime, setPickupTime] = useState<string>("14:00");
+  const [dispatchingLoading, setDispatchingLoading] = useState(false);
+  const [simulatingWebhookOrderId, setSimulatingWebhookOrderId] = useState<string | null>(null);
+  const [activeWebhookMenuOrderId, setActiveWebhookMenuOrderId] = useState<string | null>(null);
 
   // Reject Order Modal State
   const [rejectModalOrder, setRejectModalOrder] = useState<any | null>(null);
@@ -339,6 +348,7 @@ export default function AdminPortalPage() {
 
   const dispatchCourier = async () => {
     if (!dispatchModalOrder) return;
+    setDispatchingLoading(true);
     try {
       const res = await fetch("/api/admin/courier/dispatch", {
         method: "POST",
@@ -349,6 +359,10 @@ export default function AdminPortalPage() {
         body: JSON.stringify({
           orderId: dispatchModalOrder.id,
           courierProvider: selectedCourierProvider,
+          serviceCode: selectedServiceCode,
+          deliveryType: pickupMode,
+          deliveryDate: pickupMode === "scheduled" ? pickupDate : undefined,
+          deliveryTime: pickupMode === "scheduled" ? pickupTime : undefined,
         }),
       });
 
@@ -360,14 +374,17 @@ export default function AdminPortalPage() {
         );
         setDispatchModalOrder(null);
       } else {
-        alert(data.error || "Failed to dispatch courier");
+        alert(data.error || "Failed to dispatch courier via Biteship");
       }
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setDispatchingLoading(false);
     }
   };
 
-  const simulateDeliveryArrival = async (orderId: string) => {
+  const handleSimulateBiteshipWebhook = async (orderId: string, simulatedStatus: string) => {
+    setSimulatingWebhookOrderId(orderId);
     try {
       const res = await fetch("/api/admin/courier/dispatch", {
         method: "POST",
@@ -377,7 +394,8 @@ export default function AdminPortalPage() {
         },
         body: JSON.stringify({
           orderId,
-          action: "simulate_arrival",
+          action: "simulate_webhook",
+          simulatedStatus,
         }),
       });
 
@@ -387,12 +405,19 @@ export default function AdminPortalPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? data.order : o))
         );
+        setActiveWebhookMenuOrderId(null);
       } else {
-        alert(data.error || "Failed to simulate delivery arrival");
+        alert(data.error || "Failed to simulate Biteship tracking webhook");
       }
     } catch (err: any) {
       alert(err.message);
+    } finally {
+      setSimulatingWebhookOrderId(null);
     }
+  };
+
+  const simulateDeliveryArrival = async (orderId: string) => {
+    await handleSimulateBiteshipWebhook(orderId, "delivered");
   };
 
   // --------------------------------------------------------------------------
@@ -1125,50 +1150,106 @@ export default function AdminPortalPage() {
 
                       {/* Courier Live Telemetry Banner */}
                       {order.courier_info && !isCancelled && (
-                        <div
-                          className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
-                            order.courier_info.provider === "gojek"
-                              ? "bg-emerald-950/30 border-emerald-800/60"
-                              : "bg-emerald-950/30 border-green-800/60"
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm text-white ${
-                                order.courier_info.provider === "gojek" ? "bg-[#00AA13]" : "bg-[#00B14F]"
-                              }`}
-                            >
-                              {order.courier_info.provider === "gojek" ? "Gojek" : "Grab"}
+                        <div className="p-3.5 rounded-xl border bg-slate-950/80 border-slate-800 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              {/* Courier Emblem */}
+                              <div
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs text-white shadow-md ${
+                                  (order.courier_info.courier_company || order.courier_info.provider) === "jne"
+                                    ? "bg-[#003399]"
+                                    : (order.courier_info.courier_company || order.courier_info.provider) === "jnt"
+                                    ? "bg-[#ED1C24]"
+                                    : (order.courier_info.courier_company || order.courier_info.provider) === "sicepat"
+                                    ? "bg-[#D31515]"
+                                    : (order.courier_info.courier_company || order.courier_info.provider) === "anteraja"
+                                    ? "bg-[#E91E63]"
+                                    : (order.courier_info.courier_company || order.courier_info.provider) === "gojek"
+                                    ? "bg-[#00AA13]"
+                                    : (order.courier_info.courier_company || order.courier_info.provider) === "grab"
+                                    ? "bg-[#00B14F]"
+                                    : "bg-cyan-700"
+                                }`}
+                              >
+                                {((order.courier_info.courier_company || order.courier_info.provider) as string)?.toUpperCase()?.slice(0, 3) || "BIT"}
+                              </div>
+
+                              <div>
+                                <div className="text-xs font-semibold text-white flex flex-wrap items-center gap-2">
+                                  <span>{order.courier_info.service_name || "Biteship Multi-Courier"}</span>
+                                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">
+                                    {order.courier_info.status || "dispatched"}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-300 mt-0.5 flex flex-wrap items-center gap-2">
+                                  <span>
+                                    Driver: <strong>{order.courier_info.driver_name || "Assigned Driver"}</strong> ({order.courier_info.vehicle_plate || "B 1234 BTE"})
+                                  </span>
+                                  <span>•</span>
+                                  <span>{order.courier_info.driver_phone || "+62 812-0000-0000"}</span>
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="text-xs font-semibold text-white flex items-center gap-2">
-                                <span>{order.courier_info.service_name}</span>
-                                <span className="text-emerald-400 text-[11px] font-mono font-normal">
-                                  Waybill: {order.courier_info.tracking_id}
-                                </span>
-                              </div>
-                              <div className="text-xs text-slate-300 mt-0.5">
-                                Driver: <strong>{order.courier_info.driver_name}</strong> • Phone: {order.courier_info.driver_phone} • Plate: <strong>{order.courier_info.vehicle_plate}</strong>
-                              </div>
+
+                            {/* Waybill / Resi (AWB) Pill with Click-to-Copy */}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const waybill = order.courier_info.waybill_id || order.courier_info.tracking_id;
+                                  navigator.clipboard.writeText(waybill);
+                                  showToast(`Waybill (Resi) copied: ${waybill}`);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-800/60 font-mono text-xs flex items-center gap-1.5 transition shadow-xs group"
+                                title="Click to copy Air Waybill / Resi"
+                              >
+                                <span className="text-[10px] uppercase tracking-wider text-slate-400">AWB:</span>
+                                <span className="font-bold">{order.courier_info.waybill_id || order.courier_info.tracking_id}</span>
+                                <FileText className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                              </button>
                             </div>
                           </div>
 
-                          {isOnDelivery && (
-                            <button
-                              onClick={() => simulateDeliveryArrival(order.id)}
-                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md transition flex items-center gap-1.5"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Simulate Delivery Arrival (Webhook Ping)</span>
-                            </button>
-                          )}
+                          {/* Pickup & Webhook Status Telemetry Bar */}
+                          <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                            <div className="text-slate-400 flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                              <span>Pickup: <strong>Mangga Dua Mall Lt. 3 No. 36</strong></span>
+                              {order.courier_info.pickup_scheduled_time && (
+                                <span className="text-[10px] text-amber-300 bg-amber-950/60 border border-amber-800/60 px-1.5 py-0.2 rounded font-mono">
+                                  Scheduled: {new Date(order.courier_info.pickup_scheduled_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              )}
+                            </div>
 
-                          {isDelivered && (
-                            <span className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
-                              <CheckCircle2 className="w-4 h-4" />
-                              <span>Delivered & Handed to Customer</span>
-                            </span>
-                          )}
+                            {/* Biteship Webhook Simulator Buttons */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] uppercase font-bold text-slate-500">
+                                Simulate Biteship Webhook:
+                              </span>
+                              {[
+                                { st: "allocated", label: "Allocated" },
+                                { st: "picking_up", label: "Picking Up" },
+                                { st: "picked", label: "Picked" },
+                                { st: "in_transit", label: "In Transit" },
+                                { st: "delivered", label: "Delivered" },
+                              ].map((step) => (
+                                <button
+                                  key={step.st}
+                                  type="button"
+                                  disabled={simulatingWebhookOrderId === order.id}
+                                  onClick={() => handleSimulateBiteshipWebhook(order.id, step.st)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition ${
+                                    order.courier_info.status === step.st
+                                      ? "bg-emerald-900/60 border-emerald-500 text-emerald-300"
+                                      : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white"
+                                  }`}
+                                >
+                                  {step.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -1273,10 +1354,10 @@ export default function AdminPortalPage() {
                             {order.status === "finding_courier" && (
                               <button
                                 onClick={() => setDispatchModalOrder(order)}
-                                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-semibold text-xs shadow-md transition flex items-center gap-1.5"
+                                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-semibold text-xs shadow-md transition flex items-center gap-1.5"
                               >
                                 <Truck className="w-3.5 h-3.5" />
-                                <span>Dispatch Courier (Gojek / Grab)</span>
+                                <span>Dispatch Courier (Biteship API)</span>
                               </button>
                             )}
 
@@ -2116,13 +2197,21 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {/* MODAL 3: DISPATCH ON-DEMAND COURIER (GOJEK / GRAB)                     */}
       {/* ====================================================================== */}
+      {/* ====================================================================== */}
+      {/* MODAL 3: DISPATCH BITESHIP MULTI-COURIER & SCHEDULE PICKUP             */}
+      {/* ====================================================================== */}
       {dispatchModalOrder && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 my-8">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <Truck className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-white text-base">Gojek & Grab Courier Dispatch</h3>
+                <div className="p-2 rounded-xl bg-blue-950 text-cyan-400 border border-blue-800">
+                  <Truck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Biteship Multi-Courier Dispatch</h3>
+                  <p className="text-[11px] text-slate-400">Waybill Generation & Automated Shop Pickup</p>
+                </div>
               </div>
               <button onClick={() => setDispatchModalOrder(null)} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400">
                 <X className="w-5 h-5" />
@@ -2130,56 +2219,168 @@ export default function AdminPortalPage() {
             </div>
 
             <p className="text-xs text-slate-300">
-              Order <strong>#{dispatchModalOrder.order_number}</strong> for <strong>{dispatchModalOrder.customer_name}</strong> is packed and ready at Mangga Dua Flagship Hub. Select on-demand courier partner to trigger driver assignment.
+              Order <strong>#{dispatchModalOrder.order_number}</strong> for <strong>{dispatchModalOrder.customer_name}</strong> is packed and ready at Mangga Dua Flagship Hub. Select carrier to create shipment, generate official Waybill (AWB), and trigger courier pickup.
             </p>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setSelectedCourierProvider("gojek")}
-                className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition ${
-                  selectedCourierProvider === "gojek"
-                    ? "bg-emerald-950/60 border-[#00AA13] shadow-md shadow-emerald-900/20"
-                    : "bg-slate-950 border-slate-800 hover:border-slate-700"
-                }`}
-              >
-                <div className="w-7 h-7 rounded-lg bg-[#00AA13] text-white flex items-center justify-center font-bold text-xs mb-2">
-                  G
-                </div>
-                <div>
-                  <div className="font-bold text-white text-xs">Gojek (GoSend)</div>
-                  <div className="text-[11px] text-slate-400">GoSend Instant Bike/Car</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedCourierProvider("grab")}
-                className={`p-3.5 rounded-xl border text-left flex flex-col justify-between transition ${
-                  selectedCourierProvider === "grab"
-                    ? "bg-emerald-950/60 border-[#00B14F] shadow-md shadow-emerald-900/20"
-                    : "bg-slate-950 border-slate-800 hover:border-slate-700"
-                }`}
-              >
-                <div className="w-7 h-7 rounded-lg bg-[#00B14F] text-white flex items-center justify-center font-bold text-xs mb-2">
-                  Gr
-                </div>
-                <div>
-                  <div className="font-bold text-white text-xs">GrabExpress</div>
-                  <div className="text-[11px] text-slate-400">GrabExpress Instant</div>
-                </div>
-              </button>
-            </div>
-
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1">
-              <div className="text-slate-400">Delivery Address:</div>
-              <div className="font-medium text-white">
-                {dispatchModalOrder.shipping_address?.street}, {dispatchModalOrder.shipping_address?.subdistrict},{" "}
-                {dispatchModalOrder.shipping_address?.city}
+            {/* Courier Selection Grid */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-300">Select Courier Partner:</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {[
+                  {
+                    id: "jne",
+                    name: "JNE Express",
+                    services: "REG, YES",
+                    badge: "JNE",
+                    bg: "bg-[#003399]",
+                    defaultCode: "jne-reg",
+                  },
+                  {
+                    id: "jnt",
+                    name: "J&T Express",
+                    services: "EZ",
+                    badge: "J&T",
+                    bg: "bg-[#ED1C24]",
+                    defaultCode: "jnt-ez",
+                  },
+                  {
+                    id: "sicepat",
+                    name: "SiCepat",
+                    services: "REG, BEST",
+                    badge: "SCP",
+                    bg: "bg-[#D31515]",
+                    defaultCode: "sicepat-reg",
+                  },
+                  {
+                    id: "anteraja",
+                    name: "AnterAja",
+                    services: "REG",
+                    badge: "ANR",
+                    bg: "bg-[#E91E63]",
+                    defaultCode: "anteraja-reg",
+                  },
+                  {
+                    id: "gojek",
+                    name: "Gojek",
+                    services: "GoSend Instant",
+                    badge: "GJ",
+                    bg: "bg-[#00AA13]",
+                    defaultCode: "gojek-instant-bike",
+                  },
+                  {
+                    id: "grab",
+                    name: "Grab",
+                    services: "GrabExpress",
+                    badge: "GB",
+                    bg: "bg-[#00B14F]",
+                    defaultCode: "grab-instant",
+                  },
+                ].map((c) => {
+                  const isSelected = selectedCourierProvider === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCourierProvider(c.id as any);
+                        setSelectedServiceCode(c.defaultCode);
+                      }}
+                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition ${
+                        isSelected
+                          ? "bg-slate-800 border-cyan-400 shadow-md ring-1 ring-cyan-400"
+                          : "bg-slate-950 border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className={`w-7 h-7 rounded-lg ${c.bg} text-white flex items-center justify-center font-black text-xs`}>
+                          {c.badge}
+                        </div>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+                      </div>
+                      <div>
+                        <div className="font-bold text-white text-xs">{c.name}</div>
+                        <div className="text-[10px] text-slate-400">{c.services}</div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            {/* Pickup Mode Scheduling Options */}
+            <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2.5">
+              <label className="block text-xs font-semibold text-slate-300">
+                Automated Hub Pickup Scheduling (Mangga Dua Mall Lt. 3 No. 36):
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPickupMode("now")}
+                  className={`p-2.5 rounded-lg border text-xs font-semibold text-left transition flex items-center gap-2 ${
+                    pickupMode === "now"
+                      ? "bg-cyan-950/60 border-cyan-500 text-cyan-300"
+                      : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <div>
+                    <div className="font-bold">Immediate Pickup</div>
+                    <div className="text-[10px] opacity-70">Courier dispatched now</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPickupMode("scheduled")}
+                  className={`p-2.5 rounded-lg border text-xs font-semibold text-left transition flex items-center gap-2 ${
+                    pickupMode === "scheduled"
+                      ? "bg-cyan-950/60 border-cyan-500 text-cyan-300"
+                      : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <div>
+                    <div className="font-bold">Schedule Slot</div>
+                    <div className="text-[10px] opacity-70">Specify date & time</div>
+                  </div>
+                </button>
+              </div>
+
+              {pickupMode === "scheduled" && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">Pickup Date:</label>
+                    <input
+                      type="date"
+                      value={pickupDate}
+                      onChange={(e) => setPickupDate(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">Pickup Time:</label>
+                    <input
+                      type="time"
+                      value={pickupTime}
+                      onChange={(e) => setPickupTime(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Destination Address Preview */}
+            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs space-y-1">
+              <div className="text-slate-400">Customer Destination:</div>
+              <div className="font-medium text-white">
+                {dispatchModalOrder.shipping_address?.street}, {dispatchModalOrder.shipping_address?.subdistrict},{" "}
+                {dispatchModalOrder.shipping_address?.city} {dispatchModalOrder.shipping_address?.postalCode}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setDispatchModalOrder(null)}
@@ -2189,10 +2390,21 @@ export default function AdminPortalPage() {
               </button>
               <button
                 type="button"
+                disabled={dispatchingLoading}
                 onClick={dispatchCourier}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-600/20"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-2"
               >
-                Dispatch via {selectedCourierProvider === "gojek" ? "GoSend" : "GrabExpress"}
+                {dispatchingLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Booking with Biteship API...</span>
+                  </>
+                ) : (
+                  <>
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>Generate Waybill & Dispatch ({selectedCourierProvider.toUpperCase()})</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

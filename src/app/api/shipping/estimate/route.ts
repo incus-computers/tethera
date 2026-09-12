@@ -9,6 +9,11 @@ export async function POST(req: NextRequest) {
 
     const destination: DeliveryLocation = body.destination || {
       address: body.address || "Jakarta",
+      areaId: body.areaId,
+      subdistrict: body.subdistrict,
+      district: body.district,
+      city: body.city,
+      postalCode: body.postalCode,
       latitude: body.latitude,
       longitude: body.longitude,
     };

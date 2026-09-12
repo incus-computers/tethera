@@ -24,18 +24,41 @@ export type OrderStatus =
   | "refunded";
 
 export interface CourierDispatchInfo {
-  provider: "gojek" | "grab" | "custom";
+  provider: "biteship" | "jne" | "jnt" | "sicepat" | "anteraja" | "gojek" | "grab" | "custom";
+  courier_company?: string; // "jne" | "jnt" | "sicepat" | "anteraja" | "gojek" | "grab"
   service_code: string;
   service_name: string;
-  driver_name: string;
-  driver_phone: string;
-  vehicle_plate: string;
+  waybill_id?: string; // Official courier Air Waybill (AWB) number
   tracking_id: string;
+  biteship_order_id?: string;
   tracking_url?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  driver_photo_url?: string;
+  vehicle_plate?: string;
+  collection_method?: "pickup" | "drop_off";
+  pickup_scheduled_time?: string;
+  pickup_address?: string;
   dispatched_at: string;
   estimated_arrival?: string;
   delivered_at?: string;
-  status: "dispatched" | "in_transit" | "arrived" | "failed";
+  status:
+    | "dispatched"
+    | "scheduled"
+    | "allocated"
+    | "picking_up"
+    | "picked"
+    | "in_transit"
+    | "dropping_off"
+    | "arrived"
+    | "delivered"
+    | "failed"
+    | "cancelled";
+  status_history?: Array<{
+    status: string;
+    note?: string;
+    updated_at: string;
+  }>;
 }
 
 export type CustomerCrmStatus = "lead" | "active_customer" | "vip" | "inactive";

@@ -137,28 +137,31 @@ export function CartDrawer() {
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-slate-500 uppercase">Courier Dispatch</span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
-                        {selectedRate ? `${selectedRate.courierName} Instant` : "On-Demand Delivery"}
+                      <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">
+                        {selectedRate ? `${selectedRate.courierName}` : "Biteship Logistics"}
                       </span>
                     </div>
                     <div className="text-center py-3 bg-zinc-900 text-white rounded-xl">
                       <div className="text-xs text-slate-400 uppercase tracking-widest font-semibold">
-                        Courier Waybill / Ref
+                        Biteship Waybill / Resi (AWB)
                       </div>
-                      <div className="text-xl font-mono font-black tracking-wider mt-1">
-                        {selectedRate ? selectedRate.courierId.toUpperCase() : "EXP"}-{completedOrder.orderNumber}
+                      <div className="text-xl font-mono font-black tracking-wider mt-1 text-cyan-300">
+                        {selectedRate
+                          ? `${selectedRate.courierId.toUpperCase()}-${completedOrder.orderNumber.replace("TET-", "")}BIT`
+                          : `BIT-${completedOrder.orderNumber.replace("TET-", "")}`}
                       </div>
                     </div>
                     <div className="text-xs text-slate-600 space-y-1">
                       <p>📍 <strong>Origin:</strong> Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat</p>
                       {userLocation && (
-                        <p>🎯 <strong>Destination:</strong> {userLocation.address}</p>
+                        <p>🎯 <strong>Destination:</strong> {userLocation.subdistrict ? `${userLocation.subdistrict}, ${userLocation.city || ""}` : userLocation.address}</p>
                       )}
-                      <p>⏱️ <strong>ETA:</strong> {selectedRate?.etd ? `${selectedRate.etd}` : "Instant dispatch today"}</p>
+                      <p>⏱️ <strong>ETA:</strong> {selectedRate?.etd ? `${selectedRate.etd}` : "1-2 business days"}</p>
+                      <p>📦 <strong>Courier Service:</strong> {selectedRate ? `${selectedRate.serviceName} (${selectedRate.courierName})` : "Biteship Partner Courier"}</p>
                     </div>
                     <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Driver tracking link has been sent to your WhatsApp and Email.</span>
+                      <span>Official Waybill tracking resi has been sent to your WhatsApp and Email.</span>
                     </div>
                   </div>
                 )}
@@ -215,7 +218,7 @@ export function CartDrawer() {
                         <span>Courier Delivery</span>
                       </div>
                       <span className="text-[10px] text-slate-500">
-                        {selectedRate ? `${formatRupiah(selectedRate.price)} (${selectedRate.courierName})` : "Gojek / Grab"}
+                        {selectedRate ? `${formatRupiah(selectedRate.price)} (${selectedRate.courierName})` : "Biteship Multi-Courier"}
                       </span>
                     </button>
                   </div>
@@ -229,7 +232,7 @@ export function CartDrawer() {
                           <span className="truncate">
                             {selectedRate
                               ? `${selectedRate.courierName} ${selectedRate.serviceName}`
-                              : "Gojek / Grab Instant"}
+                              : "Biteship Partner Courier"}
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-500 truncate mt-0.5">
