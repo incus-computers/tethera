@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
-  Zap,
-  Sparkles,
   ArrowRight,
   ShieldCheck,
   Clock,
@@ -292,11 +290,10 @@ export function PromotionalBanners() {
                             <div className="flex items-center gap-2">
                               {slide.badge && (
                                 <span
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
                                     slide.tagColor || "bg-white text-zinc-900"
                                   } shadow-sm`}
                                 >
-                                  <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                                   <span>{slide.badge}</span>
                                 </span>
                               )}
@@ -367,12 +364,8 @@ export function PromotionalBanners() {
                             } shadow-2xs`}
                           >
                             {slide.badgeType === "hot" && <Flame className="w-3.5 h-3.5" />}
-                            {slide.badgeType === "event" && <Sparkles className="w-3.5 h-3.5" />}
                             {slide.badgeType === "bundle" && <Gift className="w-3.5 h-3.5" />}
                             {slide.badgeType === "flagship" && <Clock className="w-3.5 h-3.5" />}
-                            {slide.badgeType === "partner" && (
-                              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                            )}
                             <span>{slide.badge}</span>
                           </span>
                           <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline-block">
@@ -490,8 +483,8 @@ export function PromotionalBanners() {
               </p>
             </div>
             <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                 <span>Express Counter Open</span>
               </span>
               <Link

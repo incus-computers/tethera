@@ -124,8 +124,8 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
                       {item.name}
                     </h4>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                         In Stock Flagship ({item.stockCount} units)
                       </span>
                     </div>

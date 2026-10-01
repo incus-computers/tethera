@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Cpu,
   Layers,
@@ -20,9 +20,14 @@ import {
   ShieldCheck,
   Plus,
   Store,
+  Mouse,
+  Keyboard,
+  Headphones,
+  RectangleHorizontal,
+  Gamepad2,
 } from "lucide-react";
 import { useBuilderStore, BuilderSlotKey } from "../../lib/store/useBuilderStore";
-import { SERVICE_TIERS } from "../../lib/data/mockHardware";
+import { SERVICE_TIERS, MOCK_COMPONENTS } from "../../lib/data/mockHardware";
 import { ComponentSelectModal } from "./ComponentSelectModal";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { WhatsAppInquiryButton } from "../whatsapp/WhatsAppInquiryButton";
@@ -34,6 +39,7 @@ export function PCBuilderView() {
 
   const {
     slots,
+    selectSlotItem,
     removeSlotItem,
     selectedService,
     setServiceTier,
@@ -45,6 +51,25 @@ export function PCBuilderView() {
   } = useBuilderStore();
 
   const { addCustomPC } = useCartStore();
+
+  // Restore build from URL share query parameters if provided
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const partsParam = urlParams.get("parts");
+    if (!partsParam) return;
+
+    const pairs = partsParam.split(",");
+    pairs.forEach((pair) => {
+      const [slotKey, partId] = pair.split(":");
+      if (slotKey && partId) {
+        const item = MOCK_COMPONENTS.find((p) => p.id === partId);
+        if (item && slotKey in slots) {
+          selectSlotItem(slotKey as BuilderSlotKey, item);
+        }
+      }
+    });
+  }, [selectSlotItem]);
 
   const { estimated, recommendedPsu } = getWattage();
   const totalPrice = getTotalPrice();
@@ -118,6 +143,41 @@ export function PCBuilderView() {
       name: "Operating System",
       description: "Genuine Windows 11 USB flash drive & license",
       icon: <Disc className="w-5 h-5" />,
+      required: false,
+    },
+    {
+      key: "mouse",
+      name: "Gaming Mouse",
+      description: "Ergonomic, wireless, and ultra-lightweight precision gaming mice",
+      icon: <Mouse className="w-5 h-5" />,
+      required: false,
+    },
+    {
+      key: "keyboard",
+      name: "Mechanical Keyboard",
+      description: "Custom hot-swappable mechanical or rapid-trigger magnetic switch keyboards",
+      icon: <Keyboard className="w-5 h-5" />,
+      required: false,
+    },
+    {
+      key: "headphones",
+      name: "Headphones / Headset",
+      description: "High-fidelity spatial audio gaming headsets or studio monitor headphones",
+      icon: <Headphones className="w-5 h-5" />,
+      required: false,
+    },
+    {
+      key: "mousepad",
+      name: "Desk Mat / Mousepad",
+      description: "Micro-woven cloth, cordura, or precision control desk pads",
+      icon: <RectangleHorizontal className="w-5 h-5" />,
+      required: false,
+    },
+    {
+      key: "other_peripherals",
+      name: "Other Peripherals",
+      description: "Streaming microphones, 4K webcams, desktop DACs, and monitor arm mounts",
+      icon: <Gamepad2 className="w-5 h-5" />,
       required: false,
     },
   ];
@@ -199,15 +259,33 @@ export function PCBuilderView() {
             const currentItem = slots[def.key];
 
             return (
-              <div
-                key={def.key}
-                style={{ animationDelay: `${idx * 45}ms` }}
-                className={`rounded-2xl border transition-all duration-200 animate-pop-in ${
-                  currentItem
-                    ? "bg-white border-slate-200 shadow-xs hover:border-slate-300 hover:shadow-md hover:scale-[1.008]"
-                    : "bg-slate-50/70 border-dashed border-slate-300 hover:bg-white hover:border-zinc-400 hover:shadow-sm"
-                }`}
-              >
+              <React.Fragment key={def.key}>
+                {idx === 9 && (
+                  <div className="pt-5 pb-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Mouse className="w-4 h-4 text-zinc-700" />
+                        <h3 className="text-sm font-black text-zinc-900 tracking-tight">
+                          Peripherals &amp; Battlestation Setup
+                        </h3>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        Optional Add-ons
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Pair your build with precision gaming mice, mechanical keyboards, spatial headsets, desk pads, and streaming accessories.
+                    </p>
+                  </div>
+                )}
+                <div
+                  style={{ animationDelay: `${idx * 45}ms` }}
+                  className={`rounded-2xl border transition-all duration-200 animate-pop-in ${
+                    currentItem
+                      ? "bg-white border-slate-200 shadow-xs hover:border-slate-300 hover:shadow-md hover:scale-[1.008]"
+                      : "bg-slate-50/70 border-dashed border-slate-300 hover:bg-white hover:border-zinc-400 hover:shadow-sm"
+                  }`}
+                >
                 <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   {/* Slot Identifier & Content */}
                   <div className="flex items-center gap-4 min-w-0 flex-1">
@@ -294,8 +372,9 @@ export function PCBuilderView() {
                   </div>
                 </div>
               </div>
-            );
-          })}
+            </React.Fragment>
+          );
+        })}
 
           {/* Assembly & Testing Tier Card */}
           <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
@@ -361,7 +440,7 @@ export function PCBuilderView() {
                 <span className="text-xs text-slate-400 font-semibold">incl. tax</span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                {filledCount} of 9 components configured
+                {filledCount} of {slotDefinitions.length} components configured
               </p>
             </div>
 

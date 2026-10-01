@@ -249,7 +249,7 @@ export const MIDTRANS_PAYMENT_METHODS: MidtransPaymentMethod[] = [
     name: "DANA E-Wallet",
     category: "ewallet",
     categoryName: "E-Wallet",
-    description: "Pay seamlessly using your registered DANA e-wallet account.",
+    description: "Pay directly using your registered DANA e-wallet account.",
     badge: "Instant",
     iconType: "dana",
     instructions: [

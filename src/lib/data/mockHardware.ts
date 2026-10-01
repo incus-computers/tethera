@@ -14,7 +14,7 @@ export interface ComponentItem {
   specs: {
     socket?: string;
     ramType?: "DDR4" | "DDR5";
-    formFactor?: "ATX" | "Micro-ATX" | "Mini-ITX";
+    formFactor?: "ATX" | "Micro-ATX" | "Mini-ITX" | string;
     tdpWatts?: number;
     lengthMm?: number;
     maxGpuLengthMm?: number;
@@ -22,6 +22,7 @@ export interface ComponentItem {
     wattage?: number;
     capacity?: string;
     speed?: string;
+    [key: string]: any;
   };
 }
 
@@ -367,6 +368,276 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     inStock: true,
     stockCount: 30,
     specs: {}
+  },
+
+  // --- Gaming Mice ---
+  {
+    id: "mou-1",
+    sku: "LOG-GPX2-BLK",
+    name: "Logitech G Pro X Superlight 2 Lightspeed Wireless Gaming Mouse - Black",
+    brand: "Logitech G",
+    category: "Mice",
+    slot: "mouse",
+    price: 2399000,
+    image: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 16,
+    specs: { speed: "32,000 DPI / 60g / 2K Polling", connectivity: "LIGHTSPEED Wireless / USB-C" }
+  },
+  {
+    id: "mou-2",
+    sku: "RAZ-DA-V3-PRO",
+    name: "Razer DeathAdder V3 Pro Ultra-Lightweight Wireless Ergonomic Mouse",
+    brand: "Razer",
+    category: "Mice",
+    slot: "mouse",
+    price: 2199000,
+    image: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 12,
+    specs: { speed: "30,000 DPI / 63g / Focus Pro 30K", connectivity: "Razer HyperSpeed Wireless" }
+  },
+  {
+    id: "mou-3",
+    sku: "ZOW-EC2-CW",
+    name: "ZOWIE EC2-CW Wireless Esports Gaming Mouse for Competitive FPS",
+    brand: "ZOWIE",
+    category: "Mice",
+    slot: "mouse",
+    price: 2499000,
+    image: "https://images.unsplash.com/photo-1586776977607-310e9c725c37?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 8,
+    specs: { speed: "3,200 DPI / 77g / Enhanced Wireless", connectivity: "Enhanced Standalone Receiver" }
+  },
+  {
+    id: "mou-4",
+    sku: "PUL-X2V2-WHT",
+    name: "Pulsar X2V2 Wireless Gaming Mouse - Medium Edition Pure White",
+    brand: "Pulsar",
+    category: "Mice",
+    slot: "mouse",
+    price: 1599000,
+    image: "https://images.unsplash.com/photo-1626218174358-7769486c4b79?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 14,
+    specs: { speed: "26,000 DPI / 53g / Optical Switches", connectivity: "2.4GHz Wireless / Type-C" }
+  },
+
+  // --- Mechanical Keyboards ---
+  {
+    id: "kb-1",
+    sku: "WOO-60HE-PLUS",
+    name: "Wooting 60HE+ Rapid Trigger Analog Hall Effect Mechanical Keyboard",
+    brand: "Wooting",
+    category: "Keyboards",
+    slot: "keyboard",
+    price: 3599000,
+    image: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 7,
+    specs: { speed: "0.1mm Rapid Trigger / Lekker Switches", formFactor: "60% Compact Layout" }
+  },
+  {
+    id: "kb-2",
+    sku: "KEY-Q1-MAX-BAN",
+    name: "Keychron Q1 Max QMK/VIA Tri-Mode Wireless Custom Mechanical Keyboard",
+    brand: "Keychron",
+    category: "Keyboards",
+    slot: "keyboard",
+    price: 3299000,
+    image: "https://images.unsplash.com/photo-1595225476474-87563907a212?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 10,
+    specs: { speed: "Gateron Jupiter / CNC Aluminum", formFactor: "75% Layout" }
+  },
+  {
+    id: "kb-3",
+    sku: "ASUS-ROG-AZOTH-NX",
+    name: "ASUS ROG Azoth 75% OLED Display Wireless Custom Mechanical Keyboard",
+    brand: "ASUS ROG",
+    category: "Keyboards",
+    slot: "keyboard",
+    price: 3899000,
+    image: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 5,
+    specs: { speed: "ROG NX Red / OLED Display / Gasket Mount", formFactor: "75% Layout" }
+  },
+  {
+    id: "kb-4",
+    sku: "COR-K70-MAX-RGB",
+    name: "Corsair K70 MAX RGB Magnetic-Mechanical Gaming Keyboard with MGX Switches",
+    brand: "Corsair",
+    category: "Keyboards",
+    slot: "keyboard",
+    price: 3199000,
+    image: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 9,
+    specs: { speed: "8000Hz Hyper-Polling / MGX Switches", formFactor: "Full Size" }
+  },
+
+  // --- Gaming Headsets & Headphones ---
+  {
+    id: "hp-1",
+    sku: "HYP-CL3-WL-BLK",
+    name: "HyperX Cloud III Wireless Spatial Audio Gaming Headset (120h Battery)",
+    brand: "HyperX",
+    category: "Headphones",
+    slot: "headphones",
+    price: 2199000,
+    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 18,
+    specs: { speed: "53mm Drivers / 120h Battery / DTS Spatial Audio" }
+  },
+  {
+    id: "hp-2",
+    sku: "STE-NOVA-PRO-WL",
+    name: "SteelSeries Arctis Nova Pro Wireless Multi-System Hi-Res Headset with ANC",
+    brand: "SteelSeries",
+    category: "Headphones",
+    slot: "headphones",
+    price: 5799000,
+    image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 6,
+    specs: { speed: "Active Noise Cancelling / Hot-Swap Dual Battery" }
+  },
+  {
+    id: "hp-3",
+    sku: "EPO-H6PRO-CL-BLK",
+    name: "EPOS Sennheiser H6PRO Closed Acoustic High-Fidelity Gaming Headset",
+    brand: "EPOS Sennheiser",
+    category: "Headphones",
+    slot: "headphones",
+    price: 2499000,
+    image: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 8,
+    specs: { speed: "Audiophile Sound Profile / Detachable Boom Mic" }
+  },
+  {
+    id: "hp-4",
+    sku: "ATH-M50X-PRO-MON",
+    name: "Audio-Technica ATH-M50x Professional Studio Monitor Headphones - Black",
+    brand: "Audio-Technica",
+    category: "Headphones",
+    slot: "headphones",
+    price: 2299000,
+    image: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 12,
+    specs: { speed: "45mm Large-Aperture Drivers / 90° Swivel Earcups" }
+  },
+
+  // --- Desk Mats & Mousepads ---
+  {
+    id: "pad-1",
+    sku: "ART-FX-HYT-OT-XL",
+    name: "Artisan FX Hayate Otsu XSoft XL Japanese Artisan Gaming Mousepad",
+    brand: "Artisan",
+    category: "Mousepads",
+    slot: "mousepad",
+    price: 1199000,
+    image: "https://images.unsplash.com/photo-1616401784845-180882ba9ba8?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 10,
+    specs: { capacity: "490 x 420 x 4mm / Poron Sponge Base" }
+  },
+  {
+    id: "pad-2",
+    sku: "STE-QCK-HVY-XXL",
+    name: "SteelSeries QcK Heavy XXL Extended Thick Esports Desk Mat (900x400x6mm)",
+    brand: "SteelSeries",
+    category: "Mousepads",
+    slot: "mousepad",
+    price: 599000,
+    image: "https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 25,
+    specs: { capacity: "900 x 400 x 6mm / Micro-Woven Cloth" }
+  },
+  {
+    id: "pad-3",
+    sku: "LGG-SAT-PRO-XL",
+    name: "Lethal Gaming Gear Saturn Pro XSoft XL Precision Control Mousepad",
+    brand: "Lethal Gaming Gear",
+    category: "Mousepads",
+    slot: "mousepad",
+    price: 899000,
+    image: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 14,
+    specs: { capacity: "490 x 420 x 4mm / Low Static Friction Surface" }
+  },
+  {
+    id: "pad-4",
+    sku: "RAZ-GIG-V2-3XL",
+    name: "Razer Gigantus V2 3XL Gigantic Custom Desk Pad (1200x550x3mm)",
+    brand: "Razer",
+    category: "Mousepads",
+    slot: "mousepad",
+    price: 699000,
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 19,
+    specs: { capacity: "1200 x 550 x 3mm / High-Density Rubber Base" }
+  },
+
+  // --- Other Peripherals & Accessories ---
+  {
+    id: "peri-1",
+    sku: "ELG-WAVE-3-MIC",
+    name: "Elgato Wave:3 Premium USB Condenser Microphone & Digital Audio Mixer",
+    brand: "Elgato",
+    category: "Other Peripherals",
+    slot: "other_peripherals",
+    price: 2499000,
+    image: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 11,
+    specs: { speed: "24-bit/96kHz / Clipguard Anti-Distortion / Wave Link Mixer" }
+  },
+  {
+    id: "peri-2",
+    sku: "LOG-BRIO-4K-WEB",
+    name: "Logitech Brio 4K Ultra HD Streaming Webcam with HDR and RightLight 3",
+    brand: "Logitech",
+    category: "Other Peripherals",
+    slot: "other_peripherals",
+    price: 2899000,
+    image: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 9,
+    specs: { speed: "4K 30fps / 1080p 60fps / Windows Hello Support" }
+  },
+  {
+    id: "peri-3",
+    sku: "FIIO-K7-BAL-DAC",
+    name: "FiiO K7 True Balanced Desktop Headphone Amplifier & Hi-Res DAC",
+    brand: "FiiO",
+    category: "Other Peripherals",
+    slot: "other_peripherals",
+    price: 3499000,
+    image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 7,
+    specs: { speed: "Dual AK4493SEQ DACs / THX AAA 788+ Amp / 2000mW Output" }
+  },
+  {
+    id: "peri-4",
+    sku: "NB-G40-GAS-ARM",
+    name: "North Bayou NB-G40 Heavy Duty Aluminum Gas Spring Monitor Arm Mount",
+    brand: "North Bayou",
+    category: "Other Peripherals",
+    slot: "other_peripherals",
+    price: 649000,
+    image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 20,
+    specs: { capacity: "Fits 22-40in Monitors / 2-15kg Capacity / USB 3.0 Passthrough" }
   }
 ];
 
@@ -471,7 +742,7 @@ export const PREBUILT_SYSTEMS = [
     inStock: true,
     stockCount: 2,
     description:
-      "The ultimate desktop workstation for 3D simulation, CAD, Unreal Engine compilation, and heavy AI workloads. Blends 16 full performance Zen 4 cores with 64GB of DDR5 memory and 16GB of VRAM in a pristine white chassis.",
+      "High-performance desktop workstation configured for 3D simulation, CAD, Unreal Engine compilation, and heavy compute workloads. Combines 16 full-performance Zen 4 cores with 64GB of DDR5 memory and 16GB of VRAM in a white chassis.",
     highlights: [
       "16 High-Performance Cores and 32 threads running up to 5.7 GHz",
       "Massive 64GB high-bandwidth DDR5 memory capacity",
@@ -533,6 +804,31 @@ export const CATEGORY_SLUG_MAP: Record<string, { name: string; slot?: string; de
     name: "Power Supplies",
     slot: "psu",
     description: "80+ Gold and Platinum certified ATX 3.0 power supplies with native 12VHPWR cables."
+  },
+  "mouse": {
+    name: "Mice",
+    slot: "mouse",
+    description: "Precision wireless and ultra-lightweight esports gaming mice."
+  },
+  "keyboard": {
+    name: "Keyboards",
+    slot: "keyboard",
+    description: "Hot-swappable custom mechanical keyboards and rapid-trigger magnetic analog switch boards."
+  },
+  "headphones": {
+    name: "Headphones",
+    slot: "headphones",
+    description: "High-fidelity spatial audio gaming headsets and audiophile studio monitors."
+  },
+  "mousepad": {
+    name: "Mousepads",
+    slot: "mousepad",
+    description: "Micro-woven cloth, cordura, and Japanese artisanal control gaming desk mats."
+  },
+  "other-peripherals": {
+    name: "Other Peripherals",
+    slot: "other_peripherals",
+    description: "Broadcast condenser microphones, 4K streaming webcams, balanced desktop DACs, and gas-spring monitor arms."
   }
 };
 
@@ -598,7 +894,7 @@ export function getProductOverviewData(
     return {
       summary: `The ${name} represents cutting-edge silicon architecture by ${brand}, purpose-built to deliver blistering single-threaded IPC responsiveness and immense multi-threaded compute throughput for modern esports, 4K triple-A titles, and demanding creative software.`,
       paragraphs: [
-        `Engineered with advanced semiconductor fabrication and intelligent dynamic frequency scaling, this processor maximizes power efficiency while keeping operating temperatures within optimal thresholds under sustained heavy workloads.`,
+        `Engineered with advanced semiconductor fabrication and hardware dynamic frequency scaling, this processor maximizes power efficiency while keeping operating temperatures within optimal thresholds under sustained heavy workloads.`,
         `Compatible with modern high-bandwidth DDR5 memory subsystems and PCIe Gen 4/5 expansion buses, delivering exceptional bandwidth for high-end graphics cards and direct-storage solid state drives.`
       ],
       highlights: [
@@ -647,7 +943,7 @@ export function getProductOverviewData(
       summary: `Built with tightly-screened IC memory chips, the ${name} by ${brand} provides high bandwidth, low latencies, and extreme stability under intensive gaming and rendering sessions.`,
       paragraphs: [
         `Crafted with a sleek anodized aluminum heat spreader that swiftly draws thermal energy away from the memory dies, preventing heat accumulation and ensuring rock-solid stability even when running heavy game engines or compilation tasks.`,
-        `Pre-configured with industry-standard overclocking profiles (Intel XMP 3.0 / AMD EXPO) for effortless, stable single-click clock speed enablement in your BIOS.`
+        `Pre-configured with industry-standard overclocking profiles (Intel XMP 3.0 / AMD EXPO) for stable single-click clock speed configuration in your BIOS.`
       ],
       highlights: [
         "Tightly-screened ICs for low latency and high bandwidth",
@@ -660,7 +956,7 @@ export function getProductOverviewData(
 
   if (category.includes("storage") || category.includes("ssd")) {
     return {
-      summary: `Experience instantaneous load times and seamless file transfers with the ${name}, designed for heavy gaming libraries, 4K/8K video editing, and high-throughput data tasks.`,
+      summary: `High-speed sequential read and write throughput with the ${name}, designed for heavy gaming libraries, 4K/8K video editing, and high-throughput data tasks.`,
       paragraphs: [
         `Leverages a next-generation high-speed NVMe controller and advanced 3D NAND flash to provide sustained high-bandwidth sequential and random IOPS, virtually eliminating load screens in DirectStorage-enabled titles.`,
         `Features dynamic thermal throttling management to maintain peak performance and preserve NAND endurance over years of heavy read/write cycles.`
@@ -679,7 +975,7 @@ export function getProductOverviewData(
       summary: `Engineered for superior thermal dissipation, the ${name} keeps high-performance processors running at peak boost clocks while maintaining remarkably quiet acoustics.`,
       paragraphs: [
         `Features a precision-machined micro-channel copper cold plate paired with high-static-pressure fans that efficiently draw heat away from the CPU heat spreader.`,
-        `Designed for broad socket compatibility, effortless mounting bracket installation, and long-term fluid or bearing reliability.`
+        `Designed for broad socket compatibility, straightforward mounting bracket installation, and long-term fluid or bearing reliability.`
       ],
       highlights: [
         "High-efficiency thermal transfer with precision copper cold plate",
@@ -718,6 +1014,86 @@ export function getProductOverviewData(
         "100% Japanese 105°C industrial-grade capacitors",
         "Fully modular low-profile flat black cabling",
         "Comprehensive electrical protections (OVP, UVP, OCP, OPP, SCP)"
+      ]
+    };
+  }
+
+  if (category.includes("mice") || category.includes("mouse")) {
+    return {
+      summary: `The ${name} by ${brand} delivers sub-millisecond optical tracking and esports-calibrated click latency, designed for competitive FPS titles and high-precision daily navigation.`,
+      paragraphs: [
+        `Features a tournament-grade optical sensor with flawless 1:1 tracking, high IPS tracking velocity, and customizable lift-off distance thresholds.`,
+        `Equipped with pure PTFE glide skates and a featherweight ergonomic chassis for fatigue-free control over extended gaming sessions.`
+      ],
+      highlights: [
+        "High-precision esports optical tracking sensor",
+        "Ultra-lightweight ergonomic chassis design",
+        "Sub-millisecond wireless / ultra-flexible paracord connectivity",
+        "Official Indonesian Distributor Warranty with direct RMA support"
+      ]
+    };
+  }
+
+  if (category.includes("keyboard")) {
+    return {
+      summary: `The ${name} by ${brand} combines tactile satisfaction with competitive responsiveness, built with premium materials for enthusiast typing and competitive esports.`,
+      paragraphs: [
+        `Engineered with sound-dampening acoustic foam layers, factory-lubricated switches, and durable double-shot keycaps that resist shine and wear.`,
+        `Features comprehensive hardware-level or software customization for custom actuation points, macro remapping, and vibrant per-key lighting effects.`
+      ],
+      highlights: [
+        "Enthusiast-grade mechanical or magnetic switch architecture",
+        "Factory-lubed stabilizers and acoustic sound-dampening dampeners",
+        "N-key rollover with high polling rate responsiveness",
+        "Full local warranty backed by authorized distributor"
+      ]
+    };
+  }
+
+  if (category.includes("headphone") || category.includes("audio") || category.includes("headset")) {
+    return {
+      summary: `Immerse yourself in competitive soundstages with the ${name} by ${brand}, offering pinpoint spatial positional audio and audiophile acoustic clarity.`,
+      paragraphs: [
+        `Tuned with large-aperture custom drivers that reproduce thunderous sub-bass, crystal-clear mids, and sharp highs, allowing you to track opponent footsteps and directional cues with precision.`,
+        `Features memory foam ear cushions and lightweight headband suspension for all-day wearing comfort during marathon sessions.`
+      ],
+      highlights: [
+        "Acoustically tuned drivers for pinpoint spatial positional audio",
+        "Ultra-comfortable memory foam ear cushions with passive noise isolation",
+        "Crystal-clear voice broadcast microphone with background noise filtering",
+        "Indonesian distributor warranty and authentic serial verification"
+      ]
+    };
+  }
+
+  if (category.includes("mousepad") || category.includes("mat")) {
+    return {
+      summary: `The ${name} by ${brand} delivers consistent dynamic and static friction balance, providing pixel-perfect micro-adjustments and smooth tracking for low- and high-DPI gamers.`,
+      paragraphs: [
+        `Crafted with a dense micro-textured surface bonded to a premium non-slip natural rubber or artisan foam base that firmly anchors to any desk surface.`,
+        `Features low-profile perimeter anti-fray stitching that lies flush with the surface, preventing forearm irritation during long competitive sessions.`
+      ],
+      highlights: [
+        "Optimized speed-control balanced glide surface",
+        "Non-slip high-density base prevents slipping on intense flicks",
+        "Low-profile anti-fray stitched perimeter edges",
+        "Water-resistant easy-clean coating"
+      ]
+    };
+  }
+
+  if (category.includes("peripheral") || category.includes("accessor")) {
+    return {
+      summary: `Enhance your desk setup with the ${name} by ${brand}, engineered to deliver professional-grade productivity, streaming quality, and ergonomic convenience.`,
+      paragraphs: [
+        `Constructed from durable, premium materials designed to cleanly integrate into modern minimalist or high-performance gaming setups.`,
+        `Plug-and-play compatibility across Windows 11 systems with dedicated hardware controls and official companion software support.`
+      ],
+      highlights: [
+        "Enthusiast-grade build quality and refined aesthetics",
+        "Instant plug-and-play setup with Windows 11 compatibility",
+        "Engineered for streamers, creators, and competitive gamers",
+        "Official distributor warranty coverage"
       ]
     };
   }

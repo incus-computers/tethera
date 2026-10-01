@@ -10,7 +10,7 @@ import { formatRupiah } from "../../utils/currency";
 export const grabCourierProvider: CourierProvider = {
   id: "grab",
   name: "Grab (GrabExpress)",
-  description: "Seamless on-demand motorcycle and car delivery with real-time driver tracking and insured cargo.",
+  description: "On-demand motorcycle and car delivery with real-time driver tracking and insured cargo.",
   brandColor: "#00B14F",
   brandBg: "bg-green-50 text-green-800 border-green-200",
   supportedServices: ["instant", "sameday"],

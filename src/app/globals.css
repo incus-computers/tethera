@@ -39,112 +39,64 @@ body {
 
 @layer utilities {
   .glass-header {
-    background-color: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(12px);
+    background-color: #FFFFFF;
   }
 
-  /* Tactile card physics effect across all pages */
+  /* Clean card hover state */
   .tethera-card-hover {
-    transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
-    will-change: transform;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
   }
 
   .tethera-card-hover:hover {
-    transform: translateY(-4px) scale(1.015);
-    box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.09), 0 6px 14px -4px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
     border-color: #94a3b8;
-  }
-
-  .tethera-card-hover:active {
-    transform: translateY(-1px) scale(0.99);
-    transition-duration: 0.1s;
   }
 
   /* Tactile press effect for buttons and actionable elements */
   .tactile-btn {
-    transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease, box-shadow 0.15s ease;
-    will-change: transform;
-  }
-
-  .tactile-btn:active {
-    transform: scale(0.95);
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
 
   .tactile-item {
-    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease;
-  }
-
-  .tactile-item:hover {
-    transform: scale(1.02);
-  }
-
-  .tactile-item:active {
-    transform: scale(0.97);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 }
 
 /* ========================================================================= */
-/* TACTILE KEYFRAME ANIMATIONS */
+/* FUNCTIONAL TRANSITIONS */
 /* ========================================================================= */
 
-/* Pop-in animation for products & cards to pop up one by one */
-@keyframes popIn {
+/* Snappy dropdown fade animation */
+@keyframes dropdownFade {
   0% {
     opacity: 0;
-    transform: translateY(22px) scale(0.92);
-  }
-  65% {
-    opacity: 1;
-    transform: translateY(-3px) scale(1.015);
+    transform: translateY(-4px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.animate-pop-in {
-  animation: popIn 0.44s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* Snappy dropdown pop animation */
-@keyframes dropdownPop {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px) scale(0.95);
-  }
-  70% {
-    transform: translateY(2px) scale(1.008);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 .animate-dropdown-pop {
-  animation: dropdownPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: dropdownFade 0.15s ease-out both;
   transform-origin: top left;
 }
 
-/* Modal pop-in animation */
-@keyframes modalPop {
+/* Modal fade animation */
+@keyframes modalFade {
   0% {
     opacity: 0;
-    transform: scale(0.92) translateY(16px);
-  }
-  65% {
-    opacity: 1;
-    transform: scale(1.012) translateY(-2px);
+    transform: translateY(8px);
   }
   100% {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
 
 .animate-modal-pop {
-  animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: modalFade 0.18s ease-out both;
 }
 
 /* Infinite Marquee Animation for Sponsors Banner */

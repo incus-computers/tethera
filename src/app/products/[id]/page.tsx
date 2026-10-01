@@ -17,7 +17,6 @@ import { WhatsAppInquiryButton } from "../../../components/whatsapp/WhatsAppInqu
 import { DeliveryEstimatorWidget } from "../../../components/shipping/DeliveryEstimatorWidget";
 import {
   ShieldCheck,
-  Zap,
   Store,
   Truck,
   ArrowLeft,
@@ -27,7 +26,6 @@ import {
   Layers,
   ChevronRight,
   Info,
-  Sparkles,
   FileText,
 } from "lucide-react";
 
@@ -144,7 +142,7 @@ export default function ProductDetailPage() {
 
             <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-xs">
               <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
                 In Stock at Flagship Experience Store ({product.stockCount} Available)
               </span>
             </div>
@@ -200,8 +198,8 @@ export default function ProductDetailPage() {
                 }`}
               >
                 <div className="flex items-center gap-1.5 font-bold text-zinc-900">
-                  <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Click & Collect (FREE)</span>
+                  <Store className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Click &amp; Collect (FREE)</span>
                 </div>
                 <span className="text-[11px] text-slate-500">
                   Ready in <strong>60 Mins</strong> at Mangga Dua Store
@@ -293,12 +291,11 @@ export default function ProductDetailPage() {
       {/* ========================================================================= */}
       <section className="pt-8 border-t border-slate-200 space-y-6">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 mb-1.5">
-            <Sparkles className="w-3 h-3 text-emerald-600" />
-            <span>Product Description & Architectural Overview</span>
-          </div>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">
+            Architecture &amp; Design
+          </span>
           <h2 className="text-xl font-black text-zinc-900 tracking-tight">
-            Detailed Overview & Highlights
+            Detailed Overview &amp; Highlights
           </h2>
         </div>
 

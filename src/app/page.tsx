@@ -4,11 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Zap,
   Store,
   ShieldCheck,
-  ArrowRight,
-  Sparkles,
   Cpu,
   Monitor,
   CheckCircle,
@@ -104,35 +101,29 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             {/* Hero Left Content */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-zinc-900 text-white shadow-xs">
-                  <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span>Configurator Studio 2.0</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Click & Collect: Ready in 60m</span>
-                </span>
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <span>Jakarta Flagship Store</span>
+                <span>•</span>
+                <span className="text-emerald-700 font-bold">Same-Day Click &amp; Collect</span>
               </div>
 
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-zinc-900 leading-[1.1]">
-                Precision Custom PCs. <br />
-                <span className="text-slate-500 font-normal">Architected for Enthusiasts.</span>
+                Custom Desktop PCs. <br />
+                <span className="text-slate-500 font-normal">Built &amp; Benchmarked in Jakarta.</span>
               </h1>
 
               <p className="text-sm sm:text-base text-slate-600 max-w-xl leading-relaxed">
-                Design your dream computer with real-time socket matching, dynamic TDP calculation, and component clearance validation. Pick up at our Flagship Store or have it dispatched in wooden transit armor.
+                Configure high-performance desktop computers with real-time socket matching, dynamic TDP calculation, and component clearance validation. Pick up at our Mangga Dua Flagship Store or have your build shipped in reinforced wooden crates with internal foam cushioning.
               </p>
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Link
                   href="/builder"
-                  className="px-6 py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md flex items-center gap-2 uppercase tracking-wide group"
+                  className="px-6 py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-2 uppercase tracking-wide"
                 >
-                  <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  <span>Launch Custom PC Builder</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  <Cpu className="w-4 h-4" />
+                  <span>Open PC Builder</span>
                 </Link>
 
                 <a
@@ -209,19 +200,17 @@ export default function HomePage() {
           </div>
           <Link
             href="/builder"
-            className="text-xs font-bold text-zinc-900 hover:text-zinc-700 flex items-center gap-1"
+            className="text-xs font-bold text-zinc-900 hover:text-zinc-700 underline underline-offset-4"
           >
-            <span>Or Build from Scratch</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            Build Custom Spec
           </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {prebuilts.map((pb, idx) => (
+          {prebuilts.map((pb) => (
             <div
               key={pb.id}
-              style={{ animationDelay: `${idx * 70}ms` }}
-              className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs tethera-card-hover flex flex-col group animate-pop-in"
+              className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs tethera-card-hover flex flex-col group"
             >
               <Link href={`/products/${pb.id}`} className="relative h-48 bg-slate-100 overflow-hidden block">
                 <img
@@ -229,7 +218,7 @@ export default function HomePage() {
                   alt={pb.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <span className="absolute top-3 left-3 bg-zinc-900/90 backdrop-blur-xs text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                <span className="absolute top-3 left-3 bg-zinc-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
                   24h Stress Tested
                 </span>
               </Link>
@@ -262,8 +251,8 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="mt-2 text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="mt-2 text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                     <span>{pb.status}</span>
                   </div>
                 </div>
@@ -317,7 +306,7 @@ export default function HomePage() {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap tactile-btn active:scale-95 ${
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap tactile-btn ${
                   activeCategory === cat
                     ? "bg-zinc-900 text-white shadow-xs"
                     : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
@@ -331,11 +320,10 @@ export default function HomePage() {
 
         {/* Product Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filteredComponents.map((item, idx) => (
+          {filteredComponents.map((item) => (
             <div
               key={`${activeCategory}-${item.id}`}
-              style={{ animationDelay: `${idx * 40}ms` }}
-              className="rounded-2xl bg-white border border-slate-200 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group animate-pop-in"
+              className="rounded-2xl bg-white border border-slate-200 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group"
             >
               <div>
                 <Link
@@ -359,8 +347,8 @@ export default function HomePage() {
                   </h4>
                 </Link>
 
-                <div className="mt-2 text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="mt-2 text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                   <span>Flagship Stock: {item.stockCount} Available</span>
                 </div>
               </div>
@@ -374,13 +362,13 @@ export default function HomePage() {
                 <div className="flex items-center gap-1.5">
                   <Link
                     href={`/products/${item.id}`}
-                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-zinc-800 text-xs font-bold rounded-lg transition-colors tactile-btn active:scale-95"
+                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-zinc-800 text-xs font-bold rounded-lg transition-colors tactile-btn"
                   >
                     Specs
                   </Link>
                   <button
                     onClick={() => addStandardItem(item)}
-                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn active:scale-90"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn"
                     title="Add to Cart"
                     aria-label="Add to Cart"
                   >
@@ -399,7 +387,6 @@ export default function HomePage() {
             className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-slate-50 text-zinc-900 border border-slate-300 rounded-xl text-xs font-bold transition-all shadow-2xs"
           >
             <span>View All Components & Hardware</span>
-            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>

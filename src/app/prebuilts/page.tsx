@@ -6,7 +6,7 @@ import { PREBUILT_SYSTEMS } from "../../lib/data/mockHardware";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { formatRupiah } from "../../lib/utils/currency";
 import { WhatsAppInquiryButton } from "../../components/whatsapp/WhatsAppInquiryButton";
-import { Zap, ShieldCheck, ChevronRight, Store, ArrowRight } from "lucide-react";
+import { ShieldCheck, ChevronRight, Store, ArrowRight, Cpu } from "lucide-react";
 
 export default function PrebuiltsPage() {
   const { addCustomPC } = useCartStore();
@@ -35,18 +35,17 @@ export default function PrebuiltsPage() {
           href="/builder"
           className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 self-start sm:self-auto shrink-0 uppercase tracking-tight"
         >
-          <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+          <Cpu className="w-3.5 h-3.5" />
           <span>Custom PC Builder</span>
         </Link>
       </div>
 
       {/* Grid of Prebuilt Rigs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {PREBUILT_SYSTEMS.map((pb, idx) => (
+        {PREBUILT_SYSTEMS.map((pb) => (
           <div
             key={pb.id}
-            style={{ animationDelay: `${idx * 70}ms` }}
-            className="rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs tethera-card-hover flex flex-col justify-between group animate-pop-in"
+            className="rounded-3xl bg-white border border-slate-200 overflow-hidden shadow-xs tethera-card-hover flex flex-col justify-between group"
           >
             <div>
               <Link href={`/products/${pb.id}`} className="relative h-56 bg-slate-100 overflow-hidden block">
@@ -55,7 +54,7 @@ export default function PrebuiltsPage() {
                   alt={pb.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <span className="absolute top-3 left-3 bg-zinc-900/90 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-xs">
+                <span className="absolute top-3 left-3 bg-zinc-900 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                   24h Stress Tested
                 </span>
               </Link>
@@ -89,8 +88,8 @@ export default function PrebuiltsPage() {
                   </div>
                 </div>
 
-                <div className="text-[11px] font-medium text-emerald-600 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                   <span>{pb.status}</span>
                 </div>
               </div>

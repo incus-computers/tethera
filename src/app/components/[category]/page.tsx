@@ -10,7 +10,7 @@ import {
 } from "../../../lib/data/mockHardware";
 import { useCartStore } from "../../../lib/store/useCartStore";
 import { formatRupiah } from "../../../lib/utils/currency";
-import { Plus, ChevronRight, Zap, ArrowLeft, SlidersHorizontal } from "lucide-react";
+import { Plus, ChevronRight, ArrowLeft, SlidersHorizontal, Cpu } from "lucide-react";
 
 export default function CategoryProductsPage() {
   const params = useParams();
@@ -88,7 +88,7 @@ export default function CategoryProductsPage() {
             href="/builder"
             className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 self-start sm:self-auto shrink-0 uppercase tracking-tight"
           >
-            <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+            <Cpu className="w-3.5 h-3.5" />
             <span>Custom PC Builder</span>
           </Link>
         </div>
@@ -134,17 +134,16 @@ export default function CategoryProductsPage() {
         </div>
 
         <div className="text-emerald-700 font-semibold text-xs">
-          Showing {filtered.length} products • Ready for Click & Collect
+          Showing {filtered.length} products • Ready for Click &amp; Collect
         </div>
       </div>
 
       {/* Product Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {filtered.map((item, idx) => (
+        {filtered.map((item) => (
           <div
             key={`${item.id}-${selectedBrand}-${selectedSocket}`}
-            style={{ animationDelay: `${idx * 45}ms` }}
-            className="rounded-2xl bg-white border border-slate-200 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group animate-pop-in"
+            className="rounded-2xl bg-white border border-slate-200 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group"
           >
             <div>
               <Link
@@ -174,8 +173,8 @@ export default function CategoryProductsPage() {
                 </div>
               )}
 
-              <div className="mt-2 text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="mt-2 text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                 <span>Flagship In Stock ({item.stockCount} available)</span>
               </div>
             </div>

@@ -161,6 +161,11 @@ export function ComponentSelectModal({ slot, onClose }: ComponentSelectModalProp
     case: "Select PC Chassis / Case",
     psu: "Select Power Supply (PSU)",
     os: "Select Operating System",
+    mouse: "Select Gaming Mouse",
+    keyboard: "Select Mechanical Keyboard",
+    headphones: "Select Gaming Headset / Headphones",
+    mousepad: "Select Desk Mat / Mousepad",
+    other_peripherals: "Select Other Peripherals & Accessories",
   };
 
   return (
@@ -294,8 +299,8 @@ export function ComponentSelectModal({ slot, onClose }: ComponentSelectModalProp
                       {/* Compatibility / Stock Status */}
                       <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs">
                         {compCheck.compatible ? (
-                          <span className="flex items-center gap-1 font-medium text-emerald-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="flex items-center gap-1 font-medium text-emerald-700">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                             Flagship In Stock ({item.stockCount} units)
                           </span>
                         ) : (

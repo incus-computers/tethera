@@ -57,8 +57,8 @@ export function FloatingWhatsAppWidget({
                 <div>
                   <div className="font-bold text-sm leading-tight">{storeName}</div>
                   <div className="flex items-center gap-1.5 text-xs text-emerald-100">
-                    <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                    <span>Online & Ready to Help</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-300" />
+                    <span>Online &amp; Ready to Help</span>
                   </div>
                 </div>
               </div>

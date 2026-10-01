@@ -209,7 +209,7 @@ export function SponsorMarquee() {
           </span>
         </div>
         <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
           <span>Click logo to explore certified hardware</span>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { PersistentHeader } from "../components/navigation/PersistentHeader";
 import { FloatingWhatsAppWidget } from "../components/whatsapp/FloatingWhatsAppWidget";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Phone, Mail, ShieldCheck, Zap, Store } from "lucide-react";
+import { MapPin, Phone, Mail, ShieldCheck, Store, Clock } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Tethera | Custom PC Builder & High-Performance Hardware",
@@ -51,15 +51,15 @@ export default function RootLayout({
                   Precision computer hardware, high-performance custom desktop workstations, and enthusiast gaming systems.
                 </p>
                 <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md w-fit border border-emerald-200">
-                  <Zap className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Click & Collect Counter Active</span>
+                  <Store className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Click &amp; Collect Counter Active</span>
                 </div>
               </div>
 
               {/* Omnichannel Flagship Store */}
               <div className="space-y-2 text-xs text-slate-600">
                 <h4 className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                  Flagship Store & Hub
+                  Flagship Store &amp; Hub
                 </h4>
                 <p className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
@@ -78,13 +78,12 @@ export default function RootLayout({
               {/* Navigation Links */}
               <div className="space-y-2 text-xs text-slate-600">
                 <h4 className="font-bold text-zinc-900 uppercase tracking-wider text-[11px]">
-                  Shop & Tools
+                  Shop &amp; Tools
                 </h4>
                 <ul className="space-y-1.5">
-                  <li><Link href="/builder" className="hover:text-zinc-900">⚡ Custom PC Builder</Link></li>
-                  <li><Link href="/#prebuilt" className="hover:text-zinc-900">Pre-Built Systems</Link></li>
-                  <li><Link href="/#components" className="hover:text-zinc-900">PC Hardware & Parts</Link></li>
-                  <li><Link href="/#deals" className="hover:text-zinc-900">Special Promotions</Link></li>
+                  <li><Link href="/builder" className="hover:text-zinc-900">Custom PC Builder</Link></li>
+                  <li><Link href="/prebuilts" className="hover:text-zinc-900">Pre-Built Systems</Link></li>
+                  <li><Link href="/components" className="hover:text-zinc-900">PC Hardware &amp; Parts</Link></li>
                 </ul>
               </div>
 
@@ -100,10 +99,10 @@ export default function RootLayout({
                   </li>
                   <li className="flex items-center gap-1.5">
                     <Store className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>In-Store 60-Min Click & Collect</span>
+                    <span>In-Store 60-Min Click &amp; Collect</span>
                   </li>
                   <li className="flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                    <Clock className="w-3.5 h-3.5 text-emerald-600" />
                     <span>24-Hour Prime95 Stress Testing</span>
                   </li>
                 </ul>
@@ -112,10 +111,12 @@ export default function RootLayout({
 
             <div className="pt-6 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 gap-3">
               <p>© {new Date().getFullYear()} Tethera Systems. All rights reserved.</p>
-              <div className="flex gap-4">
+              <div className="flex gap-4 items-center">
                 <span>Privacy Policy</span>
                 <span>Terms of Service</span>
-                <span>Warranty & Returns</span>
+                <span>Warranty &amp; Returns</span>
+                <span>•</span>
+                <Link href="/admin" className="hover:text-slate-600 transition-colors">Admin Portal</Link>
               </div>
             </div>
           </div>

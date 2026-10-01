@@ -6,7 +6,7 @@ import { MOCK_COMPONENTS, CATEGORY_SLUG_MAP } from "../../lib/data/mockHardware"
 import { useCartStore } from "../../lib/store/useCartStore";
 import { formatRupiah } from "../../lib/utils/currency";
 import { WhatsAppInquiryButton } from "../../components/whatsapp/WhatsAppInquiryButton";
-import { Plus, ArrowRight, ChevronRight, Filter, Zap, SlidersHorizontal } from "lucide-react";
+import { Plus, ArrowRight, ChevronRight, Filter, SlidersHorizontal, Cpu } from "lucide-react";
 
 export default function ComponentsCatalogPage() {
   const [activeCategory, setActiveCategory] = useState("All");
@@ -25,6 +25,11 @@ export default function ComponentsCatalogPage() {
     "Memory",
     "Storage",
     "Power Supplies",
+    "Mice",
+    "Keyboards",
+    "Headphones",
+    "Mousepads",
+    "Other Peripherals",
   ];
 
   const brands = ["All", ...Array.from(new Set(MOCK_COMPONENTS.map((item) => item.brand)))];
@@ -67,7 +72,7 @@ export default function ComponentsCatalogPage() {
           href="/builder"
           className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 self-start sm:self-auto shrink-0 uppercase tracking-tight"
         >
-          <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+          <Cpu className="w-3.5 h-3.5" />
           <span>Launch PC Builder</span>
         </Link>
       </div>
@@ -80,7 +85,7 @@ export default function ComponentsCatalogPage() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap tactile-btn active:scale-95 ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap tactile-btn ${
                 activeCategory === cat
                   ? "bg-zinc-900 text-white shadow-xs"
                   : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
@@ -131,11 +136,10 @@ export default function ComponentsCatalogPage() {
 
       {/* Products Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {filtered.map((item, idx) => (
+        {filtered.map((item) => (
           <div
             key={`${activeCategory}-${item.id}-${selectedBrand}-${sortBy}`}
-            style={{ animationDelay: `${idx * 40}ms` }}
-            className="rounded-2xl bg-white border border-slate-200 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group animate-pop-in"
+            className="rounded-2xl bg-white border border-slate-200 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group"
           >
             <div>
               {/* Product Image Link */}
@@ -160,8 +164,8 @@ export default function ComponentsCatalogPage() {
                 </h3>
               </Link>
 
-              <div className="mt-2 text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="mt-2 text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                 <span>Flagship In Stock ({item.stockCount} available)</span>
               </div>
             </div>

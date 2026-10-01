@@ -75,7 +75,12 @@ export type PcBuilderSlot =
   | "case"
   | "psu"
   | "os"
-  | "service";
+  | "service"
+  | "mouse"
+  | "keyboard"
+  | "headphones"
+  | "mousepad"
+  | "other_peripherals";
 
 // 1. Stores Table
 export interface Store {

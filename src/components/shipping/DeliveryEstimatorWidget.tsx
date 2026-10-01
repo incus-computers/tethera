@@ -155,7 +155,7 @@ export function DeliveryEstimatorWidget({
       {/* Origin Notice & Distance Pill */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
         <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
           <span>Hub Origin: <strong>Mangga Dua Mall Lt. 3 No. 36</strong></span>
         </div>
         <div className="flex items-center gap-2">
@@ -198,7 +198,7 @@ export function DeliveryEstimatorWidget({
                 : "bg-slate-100 text-emerald-800 hover:bg-slate-200"
             }`}
           >
-            <Zap className="w-3 h-3" />
+            <Clock className="w-3 h-3" />
             <span>Instant</span>
           </button>
           <button

@@ -12,7 +12,12 @@ export type BuilderSlotKey =
   | "storage_primary"
   | "case"
   | "psu"
-  | "os";
+  | "os"
+  | "mouse"
+  | "keyboard"
+  | "headphones"
+  | "mousepad"
+  | "other_peripherals";
 
 export interface ServiceTier {
   id: string;
@@ -46,6 +51,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     case: null,
     psu: null,
     os: null,
+    mouse: null,
+    keyboard: null,
+    headphones: null,
+    mousepad: null,
+    other_peripherals: null,
   },
   selectedService: SERVICE_TIERS[0],
 
@@ -96,6 +106,11 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         case: null,
         psu: null,
         os: null,
+        mouse: null,
+        keyboard: null,
+        headphones: null,
+        mousepad: null,
+        other_peripherals: null,
       },
       selectedService: SERVICE_TIERS[0],
     }),
