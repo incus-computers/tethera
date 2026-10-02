@@ -198,19 +198,19 @@ export function SponsorMarquee() {
 
   return (
     <section className="max-w-7xl mx-auto px-4 w-full">
-      <div className="w-full bg-slate-100/70 border border-slate-200 rounded-2xl overflow-hidden relative group shadow-2xs">
-        <div className="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/50">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-            <Award className="w-4 h-4 text-emerald-600" />
-            <span className="uppercase tracking-wider text-[11px] text-zinc-900">
+      <div className="w-full bg-slate-100/70 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden relative group shadow-2xs transition-colors">
+        <div className="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/50 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-zinc-300">
+            <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="uppercase tracking-wider text-[11px] text-zinc-900 dark:text-zinc-100">
               Official Brand Partners & Hardware Sponsors
             </span>
-            <span className="hidden md:inline-block text-slate-400 font-normal">
+            <span className="hidden md:inline-block text-slate-400 dark:text-zinc-500 font-normal">
               • 100% Genuine Direct Factory Sealed Inventory
             </span>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+          <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
             <span>Click logo to explore certified hardware</span>
           </div>
         </div>
@@ -218,10 +218,10 @@ export function SponsorMarquee() {
         {/* Marquee Track Container with gradient edge fades */}
         <div className="relative py-3 overflow-x-hidden w-full">
           {/* Left Fade Gradient */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-slate-100/90 to-transparent z-10 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-slate-100/90 dark:from-zinc-900/90 to-transparent z-10 pointer-events-none" />
           
           {/* Right Fade Gradient */}
-          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-slate-100/90 to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-slate-100/90 dark:from-zinc-900/90 to-transparent z-10 pointer-events-none" />
 
           {/* Moving Marquee Track */}
           <div className="animate-marquee flex items-center gap-6 sm:gap-8 px-4">
@@ -229,19 +229,19 @@ export function SponsorMarquee() {
               <Link
                 key={`${sponsor.id}-${idx}`}
                 href={sponsor.categoryLink}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/90 hover:bg-white border border-slate-200 hover:border-zinc-400 text-zinc-800 hover:text-zinc-950 transition-all shadow-2xs hover:shadow-sm shrink-0 group/item hover:scale-105 duration-200"
+                className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800 border border-slate-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-all shadow-2xs hover:shadow-sm shrink-0 group/item hover:scale-105 duration-200"
               >
                 {/* Logo / Emblem */}
-                <div className="text-zinc-800 group-hover/item:text-zinc-950 transition-colors">
+                <div className="text-zinc-800 dark:text-zinc-200 group-hover/item:text-zinc-950 dark:group-hover/item:text-white transition-colors">
                   {sponsor.logoSvg}
                 </div>
 
                 {/* Sponsor info pill */}
-                <div className="border-l border-slate-200 pl-3 hidden lg:block text-left">
-                  <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-400 group-hover/item:text-slate-600">
+                <div className="border-l border-slate-200 dark:border-zinc-700 pl-3 hidden lg:block text-left">
+                  <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-400 dark:text-zinc-500 group-hover/item:text-slate-600 dark:group-hover/item:text-zinc-300">
                     {sponsor.tier}
                   </span>
-                  <span className="text-[11px] font-semibold text-zinc-700 whitespace-nowrap">
+                  <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
                     {sponsor.badge}
                   </span>
                 </div>

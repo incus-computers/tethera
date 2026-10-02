@@ -33,6 +33,7 @@ import {
 import { FlagshipStoreModal } from "./FlagshipStoreModal";
 import { PredictiveSearchModal } from "./PredictiveSearchModal";
 import { CartDrawer } from "./CartDrawer";
+import { ThemeToggle } from "./ThemeToggle";
 import { GlobalLocationModal } from "../shipping/GlobalLocationModal";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { useLocationStore } from "../../lib/store/useLocationStore";
@@ -137,37 +138,37 @@ export function PersistentHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white shadow-sm transition-all duration-200">
+    <header className="sticky top-0 z-50 w-full bg-white dark:bg-zinc-950 shadow-sm dark:shadow-zinc-950/40 transition-colors duration-200">
       {/* ========================================================================= */}
-      {/* TIER 1: Announcement Banner (Clean, light gray, non-interactive) */}
+      {/* TIER 1: Announcement Banner (Clean, light gray / dark zinc, non-interactive) */}
       {/* ========================================================================= */}
-      <div className="bg-slate-100 text-slate-600 text-xs py-2 px-3 sm:px-4 border-b border-slate-200 w-full max-w-full overflow-hidden">
+      <div className="bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 text-xs py-2 px-3 sm:px-4 border-b border-slate-200 dark:border-zinc-800/80 w-full max-w-full overflow-hidden transition-colors">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-1.5 font-semibold text-zinc-800 text-[11px] sm:text-xs">
+            <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200 text-[11px] sm:text-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
               <span className="hidden xs:inline">Flagship Store:</span>
-              <span className="text-zinc-900 font-bold whitespace-nowrap">Open 9:00 AM to 6:00 PM WIB</span>
+              <span className="text-zinc-900 dark:text-zinc-100 font-bold whitespace-nowrap">Open 9:00 AM to 6:00 PM WIB</span>
             </div>
-            <span className="text-slate-300 hidden sm:inline">•</span>
-            <div className="hidden sm:flex items-center gap-1.5 text-emerald-700 font-medium">
-              <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="text-slate-300 dark:text-zinc-700 hidden sm:inline">•</span>
+            <div className="hidden sm:flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-medium">
+              <Store className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>In-Store Click &amp; Collect: Orders Ready in 60 Mins</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4 text-slate-500 text-[11px] sm:text-xs">
+          <div className="flex items-center gap-3 sm:gap-4 text-slate-500 dark:text-zinc-400 text-[11px] sm:text-xs">
             <a
               href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-emerald-600 transition-colors font-medium whitespace-nowrap"
+              className="flex items-center gap-1 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium whitespace-nowrap"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               <span className="hidden md:inline">WhatsApp Tech Line:</span>
               <span>+62 812-3456-7890</span>
             </a>
-            <span className="hidden md:inline text-slate-500 font-medium whitespace-nowrap">
+            <span className="hidden md:inline text-slate-500 dark:text-zinc-400 font-medium whitespace-nowrap">
               Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat
             </span>
           </div>
@@ -177,26 +178,26 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 2: Main Search & Action Bar */}
       {/* ========================================================================= */}
-      <div className="bg-white border-b border-slate-200 px-3 sm:px-4 py-2.5 sm:py-3 w-full max-w-full">
+      <div className="bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-4 py-2.5 sm:py-3 w-full max-w-full transition-colors">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-8">
           {/* Mobile Hamburger Menu Toggle (Visible on <lg screens) */}
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(true)}
-            className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-zinc-700 transition-colors shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px]"
+            className="lg:hidden p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 transition-colors shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px]"
             aria-label="Open mobile navigation menu"
           >
-            <Menu className="w-5 h-5 text-zinc-800" />
+            <Menu className="w-5 h-5 text-zinc-800 dark:text-zinc-200" />
           </button>
 
-          {/* Brand Logo: Tethera */}
+          {/* Brand Logo: Tethera (Filtered to pure white in dark mode) */}
           <Link href="/" className="flex items-center shrink-0 group py-0.5">
             <Image
               src="/tethera-long.png"
               alt="Tethera"
               width={180}
               height={47}
-              className="h-7 sm:h-9 md:h-11 w-auto object-contain transition-opacity group-hover:opacity-80"
+              className="h-7 sm:h-9 md:h-11 w-auto object-contain transition-all group-hover:opacity-80 tethera-logo dark:brightness-0 dark:invert"
               priority
             />
           </Link>
@@ -205,35 +206,35 @@ export function PersistentHeader() {
           <div className="flex-1 min-w-0 max-w-2xl mx-1 sm:mx-0">
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100/90 hover:bg-slate-100 text-slate-400 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-xs sm:text-sm text-left shadow-inner min-h-[44px]"
+              className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100/90 hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-900 text-slate-400 dark:text-zinc-400 rounded-xl border border-slate-200 hover:border-slate-300 dark:border-zinc-800 dark:hover:border-zinc-700 transition-all text-xs sm:text-sm text-left shadow-inner min-h-[44px]"
             >
               <div className="flex items-center gap-2 truncate">
                 <Search className="w-4 h-4 text-slate-400 shrink-0" />
                 <span className="truncate">Search components, SKUs, pre-builts...</span>
               </div>
               <div className="hidden sm:flex items-center gap-1 shrink-0 ml-2">
-                <kbd className="px-2 py-0.5 text-[10px] font-semibold text-slate-500 bg-white rounded border border-slate-200 shadow-2xs">
+                <kbd className="px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400 bg-white dark:bg-zinc-800 rounded border border-slate-200 dark:border-zinc-700 shadow-2xs">
                   ⌘K
                 </kbd>
-                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-white rounded border border-slate-200 shadow-2xs">
+                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400 bg-white dark:bg-zinc-800 rounded border border-slate-200 dark:border-zinc-700 shadow-2xs">
                   /
                 </kbd>
               </div>
             </button>
           </div>
 
-          {/* Quick Actions (Location, Account, Cart) */}
+          {/* Quick Actions (Location, Account, Theme Toggle, Cart) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Delivery Location Trigger */}
             <button
               onClick={openLocationModal}
-              className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all text-xs group"
+              className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl text-left bg-slate-50 hover:bg-slate-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 transition-all text-xs group"
               title="Set your delivery destination using Google Maps or point picker"
             >
               <Truck className="w-4 h-4 text-emerald-600 group-hover:scale-110 transition-transform" />
               <div className="max-w-[120px]">
                 <span className="text-[10px] text-slate-400 block font-medium leading-none mb-0.5">Deliver to</span>
-                <span className="font-bold text-zinc-800 truncate block leading-none">
+                <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate block leading-none">
                   {isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : "Set Location"}
                 </span>
               </div>
@@ -241,46 +242,49 @@ export function PersistentHeader() {
 
             <button
               onClick={() => setIsStoreModalOpen(true)}
-              className="hidden xl:flex items-center gap-2 px-3 py-2 rounded-xl text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all text-xs"
+              className="hidden xl:flex items-center gap-2 px-3 py-2 rounded-xl text-left bg-slate-50 hover:bg-slate-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 transition-all text-xs"
             >
-              <MapPin className="w-4 h-4 text-zinc-600" />
+              <MapPin className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
               <div>
                 <span className="text-[10px] text-slate-400 block font-medium leading-none mb-0.5">Pickup Store</span>
-                <span className="font-bold text-zinc-800 leading-none block">Mangga Dua Lt. 3</span>
+                <span className="font-bold text-zinc-800 dark:text-zinc-200 leading-none block">Mangga Dua Lt. 3</span>
               </div>
             </button>
 
             <Link
               href={isMounted && isAuthenticated ? "/account" : "/auth"}
-              className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-left hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all text-xs group"
+              className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-left hover:bg-slate-100 dark:hover:bg-zinc-900 border border-transparent hover:border-slate-200 dark:hover:border-zinc-800 transition-all text-xs group"
             >
-              <div className={`p-1.5 rounded-lg transition-colors ${isMounted && isAuthenticated ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-zinc-700"}`}>
+              <div className={`p-1.5 rounded-lg transition-colors ${isMounted && isAuthenticated ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400" : "bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200"}`}>
                 <User className="w-4 h-4" />
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 block font-medium leading-none mb-0.5">
                   {isMounted && isAuthenticated ? "My Profile" : "Welcome"}
                 </span>
-                <span className="font-bold text-zinc-800 leading-none block group-hover:text-emerald-700 transition-colors">
+                <span className="font-bold text-zinc-800 dark:text-zinc-200 leading-none block group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                   {isMounted && isAuthenticated ? (user?.fullName ? user.fullName.split(" ")[0] : "Account") : "Sign In / Register"}
                 </span>
               </div>
             </Link>
 
+            {/* Dark Mode Toggle */}
+            <ThemeToggle variant="header" />
+
             {/* Cart Trigger */}
             <button
               onClick={openCart}
-              className="relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white transition-all shadow-sm active:scale-98"
+              className="relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 transition-all shadow-sm active:scale-98"
             >
               <ShoppingCart className="w-4 h-4" />
               <div className="text-left hidden sm:block">
-                <span className="text-[9px] text-slate-400 uppercase tracking-wider block font-bold">
+                <span className="text-[9px] text-slate-400 dark:text-zinc-500 uppercase tracking-wider block font-bold">
                   Cart ({isMounted ? itemCount : 0})
                 </span>
                 <span className="text-xs font-black">{isMounted ? formatRupiah(subtotal) : formatRupiah(0)}</span>
               </div>
               {isMounted && itemCount > 0 && (
-                <span className="sm:hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 text-zinc-900 font-black text-[10px] flex items-center justify-center border-2 border-white">
+                <span className="sm:hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 text-zinc-900 font-black text-[10px] flex items-center justify-center border-2 border-white dark:border-zinc-950">
                   {itemCount}
                 </span>
               )}
@@ -292,7 +296,7 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 3: Category Mega-Nav & Custom PC Builder CTA */}
       {/* ========================================================================= */}
-      <div className="bg-slate-50/95 border-b border-slate-200 px-3 sm:px-4 relative w-full">
+      <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-4 relative w-full transition-colors">
         {/* Mobile Category Quick Strip (<sm viewports) */}
         <div className="sm:hidden flex items-center gap-1.5 py-2 overflow-x-auto scrollbar-none w-full max-w-full">
           <Link
@@ -393,21 +397,21 @@ export function PersistentHeader() {
                   onMouseEnter={handleCategoriesMouseEnter}
                   onMouseLeave={handleCategoriesMouseLeave}
                 >
-                  <div className="w-full bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 text-zinc-900 animate-dropdown-pop">
+                  <div className="w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-5 text-zinc-900 dark:text-zinc-100 animate-dropdown-pop transition-colors">
                   {/* Dropdown Header */}
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100 dark:border-zinc-800">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500 block">
                         Hardware Catalog
                       </span>
-                      <h4 className="text-sm font-black text-zinc-900">
+                      <h4 className="text-sm font-black text-zinc-900 dark:text-zinc-100">
                         Explore All Product Categories
                       </h4>
                     </div>
                     <Link
                       href="/components"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 transition-colors tactile-btn active:scale-95"
+                      className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 transition-colors tactile-btn active:scale-95"
                     >
                       <span>Master Catalog</span>
                       <ArrowRight className="w-3 h-3" />
@@ -625,43 +629,43 @@ export function PersistentHeader() {
             <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none text-xs">
               <Link
                 href="/components/cpu"
-                className="px-2.5 py-1 rounded-md hover:bg-slate-200/70 hover:text-zinc-900 transition-colors whitespace-nowrap"
+                className="px-2.5 py-1 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
               >
                 CPUs
               </Link>
               <Link
                 href="/components/gpu"
-                className="px-2.5 py-1 rounded-md hover:bg-slate-200/70 hover:text-zinc-900 transition-colors whitespace-nowrap"
+                className="px-2.5 py-1 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap"
               >
                 GPUs
               </Link>
               <Link
                 href="/components/motherboards"
-                className="px-2.5 py-1 rounded-md hover:bg-slate-200/70 hover:text-zinc-900 transition-colors whitespace-nowrap hidden sm:inline-block"
+                className="px-2.5 py-1 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap hidden sm:inline-block"
               >
                 Motherboards
               </Link>
               <Link
                 href="/components/cooling"
-                className="px-2.5 py-1 rounded-md hover:bg-slate-200/70 hover:text-zinc-900 transition-colors whitespace-nowrap hidden md:inline-block"
+                className="px-2.5 py-1 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap hidden md:inline-block"
               >
                 Cooling
               </Link>
               <Link
                 href="/components/cases"
-                className="px-2.5 py-1 rounded-md hover:bg-slate-200/70 hover:text-zinc-900 transition-colors whitespace-nowrap hidden lg:inline-block"
+                className="px-2.5 py-1 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap hidden lg:inline-block"
               >
                 Cases
               </Link>
               <Link
                 href="/components/ram"
-                className="px-2.5 py-1 rounded-md hover:bg-slate-200/70 hover:text-zinc-900 transition-colors whitespace-nowrap hidden xl:inline-block"
+                className="px-2.5 py-1 rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-colors whitespace-nowrap hidden xl:inline-block"
               >
                 Memory
               </Link>
               <Link
                 href="/prebuilts"
-                className="px-2.5 py-1 rounded-md text-emerald-800 bg-emerald-50 hover:bg-emerald-100/70 transition-colors whitespace-nowrap font-bold flex items-center gap-1 border border-emerald-200/60"
+                className="px-2.5 py-1 rounded-md text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/50 transition-colors whitespace-nowrap font-bold flex items-center gap-1 border border-emerald-200/60 dark:border-emerald-800"
               >
                 <span>Pre-Built Systems</span>
               </Link>
@@ -671,7 +675,7 @@ export function PersistentHeader() {
           {/* PC Builder CTA */}
           <Link
             href="/builder"
-            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-4 py-2 rounded-lg transition-all shadow-sm shrink-0 uppercase tracking-tight my-1 ml-2"
+            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 font-bold px-4 py-2 rounded-lg transition-all shadow-sm shrink-0 uppercase tracking-tight my-1 ml-2"
           >
             <span className="text-xs">Custom PC Builder</span>
           </Link>
@@ -692,10 +696,10 @@ export function PersistentHeader() {
 
           {/* Drawer Sheet */}
           <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
-            <div className="w-screen max-w-sm bg-white shadow-2xl flex flex-col justify-between overflow-y-auto">
+            <div className="w-screen max-w-sm bg-white dark:bg-zinc-900 shadow-2xl flex flex-col justify-between overflow-y-auto border-r border-transparent dark:border-zinc-800 transition-colors">
               <div>
                 {/* Drawer Top Header */}
-                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div className="p-4 bg-slate-50 dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
                   <Link
                     href="/"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -706,13 +710,13 @@ export function PersistentHeader() {
                       alt="Tethera"
                       width={140}
                       height={36}
-                      className="h-8 w-auto object-contain"
+                      className="h-8 w-auto object-contain tethera-logo dark:brightness-0 dark:invert"
                     />
                   </Link>
                   <button
                     type="button"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-zinc-700 transition-colors"
+                    className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
                     aria-label="Close menu"
                   >
                     <X className="w-5 h-5" />
@@ -720,7 +724,7 @@ export function PersistentHeader() {
                 </div>
 
                 {/* User Account / Sign In Status Card */}
-                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-950/50">
                   {isMounted && isAuthenticated && user ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
@@ -787,9 +791,14 @@ export function PersistentHeader() {
                   )}
                 </div>
 
+                {/* Theme Mode Appearance Toggle */}
+                <div className="p-4 border-b border-slate-100 dark:border-zinc-800">
+                  <ThemeToggle variant="mobile" />
+                </div>
+
                 {/* Delivery & Pickup Selector Buttons */}
-                <div className="p-4 border-b border-slate-100 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                <div className="p-4 border-b border-slate-100 dark:border-zinc-800 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 block">
                     Fulfillment &amp; Location
                   </span>
                   <button
@@ -798,13 +807,13 @@ export function PersistentHeader() {
                       setIsMobileMenuOpen(false);
                       openLocationModal();
                     }}
-                    className="w-full min-h-[44px] flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors text-left"
+                    className="w-full min-h-[44px] flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-700/80 transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <Truck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[10px] text-slate-400 font-medium block">Deliver to</span>
-                        <span className="text-xs font-bold text-zinc-800 truncate block">
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-400 font-medium block">Deliver to</span>
+                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate block">
                           {isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : "Set Location"}
                         </span>
                       </div>
@@ -818,13 +827,13 @@ export function PersistentHeader() {
                       setIsMobileMenuOpen(false);
                       setIsStoreModalOpen(true);
                     }}
-                    className="w-full min-h-[44px] flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors text-left"
+                    className="w-full min-h-[44px] flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-700/80 transition-colors text-left"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Store className="w-4 h-4 text-zinc-700 shrink-0" />
+                      <Store className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[10px] text-slate-400 font-medium block">Click &amp; Collect Counter</span>
-                        <span className="text-xs font-bold text-zinc-800 truncate block">Mangga Dua Mall Lt. 3 No. 36</span>
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-400 font-medium block">Click &amp; Collect Counter</span>
+                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate block">Mangga Dua Mall Lt. 3 No. 36</span>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />

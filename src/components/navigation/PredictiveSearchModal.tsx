@@ -115,24 +115,24 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
         role="dialog"
         aria-modal="true"
         aria-label="Search components and pre-built systems"
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[80vh]"
+        className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[80vh] transition-colors"
       >
         {/* Search Input Bar */}
-        <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2 sm:gap-3">
-          <Search className="w-5 h-5 text-slate-400 shrink-0" />
+        <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 flex items-center gap-2 sm:gap-3 transition-colors">
+          <Search className="w-5 h-5 text-slate-400 dark:text-zinc-500 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search parts, exact SKU, brand (e.g. 7800X3D, RTX 4080, Corsair)..."
-            className="w-full bg-transparent text-sm sm:text-base font-medium text-zinc-900 placeholder-slate-400 focus:outline-none min-h-[44px]"
+            className="w-full bg-transparent text-sm sm:text-base font-medium text-zinc-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none min-h-[44px]"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-slate-400 hover:text-zinc-700 hover:bg-slate-200/60 transition-colors shrink-0"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-slate-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-slate-200/60 dark:hover:bg-zinc-800 transition-colors shrink-0"
               aria-label="Clear search input"
             >
               <X className="w-4 h-4" />
@@ -142,27 +142,27 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
           <button
             type="button"
             onClick={onClose}
-            className="min-w-[44px] min-h-[44px] px-3 py-2 flex items-center gap-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 text-zinc-700 hover:text-zinc-950 text-xs font-bold transition-colors border border-slate-300/80 shrink-0 shadow-2xs"
+            className="min-w-[44px] min-h-[44px] px-3 py-2 flex items-center gap-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white text-xs font-bold transition-colors border border-slate-300/80 dark:border-zinc-700 shrink-0 shadow-2xs"
             aria-label="Close search modal"
           >
             <X className="w-4 h-4" />
             <span className="sm:hidden font-semibold">Close</span>
-            <kbd className="hidden sm:inline-block text-[10px] font-mono font-normal text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-300">
+            <kbd className="hidden sm:inline-block text-[10px] font-mono font-normal text-slate-600 dark:text-zinc-400 bg-white dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-slate-300 dark:border-zinc-700">
               ESC
             </kbd>
           </button>
         </div>
 
         {/* Category Filter Pills */}
-        <div className="px-4 py-2 bg-slate-100/70 border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto text-xs scrollbar-none">
+        <div className="px-4 py-2 bg-slate-100/70 dark:bg-zinc-950/70 border-b border-slate-200 dark:border-zinc-800 flex items-center gap-1.5 overflow-x-auto text-xs scrollbar-none">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1 rounded-full whitespace-nowrap font-medium transition-all ${
                 selectedCategory === cat
-                  ? "bg-zinc-900 text-white shadow-sm"
-                  : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 shadow-sm"
+                  : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800"
               }`}
             >
               {cat}
@@ -171,12 +171,12 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
         </div>
 
         {/* Results List */}
-        <div className="flex-1 overflow-y-auto p-3 divide-y divide-slate-100">
+        <div className="flex-1 overflow-y-auto p-3 divide-y divide-slate-100 dark:divide-zinc-800">
           {totalResults === 0 ? (
-            <div className="py-12 text-center text-slate-400">
+            <div className="py-12 text-center text-slate-400 dark:text-zinc-500">
               <Cpu className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-sm font-medium">No components or systems match your search</p>
-              <p className="text-xs text-slate-400 mt-1">Try searching for &quot;AMD&quot;, &quot;RTX&quot;, &quot;Apex&quot;, &quot;Lian Li&quot; or &quot;DDR5&quot;</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-zinc-400">No components or systems match your search</p>
+              <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1">Try searching for &quot;AMD&quot;, &quot;RTX&quot;, &quot;Corsair&quot; or &quot;DDR5&quot;</p>
             </div>
           ) : (
             <>
@@ -184,14 +184,14 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
               {filteredPrebuilts.map((pb) => (
                 <div
                   key={pb.id}
-                  className="py-3 px-3 hover:bg-slate-50 rounded-xl flex items-center justify-between gap-4 group transition-colors"
+                  className="py-3 px-3 hover:bg-slate-50 dark:hover:bg-zinc-800/60 rounded-xl flex items-center justify-between gap-4 group transition-colors"
                 >
                   <Link
                     href={`/products/${pb.id}`}
                     onClick={onClose}
                     className="flex items-center gap-3 min-w-0 flex-1 group/item"
                   >
-                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0">
                       <Image
                         src={pb.image}
                         alt={pb.name}
@@ -202,17 +202,17 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded">
                           Pre-Built System
                         </span>
-                        <span className="text-[11px] font-mono text-slate-400 truncate">
+                        <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 truncate">
                           {pb.sku}
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-semibold text-zinc-900 truncate mt-0.5 group-hover/item:text-zinc-600 transition-colors">
+                      <h4 className="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover/item:text-zinc-600 dark:group-hover/item:text-zinc-300 transition-colors">
                         {pb.name}
                       </h4>
-                      <div className="text-[11px] text-slate-500 truncate mt-0.5">
+                      <div className="text-[11px] text-slate-500 dark:text-zinc-400 truncate mt-0.5">
                         {pb.cpu} • {pb.gpu}
                       </div>
                     </div>
@@ -220,14 +220,14 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
 
                   <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <div className="text-right">
-                      <div className="text-sm sm:text-base font-black text-zinc-900">
+                      <div className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">
                         {formatRupiah(pb.price)}
                       </div>
-                      <div className="text-[10px] text-slate-400">Ready in 60m</div>
+                      <div className="text-[10px] text-slate-400 dark:text-zinc-500">Ready in 60m</div>
                     </div>
                     <button
                       onClick={() => handleAddPrebuilt(pb)}
-                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
+                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add</span>
@@ -240,14 +240,14 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
               {filteredComponents.map((item) => (
                 <div
                   key={item.id}
-                  className="py-3 px-3 hover:bg-slate-50 rounded-xl flex items-center justify-between gap-4 group transition-colors"
+                  className="py-3 px-3 hover:bg-slate-50 dark:hover:bg-zinc-800/60 rounded-xl flex items-center justify-between gap-4 group transition-colors"
                 >
                   <Link
                     href={`/products/${item.id}`}
                     onClick={onClose}
                     className="flex items-center gap-3 min-w-0 flex-1 group/item"
                   >
-                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0">
                       <Image
                         src={item.image}
                         alt={item.name}
@@ -258,19 +258,19 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-transparent dark:border-zinc-700">
                           {item.brand}
                         </span>
-                        <span className="text-[11px] font-mono text-slate-400 truncate">
+                        <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 truncate">
                           SKU: {item.sku}
                         </span>
                       </div>
-                      <h4 className="text-xs sm:text-sm font-semibold text-zinc-900 truncate mt-0.5 group-hover/item:text-zinc-600 transition-colors">
+                      <h4 className="text-xs sm:text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 group-hover/item:text-zinc-600 dark:group-hover/item:text-zinc-300 transition-colors">
                         {item.name}
                       </h4>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
                           In Stock Flagship ({item.stockCount} units)
                         </span>
                       </div>
@@ -279,17 +279,17 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
 
                   <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                     <div className="text-right">
-                      <div className="text-sm sm:text-base font-black text-zinc-900">
+                      <div className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">
                         {formatRupiah(item.price)}
                       </div>
-                      <div className="text-[10px] text-slate-400">incl. tax</div>
+                      <div className="text-[10px] text-slate-400 dark:text-zinc-500">incl. tax</div>
                     </div>
                     <button
                       onClick={() => {
                         addStandardItem(item);
                         onClose();
                       }}
-                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
+                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
                     >
                       <span>Add</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -302,14 +302,14 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
         </div>
 
         {/* Footer info & mobile close action */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center px-4">
+        <div className="p-3 bg-slate-50 dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800 text-xs text-slate-500 dark:text-zinc-400 flex justify-between items-center px-4 transition-colors">
           <span className="truncate mr-2">Showing {totalResults} matching items</span>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <span className="text-emerald-700 font-medium hidden sm:inline">⚡ Click &amp; Collect: Ready today</span>
+            <span className="text-emerald-700 dark:text-emerald-400 font-medium hidden sm:inline">⚡ Click &amp; Collect: Ready today</span>
             <button
               type="button"
               onClick={onClose}
-              className="sm:hidden min-h-[44px] px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-zinc-800 transition-colors shadow-2xs active:scale-95"
+              className="sm:hidden min-h-[44px] px-3.5 py-2 bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-xl text-xs font-bold text-zinc-800 dark:text-zinc-200 transition-colors shadow-2xs active:scale-95"
             >
               Done / Close
             </button>
