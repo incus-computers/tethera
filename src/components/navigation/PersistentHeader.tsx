@@ -292,7 +292,7 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 3: Category Mega-Nav & Custom PC Builder CTA */}
       {/* ========================================================================= */}
-      <div className="bg-slate-50/95 border-b border-slate-200 px-3 sm:px-4 relative w-full max-w-full overflow-x-hidden">
+      <div className="bg-slate-50/95 border-b border-slate-200 px-3 sm:px-4 relative w-full">
         {/* Mobile Category Quick Strip (<sm viewports) */}
         <div className="sm:hidden flex items-center gap-1.5 py-2 overflow-x-auto scrollbar-none w-full max-w-full">
           <Link

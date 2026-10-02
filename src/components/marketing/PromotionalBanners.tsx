@@ -243,7 +243,7 @@ export function PromotionalBanners() {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 pt-6 pb-2 w-full max-w-full overflow-x-hidden">
+    <section className="max-w-7xl mx-auto px-4 pb-2 w-full overflow-x-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* ========================================================================= */}
         {/* MAIN PROMOTIONAL SLIDER (8 Cols on Desktop) */}

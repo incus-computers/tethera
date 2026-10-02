@@ -71,14 +71,12 @@ export default function HomePage() {
   return (
     <div className="space-y-12 pb-12 w-full max-w-full overflow-x-hidden">
       {/* ========================================================================= */}
-      {/* 1. MOVING SPONSOR BANNER (Infinite Logos Marquee) */}
+      {/* 1 & 2. BANNERS: Brand Partners Marquee & Promotional Campaigns */}
       {/* ========================================================================= */}
-      <SponsorMarquee />
-
-      {/* ========================================================================= */}
-      {/* 2. PROMOTIONAL BANNERS (Active Campaigns & Promotions) */}
-      {/* ========================================================================= */}
-      <PromotionalBanners />
+      <div className="pt-4 sm:pt-6 space-y-5">
+        <SponsorMarquee />
+        <PromotionalBanners />
+      </div>
 
       {/* ========================================================================= */}
       {/* HERO SECTION: Tethera Precision Light Gray / White Concept */}

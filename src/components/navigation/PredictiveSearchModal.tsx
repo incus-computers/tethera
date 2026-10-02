@@ -35,6 +35,17 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const normalizedQuery = query.toLowerCase().trim();
@@ -92,30 +103,54 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 sm:pt-20 p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150">
+      {/* Clickable backdrop overlay: click or tap anywhere outside dialog to dismiss */}
+      <div
+        className="fixed inset-0 -z-10"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Search components and pre-built systems"
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[80vh]"
+      >
         {/* Search Input Bar */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
+        <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-2 sm:gap-3">
           <Search className="w-5 h-5 text-slate-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search parts, exact SKU, brand (e.g. 7800X3D, RTX 4080, Apex, Corsair)..."
-            className="w-full bg-transparent text-sm sm:text-base font-medium text-zinc-900 placeholder-slate-400 focus:outline-none"
+            placeholder="Search parts, exact SKU, brand (e.g. 7800X3D, RTX 4080, Corsair)..."
+            className="w-full bg-transparent text-sm sm:text-base font-medium text-zinc-900 placeholder-slate-400 focus:outline-none min-h-[44px]"
           />
           {query && (
             <button
+              type="button"
               onClick={() => setQuery("")}
-              className="p-1 rounded-md text-slate-400 hover:text-zinc-700 hover:bg-slate-200/60"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-slate-400 hover:text-zinc-700 hover:bg-slate-200/60 transition-colors shrink-0"
+              aria-label="Clear search input"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <span className="hidden sm:inline-block text-[11px] font-semibold text-slate-400 bg-slate-200/80 px-2 py-0.5 rounded border border-slate-300">
-            ESC
-          </span>
+          {/* Always-visible Exit/Close Button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-w-[44px] min-h-[44px] px-3 py-2 flex items-center gap-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 text-zinc-700 hover:text-zinc-950 text-xs font-bold transition-colors border border-slate-300/80 shrink-0 shadow-2xs"
+            aria-label="Close search modal"
+          >
+            <X className="w-4 h-4" />
+            <span className="sm:hidden font-semibold">Close</span>
+            <kbd className="hidden sm:inline-block text-[10px] font-mono font-normal text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-300">
+              ESC
+            </kbd>
+          </button>
         </div>
 
         {/* Category Filter Pills */}
@@ -266,10 +301,19 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
           )}
         </div>
 
-        {/* Footer info */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 text-center text-xs text-slate-500 flex justify-between items-center px-4">
-          <span>Showing {totalResults} matching items</span>
-          <span className="text-emerald-700 font-medium">⚡ Click & Collect: Ready today</span>
+        {/* Footer info & mobile close action */}
+        <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center px-4">
+          <span className="truncate mr-2">Showing {totalResults} matching items</span>
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <span className="text-emerald-700 font-medium hidden sm:inline">⚡ Click &amp; Collect: Ready today</span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="sm:hidden min-h-[44px] px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-zinc-800 transition-colors shadow-2xs active:scale-95"
+            >
+              Done / Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
