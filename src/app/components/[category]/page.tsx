@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import {
   MOCK_COMPONENTS,
@@ -150,12 +151,14 @@ export default function CategoryProductsPage() {
                 href={`/products/${item.id}`}
                 className="relative h-44 bg-slate-50 rounded-xl overflow-hidden mb-3 border border-slate-100 flex items-center justify-center p-3 block"
               >
-                <img
+                <Image
                   src={item.image}
                   alt={item.name}
-                  className="max-h-full object-contain group-hover:scale-105 transition-transform duration-200"
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-contain p-2 group-hover:scale-105 transition-transform duration-200"
                 />
-                <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-white/90 px-2 py-0.5 rounded shadow-2xs text-slate-700">
+                <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 px-2 py-0.5 rounded shadow-2xs text-slate-700">
                   {item.brand}
                 </span>
               </Link>

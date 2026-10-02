@@ -7,7 +7,7 @@ import { ComponentItem } from "../data/mockHardware";
 export interface CartCustomPC {
   id: string;
   name: string;
-  parts: Record<string, ComponentItem>;
+  parts: Record<string, Partial<ComponentItem> | ComponentItem>;
   serviceTier: {
     name: string;
     price: number;
@@ -15,6 +15,8 @@ export interface CartCustomPC {
   };
   totalPrice: number;
   wattage: number;
+  isPrebuilt?: boolean;
+  image?: string;
 }
 
 export interface CartStandardItem {

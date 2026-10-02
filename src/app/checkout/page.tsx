@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ShoppingBag,
@@ -28,6 +29,7 @@ import {
   Check,
   AlertCircle,
   Zap,
+  X,
 } from "lucide-react";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useLocationStore } from "@/lib/store/useLocationStore";
@@ -94,6 +96,7 @@ export default function CheckoutPage() {
   const [selectedChannel, setSelectedChannel] = useState<MidtransPaymentChannel>("qris");
   const [activeInstructionTab, setActiveInstructionTab] = useState(0);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [activePaymentDetails, setActivePaymentDetails] = useState<MidtransGeneratedPayment | null>(null);
 
@@ -238,6 +241,7 @@ export default function CheckoutPage() {
   // Select Midtrans channel
   const handleSelectChannel = (channel: MidtransPaymentChannel) => {
     setSelectedChannel(channel);
+    setPaymentError(null);
     setActiveInstructionTab(0);
     const tempOrderNum = activePaymentDetails?.orderNumber || `TET-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${Math.floor(1000 + Math.random() * 9000)}`;
     const details = generateMidtransPaymentDetails(tempOrderNum, channel, grandTotal);
@@ -254,6 +258,7 @@ export default function CheckoutPage() {
   // Final Midtrans Payment Execution
   const handleExecuteMidtransPayment = async () => {
     setIsProcessingPayment(true);
+    setPaymentError(null);
     try {
       // 1. Create order in database
       const createOrderRes = await fetch("/api/checkout/create-order", {
@@ -309,14 +314,70 @@ export default function CheckoutPage() {
         throw new Error(chargeData.error || "Midtrans payment verification failed.");
       }
 
-      // 3. Clear cart and redirect to Order Success Page
+      // 3. Save order snapshot in sessionStorage for itemized tax invoice on success page
+      if (typeof window !== "undefined") {
+        try {
+          const snapshot = {
+            orderNumber: chargeData.orderNumber,
+            paymentId: chargeData.paymentId,
+            orderId: orderData.orderId,
+            paymentChannel: selectedChannel,
+            customer: {
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone,
+            },
+            fulfillmentMethod,
+            shippingAddress: {
+              street: streetAddress,
+              unit: unitApt,
+              subdistrict,
+              city,
+              province,
+              postalCode,
+              deliveryNotes,
+            },
+            courier: selectedRate,
+            items: items.map((it) => ({
+              id: it.item.id,
+              name: it.item.name,
+              sku: it.item.sku,
+              brand: it.item.brand,
+              price: it.item.price,
+              quantity: it.quantity,
+              image: it.item.image,
+            })),
+            customPCs: customPCs.map((pc) => ({
+              id: pc.id,
+              name: pc.name,
+              totalPrice: pc.totalPrice,
+              serviceTier: pc.serviceTier,
+              parts: pc.parts,
+              isPrebuilt: pc.isPrebuilt,
+              image: pc.image,
+            })),
+            subtotal,
+            shippingFee,
+            grandTotal,
+            createdAt: new Date().toISOString(),
+          };
+          sessionStorage.setItem("tethera_last_order", JSON.stringify(snapshot));
+        } catch (e) {
+          console.warn("Could not save order snapshot:", e);
+        }
+      }
+
+      // 4. Clear cart and redirect to Order Success Page
       clearCart();
       router.push(
         `/checkout/success?orderNumber=${encodeURIComponent(chargeData.orderNumber)}&paymentId=${encodeURIComponent(chargeData.paymentId)}`
       );
     } catch (err: any) {
-      alert(`Payment Processing Alert: ${err.message || "Something went wrong"}`);
+      setPaymentError(err.message || "Midtrans payment verification failed. Please review your payment details or choose another channel.");
       setIsProcessingPayment(false);
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 120, behavior: "smooth" });
+      }
     }
   };
 
@@ -1001,6 +1062,30 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+                {/* Inline Payment Error Notification Banner */}
+                {paymentError && (
+                  <div
+                    id="payment-error-banner"
+                    className="p-4 bg-red-50 border border-red-200 text-red-900 rounded-2xl text-xs flex items-start justify-between gap-3 animate-in fade-in"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-red-900 block">Payment Verification Notice</span>
+                        <p className="text-red-800 leading-relaxed mt-0.5">{paymentError}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentError(null)}
+                      className="text-red-400 hover:text-red-700 p-1 rounded-lg transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                      aria-label="Dismiss notification"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
                 {/* All Midtrans Payment Channels Grid */}
                 <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
@@ -1350,11 +1435,13 @@ export default function CheckoutPage() {
                     key={it.id}
                     className="flex items-center justify-between gap-3 text-xs py-1"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 p-1 shrink-0">
-                      <img
+                    <div className="relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                      <Image
                         src={it.item.image}
                         alt={it.item.name}
-                        className="w-full h-full object-cover rounded"
+                        fill
+                        sizes="40px"
+                        className="object-contain p-0.5"
                       />
                     </div>
                     <div className="flex-1 min-w-0">

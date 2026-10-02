@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { X, Search, Check, AlertCircle, Plus, ShieldCheck, Filter, Eye, EyeOff } from "lucide-react";
 import { MOCK_COMPONENTS, ComponentItem } from "../../lib/data/mockHardware";
 import { BuilderSlotKey, useBuilderStore } from "../../lib/store/useBuilderStore";
@@ -264,8 +265,14 @@ export function ComponentSelectModal({ slot, onClose }: ComponentSelectModalProp
                   }`}
                 >
                   <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center p-1 shrink-0 overflow-hidden">
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded" />
+                    <div className="relative w-16 h-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        sizes="64px"
+                        className="object-contain p-1"
+                      />
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">

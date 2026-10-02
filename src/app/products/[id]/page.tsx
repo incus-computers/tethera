@@ -2,12 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
   getProductOrPrebuiltById,
   getProductOverviewData,
   MOCK_COMPONENTS,
   ComponentItem,
+  PREBUILT_SYSTEMS,
 } from "../../../lib/data/mockHardware";
 import { useCartStore } from "../../../lib/store/useCartStore";
 import { useLocationStore } from "../../../lib/store/useLocationStore";
@@ -35,7 +37,7 @@ export default function ProductDetailPage() {
   const id = params?.id as string;
 
   const product = getProductOrPrebuiltById(id);
-  const { addStandardItem, addCustomPC, setFulfillmentMethod, fulfillmentMethod } = useCartStore();
+  const { addStandardItem, addCustomPC, setFulfillmentMethod, fulfillmentMethod, openCart } = useCartStore();
   const { selectedRate } = useLocationStore();
   const { selectSlotItem } = useBuilderStore();
 
@@ -67,20 +69,34 @@ export default function ProductDetailPage() {
   const handleAddToCart = () => {
     if (componentItem) {
       addStandardItem(componentItem);
+      openCart();
     } else {
       // Prebuilt system
+      const pb = product as (typeof PREBUILT_SYSTEMS)[0];
       addCustomPC({
-        id: `pb-${Date.now()}`,
-        name: product.name,
-        parts: {},
+        id: `pb-${pb.id}-${Date.now()}`,
+        name: pb.name,
+        parts: {
+          cpu: { name: pb.cpu } as any,
+          gpu: { name: pb.gpu } as any,
+          ram: { name: pb.ram } as any,
+          storage_primary: { name: pb.storage } as any,
+          cooler: { name: pb.cooling } as any,
+          case: { name: pb.chassis } as any,
+          psu: { name: pb.psu } as any,
+          os: { name: pb.os } as any,
+        },
         serviceTier: {
           name: "Standard 24h Burn-In Verification",
           price: 0,
           leadTime: "Ready in 60 Mins",
         },
-        totalPrice: product.price,
-        wattage: 650,
+        totalPrice: pb.price,
+        wattage: 750,
+        isPrebuilt: true,
+        image: pb.image,
       });
+      openCart();
     }
   };
 
@@ -125,10 +141,13 @@ export default function ProductDetailPage() {
         {/* Left Column: Product Visuals */}
         <div className="lg:col-span-6 space-y-4">
           <div className="relative rounded-3xl bg-white border border-slate-200 p-8 flex items-center justify-center min-h-[380px] sm:min-h-[460px] shadow-xs overflow-hidden">
-            <img
+            <Image
               src={product.image}
               alt={product.name}
-              className="max-h-[360px] max-w-full object-contain transition-transform duration-300 hover:scale-105"
+              width={600}
+              height={600}
+              priority
+              className="max-h-[360px] w-auto max-w-full object-contain transition-transform duration-300 hover:scale-105"
             />
 
             <div className="absolute top-4 left-4 flex flex-col gap-1.5">
@@ -495,12 +514,14 @@ export default function ProductDetailPage() {
             >
               <div>
                 <div className="relative h-36 bg-slate-50 rounded-xl overflow-hidden mb-3 border border-slate-100 flex items-center justify-center p-2">
-                  <img
+                  <Image
                     src={item.image}
                     alt={item.name}
-                    className="max-h-full object-contain group-hover:scale-105 transition-transform"
+                    fill
+                    sizes="(max-width: 640px) 100vw, 25vw"
+                    className="object-contain p-2 group-hover:scale-105 transition-transform"
                   />
-                  <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-white/90 px-2 py-0.5 rounded shadow-2xs text-slate-700">
+                  <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 px-2 py-0.5 rounded shadow-2xs text-slate-700">
                     {item.brand}
                   </span>
                 </div>

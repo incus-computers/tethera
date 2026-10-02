@@ -26,6 +26,9 @@ import {
   Truck,
   ShieldCheck,
   Store,
+  Menu,
+  X,
+  LogOut,
 } from "lucide-react";
 import { FlagshipStoreModal } from "./FlagshipStoreModal";
 import { PredictiveSearchModal } from "./PredictiveSearchModal";
@@ -40,12 +43,13 @@ export function PersistentHeader() {
   const [isSticky, setIsSticky] = useState(false);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAllCategoriesOpen, setIsAllCategoriesOpen] = useState(false);
   const categoriesTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const categoriesContainerRef = React.useRef<HTMLDivElement | null>(null);
 
   const { userLocation, openLocationModal, selectedRate, initLocation } = useLocationStore();
-  const { user, isAuthenticated, initSession } = useAuthStore();
+  const { user, isAuthenticated, initSession, logout } = useAuthStore();
   const { openCart, getTotalItemsCount, getSubtotal, initCart } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -103,6 +107,17 @@ export function PersistentHeader() {
   }, []);
 
   useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -111,6 +126,10 @@ export function PersistentHeader() {
       if (e.key === "/" && (e.target as HTMLElement).tagName !== "INPUT") {
         e.preventDefault();
         setIsSearchOpen(true);
+      }
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        setIsAllCategoriesOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -122,33 +141,33 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 1: Announcement Banner (Clean, light gray, non-interactive) */}
       {/* ========================================================================= */}
-      <div className="bg-slate-100 text-slate-600 text-xs py-2 px-4 border-b border-slate-200">
+      <div className="bg-slate-100 text-slate-600 text-xs py-2 px-3 sm:px-4 border-b border-slate-200 w-full max-w-full overflow-hidden">
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 font-semibold text-zinc-800">
-              <span className="w-2 h-2 rounded-full bg-emerald-600" />
-              <span>Flagship Experience Store:</span>
-              <span className="text-zinc-900 font-bold">Open Today 9:00 AM – 6:00 PM</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 font-semibold text-zinc-800 text-[11px] sm:text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+              <span className="hidden xs:inline">Flagship Store:</span>
+              <span className="text-zinc-900 font-bold whitespace-nowrap">Open 9:00 AM to 6:00 PM WIB</span>
             </div>
             <span className="text-slate-300 hidden sm:inline">•</span>
             <div className="hidden sm:flex items-center gap-1.5 text-emerald-700 font-medium">
-              <Store className="w-3.5 h-3.5 text-emerald-600" />
+              <Store className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>In-Store Click &amp; Collect: Orders Ready in 60 Mins</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-500">
+          <div className="flex items-center gap-3 sm:gap-4 text-slate-500 text-[11px] sm:text-xs">
             <a
               href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-emerald-600 transition-colors font-medium"
+              className="flex items-center gap-1 hover:text-emerald-600 transition-colors font-medium whitespace-nowrap"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               <span className="hidden md:inline">WhatsApp Tech Line:</span>
               <span>+62 812-3456-7890</span>
             </a>
-            <span className="hidden md:inline text-slate-500 font-medium">
+            <span className="hidden md:inline text-slate-500 font-medium whitespace-nowrap">
               Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat
             </span>
           </div>
@@ -158,8 +177,18 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 2: Main Search & Action Bar */}
       {/* ========================================================================= */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 sm:gap-8">
+      <div className="bg-white border-b border-slate-200 px-3 sm:px-4 py-2.5 sm:py-3 w-full max-w-full">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-8">
+          {/* Mobile Hamburger Menu Toggle (Visible on <lg screens) */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-zinc-700 transition-colors shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px]"
+            aria-label="Open mobile navigation menu"
+          >
+            <Menu className="w-5 h-5 text-zinc-800" />
+          </button>
+
           {/* Brand Logo: Tethera */}
           <Link href="/" className="flex items-center shrink-0 group py-0.5">
             <Image
@@ -167,22 +196,22 @@ export function PersistentHeader() {
               alt="Tethera"
               width={180}
               height={47}
-              className="h-8 sm:h-10 md:h-11 w-auto object-contain transition-opacity group-hover:opacity-80"
+              className="h-7 sm:h-9 md:h-11 w-auto object-contain transition-opacity group-hover:opacity-80"
               priority
             />
           </Link>
 
           {/* Predictive Search Bar Trigger */}
-          <div className="flex-1 max-w-2xl">
+          <div className="flex-1 min-w-0 max-w-2xl mx-1 sm:mx-0">
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-100/90 hover:bg-slate-100 text-slate-400 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-xs sm:text-sm text-left shadow-inner"
+              className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100/90 hover:bg-slate-100 text-slate-400 rounded-xl border border-slate-200 hover:border-slate-300 transition-all text-xs sm:text-sm text-left shadow-inner min-h-[44px]"
             >
-              <div className="flex items-center gap-2.5 truncate">
+              <div className="flex items-center gap-2 truncate">
                 <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="truncate">Search components, exact SKUs, pre-builts...</span>
+                <span className="truncate">Search components, SKUs, pre-builts...</span>
               </div>
-              <div className="hidden sm:flex items-center gap-1">
+              <div className="hidden sm:flex items-center gap-1 shrink-0 ml-2">
                 <kbd className="px-2 py-0.5 text-[10px] font-semibold text-slate-500 bg-white rounded border border-slate-200 shadow-2xs">
                   ⌘K
                 </kbd>
@@ -263,8 +292,74 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 3: Category Mega-Nav & Custom PC Builder CTA */}
       {/* ========================================================================= */}
-      <div className="bg-slate-50/95 border-b border-slate-200 px-4 relative">
-        <div className="max-w-7xl mx-auto flex items-center justify-between text-xs font-semibold text-zinc-700">
+      <div className="bg-slate-50/95 border-b border-slate-200 px-3 sm:px-4 relative w-full max-w-full overflow-x-hidden">
+        {/* Mobile Category Quick Strip (<sm viewports) */}
+        <div className="sm:hidden flex items-center gap-1.5 py-2 overflow-x-auto scrollbar-none w-full max-w-full">
+          <Link
+            href="/builder"
+            className="flex items-center gap-1 bg-zinc-900 text-white font-bold px-3 py-1.5 rounded-lg text-xs shrink-0 shadow-xs tactile-btn active:scale-95"
+          >
+            <Cpu className="w-3.5 h-3.5 text-zinc-300" />
+            <span>PC Builder</span>
+          </Link>
+          <Link
+            href="/prebuilts"
+            className="flex items-center gap-1 bg-emerald-50 text-emerald-800 font-bold px-3 py-1.5 rounded-lg text-xs shrink-0 border border-emerald-200 tactile-btn active:scale-95"
+          >
+            <span>Pre-Builts</span>
+          </Link>
+          <Link
+            href="/components/cpu"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            CPUs
+          </Link>
+          <Link
+            href="/components/gpu"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            GPUs
+          </Link>
+          <Link
+            href="/components/motherboards"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            Motherboards
+          </Link>
+          <Link
+            href="/components/cooling"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            Cooling
+          </Link>
+          <Link
+            href="/components/cases"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            Cases
+          </Link>
+          <Link
+            href="/components/ram"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            RAM
+          </Link>
+          <Link
+            href="/components/storage"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            SSDs
+          </Link>
+          <Link
+            href="/components/power-supplies"
+            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+          >
+            PSUs
+          </Link>
+        </div>
+
+        {/* Desktop Category Bar (>=sm viewports) */}
+        <div className="hidden sm:flex max-w-7xl mx-auto items-center justify-between text-xs font-semibold text-zinc-700">
           {/* Left Navigation: All Categories Hover Dropdown + Direct Category Links */}
           <div className="flex items-center gap-2 sm:gap-3 py-2">
             {/* 1. Very Top-Left Option: All Categories Hover Dropdown */}
@@ -294,7 +389,7 @@ export function PersistentHeader() {
               {/* The Hover Dropdown Menu with Seamless Invisible Hover Bridge */}
               {isAllCategoriesOpen && (
                 <div
-                  className="absolute top-full left-0 pt-2 w-[330px] sm:w-[660px] z-50 before:content-[''] before:absolute before:-top-4 before:left-0 before:right-0 before:h-4"
+                  className="absolute top-full left-0 pt-2 w-[calc(100vw-2rem)] sm:w-[660px] max-w-[660px] z-50 before:content-[''] before:absolute before:-top-4 before:left-0 before:right-0 before:h-4"
                   onMouseEnter={handleCategoriesMouseEnter}
                   onMouseLeave={handleCategoriesMouseLeave}
                 >
@@ -582,6 +677,298 @@ export function PersistentHeader() {
           </Link>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* MOBILE NAVIGATION DRAWER (Slide-Over from Left) */}
+      {/* ========================================================================= */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden lg:hidden">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            aria-hidden="true"
+          />
+
+          {/* Drawer Sheet */}
+          <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
+            <div className="w-screen max-w-sm bg-white shadow-2xl flex flex-col justify-between overflow-y-auto">
+              <div>
+                {/* Drawer Top Header */}
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <Link
+                    href="/"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center"
+                  >
+                    <Image
+                      src="/tethera-long.png"
+                      alt="Tethera"
+                      width={140}
+                      height={36}
+                      className="h-8 w-auto object-contain"
+                    />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-zinc-700 transition-colors"
+                    aria-label="Close menu"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* User Account / Sign In Status Card */}
+                <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                  {isMounted && isAuthenticated && user ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                          {user.fullName ? user.fullName[0].toUpperCase() : "U"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
+                            Logged In
+                          </span>
+                          <span className="font-bold text-zinc-900 text-sm truncate block">
+                            {user.fullName || "Customer"}
+                          </span>
+                          <span className="text-xs text-slate-500 truncate block">
+                            {user.email}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <Link
+                          href="/account"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="flex-1 min-h-[44px] flex items-center justify-center py-2 px-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold text-center transition-colors tactile-btn"
+                        >
+                          My Account
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            logout();
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className="min-h-[44px] py-2 px-3.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors tactile-btn"
+                          title="Sign Out"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          <span>Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-200/80 flex items-center justify-center text-zinc-700 shrink-0">
+                          <User className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-zinc-900 block truncate">
+                            Welcome to Tethera
+                          </span>
+                          <span className="text-[11px] text-slate-500 block truncate">
+                            Sign in for order tracking
+                          </span>
+                        </div>
+                      </div>
+                      <Link
+                        href="/auth"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="min-h-[44px] flex items-center justify-center py-2 px-4 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs tactile-btn shrink-0"
+                      >
+                        Sign In
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                {/* Delivery & Pickup Selector Buttons */}
+                <div className="p-4 border-b border-slate-100 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Fulfillment &amp; Location
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      openLocationModal();
+                    }}
+                    className="w-full min-h-[44px] flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Truck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-400 font-medium block">Deliver to</span>
+                        <span className="text-xs font-bold text-zinc-800 truncate block">
+                          {isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : "Set Location"}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setIsStoreModalOpen(true);
+                    }}
+                    className="w-full min-h-[44px] flex items-center justify-between p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Store className="w-4 h-4 text-zinc-700 shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-400 font-medium block">Click &amp; Collect Counter</span>
+                        <span className="text-xs font-bold text-zinc-800 truncate block">Mangga Dua Mall Lt. 3 No. 36</span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  </button>
+                </div>
+
+                {/* Primary Tools (Custom PC Configurator & Prebuilts) */}
+                <div className="p-4 border-b border-slate-100 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Studio Tools &amp; Rigs
+                  </span>
+
+                  <Link
+                    href="/builder"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-zinc-900 text-white transition-all shadow-sm group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Cpu className="w-4 h-4 text-emerald-400" />
+                      <div>
+                        <div className="text-xs font-black">Custom PC Builder</div>
+                        <div className="text-[10px] text-slate-300">Socket &amp; Clearance Engine</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+
+                  <Link
+                    href="/prebuilts"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 transition-all group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Monitor className="w-4 h-4 text-emerald-600" />
+                      <div>
+                        <div className="text-xs font-black">Pre-Built Performance PCs</div>
+                        <div className="text-[10px] text-emerald-700">24h Prime95 Benchmarked</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </div>
+
+                {/* Hardware Categories List */}
+                <div className="p-4 space-y-1">
+                  <div className="flex items-center justify-between pb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Hardware Categories
+                    </span>
+                    <Link
+                      href="/components"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="text-[11px] font-bold text-emerald-700 hover:underline"
+                    >
+                      Master Catalog
+                    </Link>
+                  </div>
+
+                  <Link
+                    href="/components/cpu"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <Cpu className="w-4 h-4 text-slate-500" />
+                    <span>Processors (CPUs)</span>
+                  </Link>
+                  <Link
+                    href="/components/gpu"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <Monitor className="w-4 h-4 text-slate-500" />
+                    <span>Graphics Cards (GPUs)</span>
+                  </Link>
+                  <Link
+                    href="/components/motherboards"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <Layers className="w-4 h-4 text-slate-500" />
+                    <span>Motherboards</span>
+                  </Link>
+                  <Link
+                    href="/components/cooling"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <Wind className="w-4 h-4 text-slate-500" />
+                    <span>Cooling Solutions</span>
+                  </Link>
+                  <Link
+                    href="/components/cases"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <Box className="w-4 h-4 text-slate-500" />
+                    <span>PC Cases &amp; Chassis</span>
+                  </Link>
+                  <Link
+                    href="/components/ram"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <CircuitBoard className="w-4 h-4 text-slate-500" />
+                    <span>Memory (RAM)</span>
+                  </Link>
+                  <Link
+                    href="/components/storage"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <HardDrive className="w-4 h-4 text-slate-500" />
+                    <span>Storage (SSDs)</span>
+                  </Link>
+                  <Link
+                    href="/components/power-supplies"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                  >
+                    <Zap className="w-4 h-4 text-slate-500" />
+                    <span>Power Supplies (PSUs)</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Drawer Bottom Support Contact */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2.5">
+                <a
+                  href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>WhatsApp Tech Consultation</span>
+                </a>
+                <div className="text-[11px] text-slate-500 text-center">
+                  Direct Line: (021) 612-8836 • Mon-Sat 09:00 to 18:00 WIB
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals & Slide-Over Drawers */}
       <FlagshipStoreModal

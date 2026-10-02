@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { X, Trash2, ShoppingBag, CheckCircle, ShieldCheck, QrCode, ArrowRight, Store, Truck, MapPin, User } from "lucide-react";
 import { useCartStore } from "../../lib/store/useCartStore";
@@ -155,25 +156,40 @@ export function CartDrawer() {
                   )}
                 </div>
 
-                {/* Custom PC Systems in Cart */}
+                {/* Custom PC Systems & Prebuilts in Cart */}
                 {customPCs.map((pc) => (
                   <div
                     key={pc.id}
                     className="p-4 rounded-xl border border-zinc-900/20 bg-slate-50/70 space-y-3 relative"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-zinc-900 text-white px-2 py-0.5 rounded">
-                          Custom PC System
-                        </span>
-                        <h4 className="text-sm font-bold text-zinc-900 mt-1.5">{pc.name}</h4>
-                        <p className="text-xs text-slate-500">
-                          {pc.serviceTier.name} ({pc.serviceTier.leadTime})
-                        </p>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        {pc.image && (
+                          <div className="relative w-14 h-14 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                            <Image
+                              src={pc.image}
+                              alt={pc.name}
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                            pc.isPrebuilt ? "bg-emerald-700 text-white" : "bg-zinc-900 text-white"
+                          }`}>
+                            {pc.isPrebuilt ? "Turnkey Pre-Built" : "Custom PC System"}
+                          </span>
+                          <h4 className="text-sm font-bold text-zinc-900 mt-1.5 truncate">{pc.name}</h4>
+                          <p className="text-xs text-slate-500">
+                            {pc.serviceTier.name} ({pc.serviceTier.leadTime})
+                          </p>
+                        </div>
                       </div>
                       <button
                         onClick={() => removeCustomPC(pc.id)}
-                        className="text-slate-400 hover:text-red-500 p-1"
+                        className="text-slate-400 hover:text-red-500 p-1 shrink-0"
                         aria-label="Remove PC"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -182,16 +198,16 @@ export function CartDrawer() {
 
                     <div className="text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200 space-y-1">
                       <div className="flex justify-between">
-                        <span>CPU:</span>
-                        <strong className="truncate max-w-[180px]">{pc.parts.cpu?.name || "None"}</strong>
+                        <span className="text-slate-500">CPU:</span>
+                        <strong className="truncate max-w-[180px] text-zinc-800">{pc.parts.cpu?.name || "Configured"}</strong>
                       </div>
                       <div className="flex justify-between">
-                        <span>GPU:</span>
-                        <strong className="truncate max-w-[180px]">{pc.parts.gpu?.name || "Integrated"}</strong>
+                        <span className="text-slate-500">GPU:</span>
+                        <strong className="truncate max-w-[180px] text-zinc-800">{pc.parts.gpu?.name || "Integrated"}</strong>
                       </div>
                       <div className="flex justify-between">
-                        <span>Memory:</span>
-                        <strong className="truncate max-w-[180px]">{pc.parts.ram?.name || "None"}</strong>
+                        <span className="text-slate-500">Memory:</span>
+                        <strong className="truncate max-w-[180px] text-zinc-800">{pc.parts.ram?.name || "Configured"}</strong>
                       </div>
                     </div>
 
@@ -208,8 +224,14 @@ export function CartDrawer() {
                     key={cartItem.id}
                     className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs"
                   >
-                    <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center p-1 shrink-0">
-                      <img src={cartItem.item.image} alt={cartItem.item.name} className="w-full h-full object-cover rounded" />
+                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden p-1 shrink-0">
+                      <Image
+                        src={cartItem.item.image}
+                        alt={cartItem.item.name}
+                        fill
+                        sizes="48px"
+                        className="object-contain p-1"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-xs font-bold text-zinc-900 truncate">{cartItem.item.name}</h4>

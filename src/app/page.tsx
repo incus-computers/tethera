@@ -13,7 +13,7 @@ import {
   MessageSquare,
   Plus,
 } from "lucide-react";
-import { MOCK_COMPONENTS, ComponentItem } from "../lib/data/mockHardware";
+import { MOCK_COMPONENTS, PREBUILT_SYSTEMS, ComponentItem } from "../lib/data/mockHardware";
 import { useCartStore } from "../lib/store/useCartStore";
 import { formatRupiah } from "../lib/utils/currency";
 import { WhatsAppInquiryButton } from "../components/whatsapp/WhatsAppInquiryButton";
@@ -22,7 +22,7 @@ import { PromotionalBanners } from "../components/marketing/PromotionalBanners";
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
-  const { addStandardItem } = useCartStore();
+  const { addStandardItem, addCustomPC, openCart } = useCartStore();
 
   const categories = [
     "All",
@@ -39,50 +39,37 @@ export default function HomePage() {
     (item) => activeCategory === "All" || item.category === activeCategory
   );
 
-  const prebuilts = [
-    {
-      id: "pb-1",
-      name: "Tethera Apex Ryzen 7 RTX 4080S",
-      sku: "TET-APEX-7800X3D",
-      cpu: "AMD Ryzen 7 7800X3D",
-      gpu: "GeForce RTX 4080 SUPER 16GB",
-      ram: "32GB DDR5-6000",
-      storage: "2TB NVMe PCIe 4.0",
-      cooling: "360mm ARGB Liquid AIO",
-      price: 2699,
-      image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=600&auto=format&fit=crop&q=80",
-      status: "In Stock at Flagship (Ready for Pickup in 60m)",
-    },
-    {
-      id: "pb-2",
-      name: "Tethera Kinetic Core i7 RTX 4070Ti",
-      sku: "TET-KIN-14700K",
-      cpu: "Intel Core i7-14700K",
-      gpu: "GeForce RTX 4070 Ti SUPER 16GB",
-      ram: "32GB DDR5-6000",
-      storage: "1TB NVMe PCIe 4.0",
-      cooling: "Noctua Dual Tower Air",
-      price: 2199,
-      image: "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=600&auto=format&fit=crop&q=80",
-      status: "In Stock at Flagship (Ready for Pickup in 60m)",
-    },
-    {
-      id: "pb-3",
-      name: "Tethera Minimalist White Workstation",
-      sku: "TET-MIN-7950X",
-      cpu: "AMD Ryzen 9 7950X 16-Core",
-      gpu: "GeForce RTX 4080 SUPER 16GB",
-      ram: "64GB DDR5-6000",
-      storage: "4TB NVMe RAID",
-      cooling: "Fractal North Chalk White",
-      price: 3199,
-      image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=600&auto=format&fit=crop&q=80",
-      status: "Built-to-Order (24h Express Assembly)",
-    },
-  ];
+  const prebuilts = PREBUILT_SYSTEMS.slice(0, 3);
+
+  const handleAddPrebuiltToCart = (pb: (typeof PREBUILT_SYSTEMS)[0]) => {
+    addCustomPC({
+      id: `pb-${pb.id}-${Date.now()}`,
+      name: pb.name,
+      parts: {
+        cpu: { name: pb.cpu } as any,
+        gpu: { name: pb.gpu } as any,
+        ram: { name: pb.ram } as any,
+        storage_primary: { name: pb.storage } as any,
+        cooler: { name: pb.cooling } as any,
+        case: { name: pb.chassis } as any,
+        psu: { name: pb.psu } as any,
+        os: { name: pb.os } as any,
+      },
+      serviceTier: {
+        name: "Standard 24h Burn-In Verification",
+        price: 0,
+        leadTime: "Ready in 60 Mins",
+      },
+      totalPrice: pb.price,
+      wattage: 750,
+      isPrebuilt: true,
+      image: pb.image,
+    });
+    openCart();
+  };
 
   return (
-    <div className="space-y-12 pb-12">
+    <div className="space-y-12 pb-12 w-full max-w-full overflow-x-hidden">
       {/* ========================================================================= */}
       {/* 1. MOVING SPONSOR BANNER (Infinite Logos Marquee) */}
       {/* ========================================================================= */}
@@ -138,7 +125,7 @@ export default function HomePage() {
               </div>
 
               {/* Guarantees Ribbon */}
-              <div className="grid grid-cols-3 gap-4 pt-6 border-t border-slate-200 text-xs text-slate-600">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-slate-200 text-xs text-slate-600">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>2-Yr Return-to-Base Warranty</span>
@@ -158,12 +145,15 @@ export default function HomePage() {
             <div className="lg:col-span-5">
               <div className="relative rounded-3xl bg-white p-3 shadow-xl border border-slate-200 overflow-hidden group">
                 <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-slate-100">
-                  <img
+                  <Image
                     src="https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80"
                     alt="Tethera Precision Custom Rig"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 42vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent pointer-events-none" />
                   
                   <div className="absolute bottom-4 left-4 right-4 text-white">
                     <div className="flex items-center gap-2">
@@ -213,12 +203,14 @@ export default function HomePage() {
               className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-xs tethera-card-hover flex flex-col group"
             >
               <Link href={`/products/${pb.id}`} className="relative h-48 bg-slate-100 overflow-hidden block">
-                <img
+                <Image
                   src={pb.image}
                   alt={pb.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <span className="absolute top-3 left-3 bg-zinc-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                <span className="absolute top-3 left-3 bg-zinc-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider z-10">
                   24h Stress Tested
                 </span>
               </Link>
@@ -257,12 +249,26 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="text-xl font-black text-zinc-900">{formatRupiah(pb.price)}</span>
                     <span className="text-[10px] text-slate-400 block -mt-1">incl. tax</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleAddPrebuiltToCart(pb)}
+                      className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 tactile-btn active:scale-95 shadow-2xs"
+                      title="Add to Cart"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add</span>
+                    </button>
+                    <Link
+                      href={`/products/${pb.id}`}
+                      className="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-zinc-800 rounded-lg text-xs font-bold transition-colors tactile-btn active:scale-95"
+                    >
+                      Specs
+                    </Link>
                     <WhatsAppInquiryButton
                       mode="product"
                       product={{
@@ -272,12 +278,6 @@ export default function HomePage() {
                         productUrl: typeof window !== "undefined" ? window.location.href : "https://tethera.com",
                       }}
                     />
-                    <Link
-                      href={`/products/${pb.id}`}
-                      className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors"
-                    >
-                      View Specs
-                    </Link>
                   </div>
                 </div>
               </div>
@@ -330,12 +330,14 @@ export default function HomePage() {
                   href={`/products/${item.id}`}
                   className="relative h-40 bg-slate-50 rounded-xl overflow-hidden mb-3 border border-slate-100 flex items-center justify-center p-2 block"
                 >
-                  <img
+                  <Image
                     src={item.image}
                     alt={item.name}
-                    className="max-h-full object-contain group-hover:scale-105 transition-transform duration-200"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    className="object-contain p-2 group-hover:scale-105 transition-transform duration-200"
                   />
-                  <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider bg-white/90 px-2 py-0.5 rounded shadow-2xs text-slate-700">
+                  <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 px-2 py-0.5 rounded shadow-2xs text-slate-700">
                     {item.brand}
                   </span>
                 </Link>

@@ -197,7 +197,7 @@ export function SponsorMarquee() {
   const marqueeItems = [...SPONSORS, ...SPONSORS];
 
   return (
-    <div className="w-full bg-slate-100/70 border-b border-slate-200 overflow-hidden relative group">
+    <div className="w-full max-w-full bg-slate-100/70 border-b border-slate-200 overflow-x-hidden relative group">
       <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between border-b border-slate-200/50">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
           <Award className="w-4 h-4 text-emerald-600" />
@@ -215,7 +215,7 @@ export function SponsorMarquee() {
       </div>
 
       {/* Marquee Track Container with gradient edge fades */}
-      <div className="relative py-3 overflow-hidden">
+      <div className="relative py-3 overflow-x-hidden w-full max-w-full">
         {/* Left Fade Gradient */}
         <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-slate-100/90 to-transparent z-10 pointer-events-none" />
         

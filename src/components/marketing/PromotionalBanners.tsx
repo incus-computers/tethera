@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ChevronLeft,
   ChevronRight,
@@ -242,7 +243,7 @@ export function PromotionalBanners() {
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-4 pt-6 pb-2">
+    <section className="max-w-7xl mx-auto px-4 pt-6 pb-2 w-full max-w-full overflow-x-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* ========================================================================= */}
         {/* MAIN PROMOTIONAL SLIDER (8 Cols on Desktop) */}
@@ -273,10 +274,12 @@ export function PromotionalBanners() {
                     >
                       {/* Supplier Image Asset */}
                       {slide.imageUrl && (
-                        <img
+                        <Image
                           src={slide.imageUrl}
                           alt={slide.title}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 66vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-700"
                         />
                       )}
 
@@ -304,7 +307,7 @@ export function PromotionalBanners() {
                           </div>
 
                           {/* Bottom Content Area */}
-                          <div className="relative z-10 space-y-2 max-w-xl pb-1 pr-32 sm:pr-36">
+                          <div className="relative z-10 space-y-2 max-w-xl pb-1 pr-24 sm:pr-36">
                             <h2 className="text-xl sm:text-3xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
                               {slide.title}
                             </h2>
@@ -402,7 +405,7 @@ export function PromotionalBanners() {
                     </div>
 
                     {/* Bottom Action Row */}
-                    <div className="pt-6 mt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 pr-32 sm:pr-36">
+                    <div className="pt-6 mt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 pr-24 sm:pr-36">
                       <div className="flex items-center gap-3">
                         <Link
                           href={slide.ctaLink}

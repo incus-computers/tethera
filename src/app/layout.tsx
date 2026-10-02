@@ -18,13 +18,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full bg-slate-50" suppressHydrationWarning>
-      <body className="min-h-full flex flex-col bg-slate-50 text-zinc-900 selection:bg-zinc-900 selection:text-white" suppressHydrationWarning>
+    <html lang="en" className="h-full bg-slate-50 overflow-x-hidden" suppressHydrationWarning>
+      <body className="min-h-full flex flex-col bg-slate-50 text-zinc-900 selection:bg-zinc-900 selection:text-white overflow-x-hidden w-full max-w-full" suppressHydrationWarning>
         {/* Persistent 3-Tier Navigation Header */}
         <PersistentHeader />
 
         {/* Page Main Content */}
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 w-full max-w-full overflow-x-hidden">{children}</main>
 
         {/* Global Floating WhatsApp Tech Consultation Widget */}
         <FloatingWhatsAppWidget
@@ -33,7 +33,7 @@ export default function RootLayout({
         />
 
         {/* Footer (Light Gray / White Aesthetic) */}
-        <footer className="bg-white border-t border-slate-200 mt-16">
+        <footer className="bg-white border-t border-slate-200 mt-16 w-full max-w-full overflow-x-hidden">
           <div className="max-w-7xl mx-auto px-4 py-12">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-200">
               {/* Brand Col */}

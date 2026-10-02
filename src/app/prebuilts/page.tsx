@@ -2,14 +2,42 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { PREBUILT_SYSTEMS } from "../../lib/data/mockHardware";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { formatRupiah } from "../../lib/utils/currency";
 import { WhatsAppInquiryButton } from "../../components/whatsapp/WhatsAppInquiryButton";
-import { ShieldCheck, ChevronRight, Store, ArrowRight, Cpu } from "lucide-react";
+import { ShieldCheck, ChevronRight, Store, ArrowRight, Cpu, Plus } from "lucide-react";
 
 export default function PrebuiltsPage() {
-  const { addCustomPC } = useCartStore();
+  const { addCustomPC, openCart } = useCartStore();
+
+  const handleAddToCart = (pb: (typeof PREBUILT_SYSTEMS)[0]) => {
+    addCustomPC({
+      id: `pb-${pb.id}-${Date.now()}`,
+      name: pb.name,
+      parts: {
+        cpu: { name: pb.cpu } as any,
+        gpu: { name: pb.gpu } as any,
+        ram: { name: pb.ram } as any,
+        storage_primary: { name: pb.storage } as any,
+        cooler: { name: pb.cooling } as any,
+        case: { name: pb.chassis } as any,
+        psu: { name: pb.psu } as any,
+        os: { name: pb.os } as any,
+      },
+      serviceTier: {
+        name: "Standard 24h Burn-In Verification",
+        price: 0,
+        leadTime: "Ready in 60 Mins",
+      },
+      totalPrice: pb.price,
+      wattage: 750,
+      isPrebuilt: true,
+      image: pb.image,
+    });
+    openCart();
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-10">
@@ -49,12 +77,14 @@ export default function PrebuiltsPage() {
           >
             <div>
               <Link href={`/products/${pb.id}`} className="relative h-56 bg-slate-100 overflow-hidden block">
-                <img
+                <Image
                   src={pb.image}
                   alt={pb.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <span className="absolute top-3 left-3 bg-zinc-900 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                <span className="absolute top-3 left-3 bg-zinc-900 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider z-10">
                   24h Stress Tested
                 </span>
               </Link>
@@ -88,7 +118,7 @@ export default function PrebuiltsPage() {
                   </div>
                 </div>
 
-                <div className="text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
+                <div className="mt-2 text-[11px] font-medium text-emerald-700 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
                   <span>{pb.status}</span>
                 </div>
@@ -96,13 +126,26 @@ export default function PrebuiltsPage() {
             </div>
 
             <div className="p-6 pt-0">
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-2xl font-black text-zinc-900">{formatRupiah(pb.price)}</div>
+                  <div className="text-xl font-black text-zinc-900">{formatRupiah(pb.price)}</div>
                   <span className="text-[10px] text-slate-400 block -mt-1">Tax Included</span>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleAddToCart(pb)}
+                    className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 tactile-btn active:scale-95"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add to Cart</span>
+                  </button>
+                  <Link
+                    href={`/products/${pb.id}`}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-zinc-800 rounded-xl text-xs font-bold transition-colors tactile-btn active:scale-95"
+                  >
+                    Specs
+                  </Link>
                   <WhatsAppInquiryButton
                     mode="product"
                     product={{
@@ -112,12 +155,6 @@ export default function PrebuiltsPage() {
                       productUrl: typeof window !== "undefined" ? window.location.href : "https://tethera.com",
                     }}
                   />
-                  <Link
-                    href={`/products/${pb.id}`}
-                    className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs tactile-btn active:scale-95"
-                  >
-                    View Specs
-                  </Link>
                 </div>
               </div>
             </div>
