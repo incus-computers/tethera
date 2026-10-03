@@ -191,8 +191,8 @@ export function PredictiveSearchDropdown() {
     <div ref={containerRef} className="static sm:relative w-full">
       {/* Search Input Bar */}
       <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none">
-          <Search className="w-4 h-4" />
+        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none">
+          <Search className="w-3.5 h-3.5" />
         </div>
 
         <input
@@ -209,35 +209,26 @@ export function PredictiveSearchDropdown() {
           role="combobox"
           aria-expanded={isOpen}
           aria-autocomplete="list"
-          className="w-full pl-10 pr-20 py-2 sm:py-2.5 bg-slate-100/90 dark:bg-zinc-900/90 hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 rounded-xl border border-slate-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 transition-all min-h-[44px] focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 shadow-inner"
+          className="w-full pl-8 pr-8 py-1.5 bg-slate-100/90 dark:bg-zinc-900/90 hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 rounded-lg sm:rounded-xl border border-slate-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 transition-all h-8 sm:h-9 focus:outline-none focus:ring-1 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 shadow-inner"
         />
 
-        {/* Right side controls: Clear button or shortcut pills */}
-        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          {query ? (
+        {/* Right side controls: Clear button only when query is typed */}
+        {query && (
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
             <button
               type="button"
               onClick={() => {
                 setQuery("");
                 inputRef.current?.focus();
               }}
-              className="p-1 rounded-lg text-slate-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-slate-200 dark:hover:bg-zinc-800 transition-colors"
+              className="p-1 rounded-md text-slate-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-slate-200 dark:hover:bg-zinc-800 transition-colors"
               aria-label="Clear search input"
               title="Clear search input"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
-          ) : (
-            <div className="hidden sm:flex items-center gap-1 pointer-events-none">
-              <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400 bg-white dark:bg-zinc-800 rounded border border-slate-200 dark:border-zinc-700 shadow-2xs">
-                ⌘K
-              </kbd>
-              <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400 bg-white dark:bg-zinc-800 rounded border border-slate-200 dark:border-zinc-700 shadow-2xs">
-                /
-              </kbd>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </form>
 
       {/* Autocomplete Dropdown Menu (No full-page popup / modal backdrop) */}
