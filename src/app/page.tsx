@@ -19,9 +19,12 @@ import { formatRupiah } from "../lib/utils/currency";
 import { WhatsAppInquiryButton } from "../components/whatsapp/WhatsAppInquiryButton";
 import { SponsorMarquee } from "../components/marketing/SponsorMarquee";
 import { PromotionalBanners } from "../components/marketing/PromotionalBanners";
+import { Pagination } from "../components/ui/Pagination";
 
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const { addStandardItem, addCustomPC, openCart } = useCartStore();
 
   const categories = [
@@ -38,6 +41,17 @@ export default function HomePage() {
   const filteredComponents = MOCK_COMPONENTS.filter(
     (item) => activeCategory === "All" || item.category === activeCategory
   );
+
+  const totalComponents = filteredComponents.length;
+  const paginatedComponents = filteredComponents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleCategoryChange = (cat: string) => {
+    setActiveCategory(cat);
+    setCurrentPage(1);
+  };
 
   const prebuilts = PREBUILT_SYSTEMS.slice(0, 3);
 
@@ -105,7 +119,7 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Link
                   href="/builder"
-                  className="px-6 py-3.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-2 uppercase tracking-wide"
+                  className="px-6 py-3.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-2 uppercase tracking-wide"
                 >
                   <Cpu className="w-4 h-4" />
                   <span>Open PC Builder</span>
@@ -142,7 +156,7 @@ export default function HomePage() {
             {/* Hero Right Visual Showcase */}
             <div className="lg:col-span-5">
               <div className="relative rounded-3xl bg-white dark:bg-zinc-900 p-3 shadow-xl border border-slate-200 dark:border-zinc-800 overflow-hidden group">
-                <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-zinc-800">
+                <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-zinc-800 item-frame">
                   <Image
                     src="https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80"
                     alt="Tethera Precision Custom Rig"
@@ -200,7 +214,7 @@ export default function HomePage() {
               key={pb.id}
               className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-xs tethera-card-hover flex flex-col group transition-colors"
             >
-              <Link href={`/products/${pb.id}`} className="relative h-48 bg-slate-100 dark:bg-zinc-800 overflow-hidden block">
+              <Link href={`/products/${pb.id}`} className="relative h-48 bg-slate-100 dark:bg-zinc-800 overflow-hidden block item-frame">
                 <Image
                   src={pb.image}
                   alt={pb.name}
@@ -208,7 +222,7 @@ export default function HomePage() {
                   sizes="(max-width: 768px) 100vw, 33vw"
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                <span className="absolute top-3 left-3 bg-zinc-900 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider z-10">
+                <span className="absolute top-3 left-3 bg-zinc-900 dark:bg-zinc-800 text-white dark:text-zinc-200 border border-transparent dark:border-zinc-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider z-10">
                   24h Stress Tested
                 </span>
               </Link>
@@ -255,7 +269,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleAddPrebuiltToCart(pb)}
-                      className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 tactile-btn active:scale-95 shadow-2xs"
+                      className="px-3 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 tactile-btn active:scale-95 shadow-2xs"
                       title="Add to Cart"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -303,10 +317,10 @@ export default function HomePage() {
             {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap tactile-btn ${
+                onClick={() => handleCategoryChange(cat)}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap tactile-btn min-h-[36px] ${
                   activeCategory === cat
-                    ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 shadow-xs"
+                    ? "bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white border border-transparent dark:border-zinc-700 shadow-xs"
                     : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800"
                 }`}
               >
@@ -318,7 +332,7 @@ export default function HomePage() {
 
         {/* Product Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {filteredComponents.map((item) => (
+          {paginatedComponents.map((item) => (
             <div
               key={`${activeCategory}-${item.id}`}
               className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group transition-colors"
@@ -326,7 +340,7 @@ export default function HomePage() {
               <div>
                 <Link
                   href={`/products/${item.id}`}
-                  className="relative h-40 bg-slate-50 dark:bg-zinc-800/80 rounded-xl overflow-hidden mb-3 border border-slate-100 dark:border-zinc-700/60 flex items-center justify-center p-2 block"
+                  className="relative h-40 bg-slate-50 dark:bg-zinc-800/80 rounded-xl overflow-hidden mb-3 border border-slate-100 dark:border-zinc-700/60 flex items-center justify-center p-2 block item-frame"
                 >
                   <Image
                     src={item.image}
@@ -335,7 +349,7 @@ export default function HomePage() {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     className="object-contain p-2 group-hover:scale-105 transition-transform duration-200"
                   />
-                  <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 dark:bg-zinc-900/90 px-2 py-0.5 rounded shadow-2xs text-slate-700 dark:text-zinc-300 border border-transparent dark:border-zinc-700">
+                  <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 dark:bg-zinc-800 px-2 py-0.5 rounded shadow-2xs text-slate-700 dark:text-zinc-200 border border-transparent dark:border-zinc-700">
                     {item.brand}
                   </span>
                 </Link>
@@ -368,7 +382,7 @@ export default function HomePage() {
                   </Link>
                   <button
                     onClick={() => addStandardItem(item)}
-                    className="p-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn"
+                    className="p-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn"
                     title="Add to Cart"
                     aria-label="Add to Cart"
                   >
@@ -380,11 +394,22 @@ export default function HomePage() {
           ))}
         </div>
 
+        {/* Catalog Pagination with 10, 20, 50 settings */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalComponents}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          scrollToId="components"
+          itemLabel="components"
+        />
+
         {/* View All Components CTA */}
-        <div className="text-center pt-4">
+        <div className="text-center pt-2">
           <Link
             href="/components"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-slate-300 dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-2xs"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-slate-300 dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-2xs min-h-[44px]"
           >
             <span>View All Components &amp; Hardware</span>
           </Link>

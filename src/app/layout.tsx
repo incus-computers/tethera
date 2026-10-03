@@ -24,8 +24,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var storedTheme = localStorage.getItem('tethera_theme');
-                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var storedTheme = null;
+                try { storedTheme = localStorage.getItem('tethera_theme'); } catch(e) {}
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                 if (storedTheme === 'dark' || (!storedTheme && prefersDark)) {
                   document.documentElement.classList.add('dark');
                 } else {

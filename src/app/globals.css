@@ -61,6 +61,38 @@ body {
   filter: brightness(0) invert(1) !important;
 }
 
+/* Ensure text boxes are gray with white text in dark mode */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+.dark textarea,
+.dark select {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+  border-color: #3F3F46 !important;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"])::placeholder,
+.dark textarea::placeholder {
+  color: #A1A1AA !important;
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):focus,
+.dark textarea:focus,
+.dark select:focus {
+  background-color: #27272A !important;
+  color: #FFFFFF !important;
+  border-color: #52525B !important;
+}
+
+/* Ensure all item frames and image boxes are solid dark gray with white text and clean borders in dark mode */
+.dark .item-frame,
+.dark [data-item-frame],
+.dark .product-image-frame,
+.dark .product-card-image,
+.dark [class*="item-frame"] {
+  background-color: #27272A !important;
+  border-color: #3F3F46 !important;
+}
+
 /* Custom sleek scrollbar for light theme */
 ::-webkit-scrollbar {
   width: 6px;

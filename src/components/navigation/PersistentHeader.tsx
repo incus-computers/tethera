@@ -274,17 +274,17 @@ export function PersistentHeader() {
             {/* Cart Trigger */}
             <button
               onClick={openCart}
-              className="relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 transition-all shadow-sm active:scale-98"
+              className="relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-zinc-100 border border-transparent dark:border-zinc-700 transition-all shadow-sm active:scale-98"
             >
               <ShoppingCart className="w-4 h-4" />
               <div className="text-left hidden sm:block">
-                <span className="text-[9px] text-slate-400 dark:text-zinc-500 uppercase tracking-wider block font-bold">
+                <span className="text-[9px] text-slate-400 dark:text-zinc-400 uppercase tracking-wider block font-bold">
                   Cart ({isMounted ? itemCount : 0})
                 </span>
                 <span className="text-xs font-black">{isMounted ? formatRupiah(subtotal) : formatRupiah(0)}</span>
               </div>
               {isMounted && itemCount > 0 && (
-                <span className="sm:hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 text-zinc-900 font-black text-[10px] flex items-center justify-center border-2 border-white dark:border-zinc-950">
+                <span className="sm:hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 text-zinc-900 font-black text-[10px] flex items-center justify-center border-2 border-white dark:border-zinc-900">
                   {itemCount}
                 </span>
               )}
@@ -301,62 +301,62 @@ export function PersistentHeader() {
         <div className="sm:hidden flex items-center gap-1.5 py-2 overflow-x-auto scrollbar-none w-full max-w-full">
           <Link
             href="/builder"
-            className="flex items-center gap-1 bg-zinc-900 text-white font-bold px-3 py-1.5 rounded-lg text-xs shrink-0 shadow-xs tactile-btn active:scale-95"
+            className="flex items-center gap-1 bg-zinc-900 dark:bg-zinc-800 text-white font-bold px-3 py-1.5 rounded-lg text-xs shrink-0 shadow-xs border border-transparent dark:border-zinc-700 tactile-btn active:scale-95"
           >
-            <Cpu className="w-3.5 h-3.5 text-zinc-300" />
+            <Cpu className="w-3.5 h-3.5 text-zinc-300 dark:text-emerald-400" />
             <span>PC Builder</span>
           </Link>
           <Link
             href="/prebuilts"
-            className="flex items-center gap-1 bg-emerald-50 text-emerald-800 font-bold px-3 py-1.5 rounded-lg text-xs shrink-0 border border-emerald-200 tactile-btn active:scale-95"
+            className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold px-3 py-1.5 rounded-lg text-xs shrink-0 border border-emerald-200 dark:border-emerald-800 tactile-btn active:scale-95"
           >
             <span>Pre-Builts</span>
           </Link>
           <Link
             href="/components/cpu"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             CPUs
           </Link>
           <Link
             href="/components/gpu"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             GPUs
           </Link>
           <Link
             href="/components/motherboards"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             Motherboards
           </Link>
           <Link
             href="/components/cooling"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             Cooling
           </Link>
           <Link
             href="/components/cases"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             Cases
           </Link>
           <Link
             href="/components/ram"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             RAM
           </Link>
           <Link
             href="/components/storage"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             SSDs
           </Link>
           <Link
             href="/components/power-supplies"
-            className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-zinc-700 text-xs font-semibold shrink-0 hover:bg-slate-100"
+            className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             PSUs
           </Link>
@@ -375,13 +375,13 @@ export function PersistentHeader() {
             >
               <button
                 onClick={() => setIsAllCategoriesOpen((prev) => !prev)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-xs tactile-btn active:scale-95 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-xs border border-transparent dark:border-zinc-700 tactile-btn active:scale-95 ${
                   isAllCategoriesOpen
-                    ? "bg-zinc-900 text-white ring-2 ring-zinc-900/20"
-                    : "bg-zinc-900 text-white hover:bg-zinc-800"
+                    ? "bg-zinc-900 dark:bg-zinc-800 text-white ring-2 ring-zinc-900/20 dark:ring-zinc-700"
+                    : "bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white"
                 }`}
               >
-                <LayoutGrid className="w-3.5 h-3.5 text-zinc-300" />
+                <LayoutGrid className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-300" />
                 <span>All Categories</span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
@@ -424,17 +424,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/cpu"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <Cpu className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>Processors (CPUs)</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           AMD Ryzen 7000/9000 & Intel Core 14th Gen
                         </p>
                       </div>
@@ -444,17 +444,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/gpu"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <Monitor className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>Graphics Cards (GPUs)</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           NVIDIA RTX 40-Series & AMD Radeon
                         </p>
                       </div>
@@ -464,17 +464,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/motherboards"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <Layers className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>Motherboards</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           Socket AM5 & LGA1700 DDR5 Boards
                         </p>
                       </div>
@@ -484,17 +484,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/cooling"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <Wind className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>Cooling Solutions</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           Liquid AIO 360mm & Dual-Tower Air Coolers
                         </p>
                       </div>
@@ -504,17 +504,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/cases"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <Box className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>PC Cases & Chassis</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           Panoramic Glass & High-Airflow Designs
                         </p>
                       </div>
@@ -524,17 +524,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/ram"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <CircuitBoard className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>Memory (RAM)</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           High-Speed DDR5 & DDR4 Performance Kits
                         </p>
                       </div>
@@ -544,17 +544,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/storage"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <HardDrive className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>Storage (SSDs)</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           PCIe 4.0 & 5.0 High-Speed NVMe M.2
                         </p>
                       </div>
@@ -564,17 +564,17 @@ export function PersistentHeader() {
                     <Link
                       href="/components/power-supplies"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group tactile-item"
+                      className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800 border border-transparent hover:border-slate-200 dark:hover:border-zinc-700 transition-all group tactile-item"
                     >
-                      <div className="p-2 rounded-lg bg-slate-100 text-zinc-700 group-hover:bg-zinc-900 group-hover:text-white transition-colors shrink-0">
+                      <div className="p-2 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 group-hover:bg-zinc-900 dark:group-hover:bg-zinc-700 group-hover:text-white dark:group-hover:text-white border border-slate-200/50 dark:border-zinc-700/60 transition-colors shrink-0">
                         <Zap className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-zinc-900 group-hover:text-zinc-700 flex items-center gap-1">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 flex items-center gap-1">
                           <span>Power Supplies (PSUs)</span>
                           <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1">
                           ATX 3.0 & 80+ Gold / Platinum Modular
                         </p>
                       </div>
@@ -582,18 +582,18 @@ export function PersistentHeader() {
                   </div>
 
                   {/* Bottom Featured Row: Prebuilts & PC Builder */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Link
                       href="/prebuilts"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/70 hover:bg-emerald-100/50 transition-colors tactile-item"
+                      className="flex items-center gap-3 p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/80 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/50 transition-colors tactile-item"
                     >
-                      <Monitor className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <Monitor className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <div>
-                        <div className="text-xs font-bold text-emerald-950">
+                        <div className="text-xs font-bold text-emerald-950 dark:text-emerald-200">
                           Pre-Built Systems
                         </div>
-                        <div className="text-[10px] text-emerald-800">
+                        <div className="text-[10px] text-emerald-800 dark:text-emerald-400">
                           24h Stress-Tested • Ready for 60m Pickup
                         </div>
                       </div>
@@ -602,14 +602,14 @@ export function PersistentHeader() {
                     <Link
                       href="/builder"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 transition-colors tactile-item"
+                      className="flex items-center gap-3 p-3 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200/80 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-700 transition-colors tactile-item"
                     >
-                      <Cpu className="w-4 h-4 text-zinc-800 shrink-0" />
+                      <Cpu className="w-4 h-4 text-zinc-800 dark:text-zinc-200 shrink-0" />
                       <div>
-                        <div className="text-xs font-bold text-zinc-900">
+                        <div className="text-xs font-bold text-zinc-900 dark:text-white">
                           Custom PC Configurator
                         </div>
-                        <div className="text-[10px] text-slate-500">
+                        <div className="text-[10px] text-slate-500 dark:text-zinc-400">
                           Real-time Socket & Clearance Matching
                         </div>
                       </div>
@@ -617,7 +617,7 @@ export function PersistentHeader() {
                   </div>
 
                   {/* Footnote */}
-                  <div className="mt-3 pt-2 text-center text-[10px] text-slate-400 border-t border-slate-100">
+                  <div className="mt-3 pt-2 text-center text-[10px] text-slate-400 dark:text-zinc-500 border-t border-slate-100 dark:border-zinc-800">
                     📍 Mangga Dua Mall Store: In-Stock Click & Collect ready in 60 minutes
                   </div>
                 </div>
@@ -675,7 +675,7 @@ export function PersistentHeader() {
           {/* PC Builder CTA */}
           <Link
             href="/builder"
-            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 font-bold px-4 py-2 rounded-lg transition-all shadow-sm shrink-0 uppercase tracking-tight my-1 ml-2"
+            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 font-bold px-4 py-2 rounded-lg transition-all shadow-sm shrink-0 uppercase tracking-tight my-1 ml-2"
           >
             <span className="text-xs">Custom PC Builder</span>
           </Link>
@@ -728,17 +728,17 @@ export function PersistentHeader() {
                   {isMounted && isAuthenticated && user ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center font-bold text-sm">
                           {user.fullName ? user.fullName[0].toUpperCase() : "U"}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
                             Logged In
                           </span>
-                          <span className="font-bold text-zinc-900 text-sm truncate block">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm truncate block">
                             {user.fullName || "Customer"}
                           </span>
-                          <span className="text-xs text-slate-500 truncate block">
+                          <span className="text-xs text-slate-500 dark:text-zinc-400 truncate block">
                             {user.email}
                           </span>
                         </div>
@@ -747,7 +747,7 @@ export function PersistentHeader() {
                         <Link
                           href="/account"
                           onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex-1 min-h-[44px] flex items-center justify-center py-2 px-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold text-center transition-colors tactile-btn"
+                          className="flex-1 min-h-[44px] flex items-center justify-center py-2 px-3 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold text-center transition-colors tactile-btn"
                         >
                           My Account
                         </Link>
@@ -757,7 +757,7 @@ export function PersistentHeader() {
                             logout();
                             setIsMobileMenuOpen(false);
                           }}
-                          className="min-h-[44px] py-2 px-3.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors tactile-btn"
+                          className="min-h-[44px] py-2 px-3.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors tactile-btn"
                           title="Sign Out"
                         >
                           <LogOut className="w-3.5 h-3.5" />
@@ -768,14 +768,14 @@ export function PersistentHeader() {
                   ) : (
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-slate-200/80 flex items-center justify-center text-zinc-700 shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-slate-200/80 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 shrink-0 item-frame">
                           <User className="w-5 h-5" />
                         </div>
                         <div className="min-w-0">
-                          <span className="text-xs font-bold text-zinc-900 block truncate">
+                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate">
                             Welcome to Tethera
                           </span>
-                          <span className="text-[11px] text-slate-500 block truncate">
+                          <span className="text-[11px] text-slate-500 dark:text-zinc-400 block truncate">
                             Sign in for order tracking
                           </span>
                         </div>
@@ -783,7 +783,7 @@ export function PersistentHeader() {
                       <Link
                         href="/auth"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="min-h-[44px] flex items-center justify-center py-2 px-4 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs tactile-btn shrink-0"
+                        className="min-h-[44px] flex items-center justify-center py-2 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-xs tactile-btn shrink-0"
                       >
                         Sign In
                       </Link>
@@ -841,21 +841,21 @@ export function PersistentHeader() {
                 </div>
 
                 {/* Primary Tools (Custom PC Configurator & Prebuilts) */}
-                <div className="p-4 border-b border-slate-100 space-y-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                <div className="p-4 border-b border-slate-100 dark:border-zinc-800 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 block">
                     Studio Tools &amp; Rigs
                   </span>
 
                   <Link
                     href="/builder"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-zinc-900 text-white transition-all shadow-sm group"
+                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white transition-all shadow-sm group border border-transparent dark:border-zinc-700"
                   >
                     <div className="flex items-center gap-2.5">
                       <Cpu className="w-4 h-4 text-emerald-400" />
                       <div>
                         <div className="text-xs font-black">Custom PC Builder</div>
-                        <div className="text-[10px] text-slate-300">Socket &amp; Clearance Engine</div>
+                        <div className="text-[10px] text-slate-300 dark:text-zinc-400">Socket &amp; Clearance Engine</div>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
@@ -864,13 +864,13 @@ export function PersistentHeader() {
                   <Link
                     href="/prebuilts"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 transition-all group"
+                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-200 transition-all group"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Monitor className="w-4 h-4 text-emerald-600" />
+                      <Monitor className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <div>
                         <div className="text-xs font-black">Pre-Built Performance PCs</div>
-                        <div className="text-[10px] text-emerald-700">24h Prime95 Benchmarked</div>
+                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400">24h Prime95 Benchmarked</div>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-0.5 transition-transform" />
@@ -880,13 +880,13 @@ export function PersistentHeader() {
                 {/* Hardware Categories List */}
                 <div className="p-4 space-y-1">
                   <div className="flex items-center justify-between pb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
                       Hardware Categories
                     </span>
                     <Link
                       href="/components"
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className="text-[11px] font-bold text-emerald-700 hover:underline"
+                      className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
                     >
                       Master Catalog
                     </Link>
@@ -895,72 +895,88 @@ export function PersistentHeader() {
                   <Link
                     href="/components/cpu"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <Cpu className="w-4 h-4 text-slate-500" />
-                    <span>Processors (CPUs)</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <Cpu className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">Processors (CPUs)</span>
                   </Link>
                   <Link
                     href="/components/gpu"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <Monitor className="w-4 h-4 text-slate-500" />
-                    <span>Graphics Cards (GPUs)</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <Monitor className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">Graphics Cards (GPUs)</span>
                   </Link>
                   <Link
                     href="/components/motherboards"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <Layers className="w-4 h-4 text-slate-500" />
-                    <span>Motherboards</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <Layers className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">Motherboards</span>
                   </Link>
                   <Link
                     href="/components/cooling"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <Wind className="w-4 h-4 text-slate-500" />
-                    <span>Cooling Solutions</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <Wind className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">Cooling Solutions</span>
                   </Link>
                   <Link
                     href="/components/cases"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <Box className="w-4 h-4 text-slate-500" />
-                    <span>PC Cases &amp; Chassis</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <Box className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">PC Cases &amp; Chassis</span>
                   </Link>
                   <Link
                     href="/components/ram"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <CircuitBoard className="w-4 h-4 text-slate-500" />
-                    <span>Memory (RAM)</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <CircuitBoard className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">Memory (RAM)</span>
                   </Link>
                   <Link
                     href="/components/storage"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <HardDrive className="w-4 h-4 text-slate-500" />
-                    <span>Storage (SSDs)</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <HardDrive className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">Storage (SSDs)</span>
                   </Link>
                   <Link
                     href="/components/power-supplies"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-100 text-xs font-semibold text-zinc-800 transition-colors"
+                    className="min-h-[44px] flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-xs font-bold text-zinc-900 dark:text-white transition-colors group"
                   >
-                    <Zap className="w-4 h-4 text-slate-500" />
-                    <span>Power Supplies (PSUs)</span>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
+                      <Zap className="w-4 h-4" />
+                    </div>
+                    <span className="text-zinc-900 dark:text-white">Power Supplies (PSUs)</span>
                   </Link>
                 </div>
               </div>
 
               {/* Drawer Bottom Support Contact */}
-              <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2.5">
+              <div className="p-4 bg-slate-50 dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800 space-y-2.5">
                 <a
                   href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
                   target="_blank"
@@ -970,7 +986,7 @@ export function PersistentHeader() {
                   <MessageSquare className="w-4 h-4" />
                   <span>WhatsApp Tech Consultation</span>
                 </a>
-                <div className="text-[11px] text-slate-500 text-center">
+                <div className="text-[11px] text-slate-500 dark:text-zinc-400 text-center">
                   Direct Line: (021) 612-8836 • Mon-Sat 09:00 to 18:00 WIB
                 </div>
               </div>

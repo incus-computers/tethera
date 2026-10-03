@@ -330,7 +330,7 @@ export function PromotionalBanners() {
                             )}
                             {slide.ctaText && (
                               <div className="pt-2">
-                                <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-100 text-zinc-900 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md group-hover:translate-x-0.5">
+                                <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md group-hover:translate-x-0.5">
                                   <span>{slide.ctaText}</span>
                                   <ArrowRight className="w-3.5 h-3.5" />
                                 </span>
@@ -348,11 +348,11 @@ export function PromotionalBanners() {
                   <div
                     className={`w-full h-full min-h-[340px] sm:min-h-[360px] p-6 sm:p-8 flex flex-col justify-between bg-gradient-to-br ${
                       slide.bgGradient || "from-slate-50 via-white to-slate-100"
-                    } relative overflow-hidden`}
+                    } dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 relative overflow-hidden transition-colors`}
                   >
                     {/* Decorative watermark */}
-                    <div className="absolute right-4 -bottom-8 pointer-events-none opacity-[0.04] select-none">
-                      <span className="text-9xl font-black text-zinc-900 tracking-tighter">
+                    <div className="absolute right-4 -bottom-8 pointer-events-none opacity-[0.04] dark:opacity-[0.03] select-none">
+                      <span className="text-9xl font-black text-zinc-900 dark:text-zinc-100 tracking-tighter">
                         TETHERA
                       </span>
                     </div>
@@ -371,18 +371,18 @@ export function PromotionalBanners() {
                             {slide.badgeType === "flagship" && <Clock className="w-3.5 h-3.5" />}
                             <span>{slide.badge}</span>
                           </span>
-                          <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline-block">
+                          <span className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400 hidden sm:inline-block">
                             Active Promotion
                           </span>
                         </div>
                       </div>
 
                       {/* Banner Main Title & Highlight */}
-                      <h2 className="text-xl sm:text-3xl font-black text-zinc-900 tracking-tight leading-tight">
+                      <h2 className="text-xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">
                         {slide.title}
                       </h2>
                       {slide.highlight && (
-                        <div className="text-xs sm:text-sm font-bold text-zinc-700 mt-1 flex items-center gap-1.5">
+                        <div className="text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-1 flex items-center gap-1.5">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                           <span>{slide.highlight}</span>
                         </div>
@@ -390,26 +390,26 @@ export function PromotionalBanners() {
 
                       {/* Banner Description */}
                       {slide.description && (
-                        <p className="text-xs sm:text-sm text-slate-600 mt-2.5 max-w-2xl leading-relaxed">
+                        <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 mt-2.5 max-w-2xl leading-relaxed">
                           {slide.description}
                         </p>
                       )}
 
                       {/* Benefit perk pill */}
                       {slide.perk && (
-                        <div className="mt-3.5 inline-flex items-center gap-2 px-3 py-1.5 bg-white/90 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <div className="mt-3.5 inline-flex items-center gap-2 px-3 py-1.5 bg-white/90 dark:bg-zinc-800/90 border border-slate-200/80 dark:border-zinc-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-200 shadow-2xs">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span>{slide.perk}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Bottom Action Row */}
-                    <div className="pt-6 mt-4 border-t border-slate-200/60 flex items-center justify-between gap-3 pr-24 sm:pr-36">
+                    <div className="pt-6 mt-4 border-t border-slate-200/60 dark:border-zinc-800 flex items-center justify-between gap-3 pr-24 sm:pr-36">
                       <div className="flex items-center gap-3">
                         <Link
                           href={slide.ctaLink}
-                          className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-xs flex items-center gap-2 uppercase tracking-wide group"
+                          className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-xs flex items-center gap-2 uppercase tracking-wide group"
                         >
                           <span>{slide.ctaText || "Explore Details"}</span>
                           <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -418,7 +418,7 @@ export function PromotionalBanners() {
                         {slide.secondaryCtaText && slide.secondaryCtaLink && (
                           <Link
                             href={slide.secondaryCtaLink}
-                            className="px-4 py-2.5 bg-white hover:bg-slate-50 text-zinc-800 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs hidden sm:inline-flex"
+                            className="px-4 py-2.5 bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs hidden sm:inline-flex"
                           >
                             {slide.secondaryCtaText}
                           </Link>
@@ -432,10 +432,10 @@ export function PromotionalBanners() {
           </div>
 
           {/* Fixed Floating Navigation Controls (Persistent across all slides) */}
-          <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 flex items-center gap-2 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-slate-200/90 shadow-md">
+          <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 flex items-center gap-2 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-md">
             <button
               onClick={prevSlide}
-              className="p-1.5 rounded-xl hover:bg-slate-100 text-zinc-700 transition-colors"
+              className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
               aria-label="Previous promotion"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -449,7 +449,7 @@ export function PromotionalBanners() {
                   onClick={() => setCurrentSlide(idx)}
                   aria-label={`Go to slide ${idx + 1}`}
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    currentSlide === idx ? "w-6 bg-zinc-900" : "w-2 bg-slate-300 hover:bg-slate-400"
+                    currentSlide === idx ? "w-6 bg-zinc-900 dark:bg-zinc-200" : "w-2 bg-slate-300 dark:bg-zinc-700 hover:bg-slate-400 dark:hover:bg-zinc-600"
                   }`}
                 />
               ))}
@@ -457,7 +457,7 @@ export function PromotionalBanners() {
 
             <button
               onClick={nextSlide}
-              className="p-1.5 rounded-xl hover:bg-slate-100 text-zinc-700 transition-colors"
+              className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
               aria-label="Next promotion"
             >
               <ChevronRight className="w-4 h-4" />
@@ -470,29 +470,29 @@ export function PromotionalBanners() {
         {/* ========================================================================= */}
         <div className="lg:col-span-4 flex flex-col gap-4 justify-between">
           {/* Tile 1: 60-Minute Click & Collect Guarantee */}
-          <div className="flex-1 bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
+          <div className="flex-1 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
                   Ready in 60 Mins
                 </span>
-                <Clock className="w-4 h-4 text-emerald-600" />
+                <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <h3 className="text-sm sm:text-base font-bold text-zinc-900 group-hover:text-zinc-700 transition-colors">
+              <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                 Flagship In-Store Pick-Up
               </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                 Order before 4 PM for 60-minute pickup at our Mangga Dua Mall Store (Lt. 3 No. 36). 4-digit pickup code sent via WhatsApp and Email.
               </p>
             </div>
-            <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+            <div className="pt-3 mt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
                 <span>Express Counter Open</span>
               </span>
               <Link
                 href="/components"
-                className="text-xs font-bold text-zinc-900 group-hover:text-emerald-700 flex items-center gap-1 transition-colors"
+                className="text-xs font-bold text-zinc-900 dark:text-zinc-200 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 flex items-center gap-1 transition-colors"
               >
                 <span>Stock</span>
                 <ArrowRight className="w-3 h-3" />
@@ -501,28 +501,28 @@ export function PromotionalBanners() {
           </div>
 
           {/* Tile 2: WhatsApp Build Tech Support */}
-          <div className="flex-1 bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
+          <div className="flex-1 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-5 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between group">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-md border border-slate-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-zinc-700">
                   Direct Tech Line
                 </span>
                 <MessageSquare className="w-4 h-4 text-emerald-500" />
               </div>
-              <h3 className="text-sm sm:text-base font-bold text-zinc-900 group-hover:text-zinc-700 transition-colors">
+              <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                 Instant WhatsApp Consultation
               </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                 Have questions about socket compatibility or GPU clearances? Chat live with certified Tethera PC architects.
               </p>
             </div>
-            <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-slate-500">+62 812-3456-7890</span>
+            <div className="pt-3 mt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+              <span className="text-[11px] font-mono text-slate-500 dark:text-zinc-400">+62 812-3456-7890</span>
               <a
                 href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'd%20like%20to%20consult%20about%20a%20PC%20build."
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 transition-colors"
+                className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 flex items-center gap-1 transition-colors"
               >
                 <span>Chat Now</span>
                 <ArrowRight className="w-3 h-3" />

@@ -161,7 +161,7 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1 rounded-full whitespace-nowrap font-medium transition-all ${
                 selectedCategory === cat
-                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 shadow-sm"
+                  ? "bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white border border-transparent dark:border-zinc-700 shadow-sm"
                   : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800"
               }`}
             >
@@ -191,7 +191,7 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
                     onClick={onClose}
                     className="flex items-center gap-3 min-w-0 flex-1 group/item"
                   >
-                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0">
+                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0 item-frame">
                       <Image
                         src={pb.image}
                         alt={pb.name}
@@ -227,7 +227,7 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
                     </div>
                     <button
                       onClick={() => handleAddPrebuilt(pb)}
-                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
+                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add</span>
@@ -247,7 +247,7 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
                     onClick={onClose}
                     className="flex items-center gap-3 min-w-0 flex-1 group/item"
                   >
-                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0">
+                    <div className="relative w-12 h-12 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0 item-frame">
                       <Image
                         src={item.image}
                         alt={item.name}
@@ -289,7 +289,7 @@ export function PredictiveSearchModal({ isOpen, onClose }: PredictiveSearchModal
                         addStandardItem(item);
                         onClose();
                       }}
-                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
+                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1 tactile-btn active:scale-95"
                     >
                       <span>Add</span>
                       <ArrowRight className="w-3.5 h-3.5" />

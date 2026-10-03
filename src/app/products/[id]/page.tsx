@@ -46,13 +46,13 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-24 text-center">
-        <h1 className="text-2xl font-black text-zinc-900">Product Not Found</h1>
-        <p className="text-sm text-slate-500 mt-2">
+        <h1 className="text-2xl font-black text-zinc-900 dark:text-zinc-100">Product Not Found</h1>
+        <p className="text-sm text-slate-500 dark:text-zinc-400 mt-2">
           The hardware component or system you requested is unavailable or has been archived.
         </p>
         <Link
           href="/components"
-          className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-zinc-900 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 transition-colors"
+          className="inline-flex items-center gap-2 mt-6 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs font-bold transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Browse All Components</span>
@@ -121,17 +121,17 @@ export default function ProductDetailPage() {
       {/* BREADCRUMB TRAIL */}
       {/* ========================================================================= */}
       <nav className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-        <Link href="/" className="hover:text-zinc-900 transition-colors">
+        <Link href="/" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
           Home
         </Link>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-        <Link href="/components" className="hover:text-zinc-900 transition-colors">
+        <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
+        <Link href="/components" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
           Components
         </Link>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-        <span className="text-slate-600">{product.category}</span>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-        <span className="text-zinc-900 font-bold truncate max-w-xs">{product.name}</span>
+        <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
+        <span className="text-slate-600 dark:text-zinc-400">{product.category}</span>
+        <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
+        <span className="text-zinc-900 dark:text-zinc-100 font-bold truncate max-w-xs">{product.name}</span>
       </nav>
 
       {/* ========================================================================= */}
@@ -140,7 +140,7 @@ export default function ProductDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         {/* Left Column: Product Visuals */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="relative rounded-3xl bg-white border border-slate-200 p-8 flex items-center justify-center min-h-[380px] sm:min-h-[460px] shadow-xs overflow-hidden">
+          <div className="relative rounded-3xl bg-slate-100/90 dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700 p-8 flex items-center justify-center min-h-[380px] sm:min-h-[460px] shadow-xs overflow-hidden item-frame">
             <Image
               src={product.image}
               alt={product.name}
@@ -151,16 +151,16 @@ export default function ProductDetailPage() {
             />
 
             <div className="absolute top-4 left-4 flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-zinc-900 text-white px-2.5 py-1 rounded-md">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-zinc-900 dark:bg-zinc-800 text-white px-2.5 py-1 rounded-md border border-transparent dark:border-zinc-700">
                 {product.brand}
               </span>
-              <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
+              <span className="text-[10px] font-mono text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded border border-slate-200 dark:border-zinc-700">
                 SKU: {product.sku}
               </span>
             </div>
 
             <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-xs">
-              <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full font-bold">
+              <span className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1 rounded-full font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-600" />
                 In Stock at Flagship Experience Store ({product.stockCount} Available)
               </span>
@@ -171,39 +171,39 @@ export default function ProductDetailPage() {
         {/* Right Column: Details & Fulfillment */}
         <div className="lg:col-span-6 space-y-6">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-zinc-400 uppercase tracking-widest">
               <span>{product.brand}</span>
               <span>•</span>
               <span>{product.category}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight mt-1 leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight mt-1 leading-tight">
               {product.name}
             </h1>
-            <p className="text-xs text-slate-400 font-mono mt-1">Manufacturer Part Number: {product.sku}</p>
+            <p className="text-xs text-slate-400 dark:text-zinc-500 font-mono mt-1">Manufacturer Part Number: {product.sku}</p>
           </div>
 
           {/* Pricing Row */}
-          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-baseline justify-between">
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-2xs flex items-baseline justify-between">
             <div>
-              <div className="text-3xl sm:text-4xl font-black text-zinc-900">{formatRupiah(product.price)}</div>
-              <span className="text-xs text-slate-400 font-semibold">Tax included • Official Invoice Provided</span>
+              <div className="text-3xl sm:text-4xl font-black text-zinc-900 dark:text-white">{formatRupiah(product.price)}</div>
+              <span className="text-xs text-slate-400 dark:text-zinc-500 font-semibold">Tax included • Official Invoice Provided</span>
             </div>
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-800">
+                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>2-Year Comprehensive Warranty</span>
               </span>
             </div>
           </div>
 
           {/* Omnichannel Click & Collect Hub Status */}
-          <div className="rounded-2xl bg-slate-50/80 border border-slate-200 p-5 space-y-3">
+          <div className="rounded-2xl bg-slate-50/80 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Store className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Omnichannel Fulfillment Options</span>
               </span>
-              <span className="text-[11px] font-bold text-emerald-600">● Live Store Inventory</span>
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">● Live Store Inventory</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -212,15 +212,15 @@ export default function ProductDetailPage() {
                 onClick={() => setFulfillmentMethod("click_and_collect")}
                 className={`p-3 rounded-xl border text-left text-xs transition-all flex flex-col gap-1 ${
                   fulfillmentMethod === "click_and_collect"
-                    ? "bg-white border-zinc-900 ring-1 ring-zinc-900 shadow-xs"
-                    : "bg-slate-100/70 border-slate-200 text-slate-600 hover:bg-white"
+                    ? "bg-white dark:bg-zinc-800 border-zinc-900 dark:border-zinc-600 ring-1 ring-zinc-900 dark:ring-zinc-600 shadow-xs"
+                    : "bg-slate-100/70 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800"
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-zinc-900">
-                  <Store className="w-3.5 h-3.5 text-emerald-600" />
+                <div className="flex items-center gap-1.5 font-bold text-zinc-900 dark:text-zinc-100">
+                  <Store className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Click &amp; Collect (FREE)</span>
                 </div>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-zinc-400">
                   Ready in <strong>60 Mins</strong> at Mangga Dua Store
                 </span>
               </button>
@@ -230,17 +230,17 @@ export default function ProductDetailPage() {
                 onClick={() => setFulfillmentMethod("delivery")}
                 className={`p-3 rounded-xl border text-left text-xs transition-all flex flex-col gap-1 ${
                   fulfillmentMethod === "delivery"
-                    ? "bg-white border-zinc-900 ring-1 ring-zinc-900 shadow-xs"
-                    : "bg-slate-100/70 border-slate-200 text-slate-600 hover:bg-white"
+                    ? "bg-white dark:bg-zinc-800 border-zinc-900 dark:border-zinc-600 ring-1 ring-zinc-900 dark:ring-zinc-600 shadow-xs"
+                    : "bg-slate-100/70 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800"
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-bold text-zinc-900">
-                  <Truck className="w-3.5 h-3.5 text-zinc-800" />
+                <div className="flex items-center gap-1.5 font-bold text-zinc-900 dark:text-zinc-100">
+                  <Truck className="w-3.5 h-3.5 text-zinc-800 dark:text-zinc-200" />
                   <span>
                     Instant Courier {selectedRate ? `(${formatRupiah(selectedRate.price)})` : "(Gojek / Grab)"}
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-zinc-400">
                   {selectedRate
                     ? `${selectedRate.courierName} • ${selectedRate.etd}`
                     : "Calculate live rates by distance"}
@@ -263,7 +263,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200 flex items-center justify-between">
+            <div className="text-[11px] text-slate-500 dark:text-zinc-400 pt-1 border-t border-slate-200 dark:border-zinc-800 flex items-center justify-between">
               <span>📍 Store: Mangga Dua Mall Lt. 3 No. 36 (Open til 6:00 PM)</span>
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 onClick={handleAddToCart}
-                className="py-3.5 px-6 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm flex items-center justify-center gap-2"
+                className="py-3.5 px-6 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-sm flex items-center justify-center gap-2"
               >
                 <ShoppingCart className="w-4 h-4" />
                 <span>Add to Shopping Cart</span>
@@ -282,9 +282,9 @@ export default function ProductDetailPage() {
               {isComponent && (
                 <button
                   onClick={handleConfigureInBuilder}
-                  className="py-3.5 px-6 bg-white hover:bg-slate-50 text-zinc-900 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs flex items-center justify-center gap-2"
+                  className="py-3.5 px-6 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 border border-slate-300 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs flex items-center justify-center gap-2"
                 >
-                  <Layers className="w-4 h-4 text-zinc-700" />
+                  <Layers className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                   <span>Use in PC Builder</span>
                 </button>
               )}
@@ -308,12 +308,12 @@ export default function ProductDetailPage() {
       {/* ========================================================================= */}
       {/* PRODUCT OVERVIEW & ARCHITECTURE DESCRIPTION (BEFORE SPECIFICATIONS) */}
       {/* ========================================================================= */}
-      <section className="pt-8 border-t border-slate-200 space-y-6">
+      <section className="pt-8 border-t border-slate-200 dark:border-zinc-800 space-y-6">
         <div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">
+          <span className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest block mb-1">
             Architecture &amp; Design
           </span>
-          <h2 className="text-xl font-black text-zinc-900 tracking-tight">
+          <h2 className="text-xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
             Detailed Overview &amp; Highlights
           </h2>
         </div>
@@ -321,37 +321,37 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Main Narrative Column */}
           <div className="lg:col-span-8 space-y-4">
-            <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 border-b border-slate-100 pb-3">
-                <FileText className="w-4 h-4 text-emerald-600" />
+            <div className="p-6 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 dark:text-zinc-100 border-b border-slate-100 dark:border-zinc-800 pb-3">
+                <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Product Description</span>
               </div>
 
               {/* Lead Summary */}
-              <p className="text-sm sm:text-base font-semibold text-zinc-900 leading-relaxed">
+              <p className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-relaxed">
                 {overviewData.summary}
               </p>
 
               {/* Detailed Breakdown Paragraphs */}
               {overviewData.paragraphs.map((para, i) => (
-                <p key={i} className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <p key={i} className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
                   {para}
                 </p>
               ))}
 
               {/* Key Highlights Grid */}
               {overviewData.highlights.length > 0 && (
-                <div className="pt-3 border-t border-slate-100">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 mb-3">
+                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100 mb-3">
                     Architectural & Engineering Highlights
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {overviewData.highlights.map((highlight, idx) => (
                       <div
                         key={idx}
-                        className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50/80 p-3 rounded-xl border border-slate-200/80"
+                        className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-zinc-200 bg-slate-50/80 dark:bg-zinc-800/80 p-3 rounded-xl border border-slate-200/80 dark:border-zinc-700/80"
                       >
-                        <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                         <span className="font-medium">{highlight}</span>
                       </div>
                     ))}
@@ -363,7 +363,7 @@ export default function ProductDetailPage() {
 
           {/* Guarantee & Authenticity Sidebar */}
           <div className="lg:col-span-4 space-y-4">
-            <div className="p-5 bg-zinc-900 rounded-2xl text-white shadow-md space-y-4">
+            <div className="p-5 bg-zinc-900 rounded-2xl text-white shadow-md space-y-4 border border-zinc-800">
               <div className="flex items-center gap-2 text-emerald-400 text-xs font-black uppercase tracking-wider">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Hardware Quality Guarantee</span>
@@ -397,30 +397,30 @@ export default function ProductDetailPage() {
       {/* ========================================================================= */}
       {/* TECHNICAL SPECIFICATIONS & COMPATIBILITY GUIDE */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8 border-t border-slate-200">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8 border-t border-slate-200 dark:border-zinc-800">
         <div className="lg:col-span-8 space-y-6">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
               Hardware Architecture
             </span>
-            <h2 className="text-xl font-bold text-zinc-900 tracking-tight mt-0.5">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight mt-0.5">
               Technical Specifications
             </h2>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs divide-y divide-slate-100">
+          <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900 shadow-2xs divide-y divide-slate-100 dark:divide-zinc-800">
             {/* Standard specs from item */}
             <div className="grid grid-cols-3 py-3 px-4 text-xs">
-              <span className="font-semibold text-slate-500">Manufacturer</span>
-              <span className="col-span-2 font-bold text-zinc-900">{product.brand}</span>
+              <span className="font-semibold text-slate-500 dark:text-zinc-400">Manufacturer</span>
+              <span className="col-span-2 font-bold text-zinc-900 dark:text-zinc-100">{product.brand}</span>
             </div>
-            <div className="grid grid-cols-3 py-3 px-4 text-xs bg-slate-50/50">
-              <span className="font-semibold text-slate-500">Product SKU</span>
-              <span className="col-span-2 font-mono text-zinc-900">{product.sku}</span>
+            <div className="grid grid-cols-3 py-3 px-4 text-xs bg-slate-50/50 dark:bg-zinc-800/40">
+              <span className="font-semibold text-slate-500 dark:text-zinc-400">Product SKU</span>
+              <span className="col-span-2 font-mono text-zinc-900 dark:text-zinc-100">{product.sku}</span>
             </div>
             <div className="grid grid-cols-3 py-3 px-4 text-xs">
-              <span className="font-semibold text-slate-500">Hardware Category</span>
-              <span className="col-span-2 font-medium text-zinc-800">{product.category}</span>
+              <span className="font-semibold text-slate-500 dark:text-zinc-400">Hardware Category</span>
+              <span className="col-span-2 font-medium text-zinc-800 dark:text-zinc-200">{product.category}</span>
             </div>
 
             {/* Dynamic Specs based on product.specs */}
@@ -434,10 +434,10 @@ export default function ProductDetailPage() {
                 return (
                   <div
                     key={key}
-                    className={`grid grid-cols-3 py-3 px-4 text-xs ${idx % 2 === 0 ? "bg-slate-50/50" : ""}`}
+                    className={`grid grid-cols-3 py-3 px-4 text-xs ${idx % 2 === 0 ? "bg-slate-50/50 dark:bg-zinc-800/40" : ""}`}
                   >
-                    <span className="font-semibold text-slate-500">{formattedKey}</span>
-                    <span className="col-span-2 font-bold text-zinc-900">
+                    <span className="font-semibold text-slate-500 dark:text-zinc-400">{formattedKey}</span>
+                    <span className="col-span-2 font-bold text-zinc-900 dark:text-zinc-100">
                       {val.toString()} {key.toLowerCase().includes("watt") ? "Watts" : ""}
                     </span>
                   </div>
@@ -450,22 +450,22 @@ export default function ProductDetailPage() {
               Object.entries((product as any).specs).map(([k, v], idx) => (
                 <div
                   key={k}
-                  className={`grid grid-cols-3 py-3 px-4 text-xs ${idx % 2 === 0 ? "bg-slate-50/50" : ""}`}
+                  className={`grid grid-cols-3 py-3 px-4 text-xs ${idx % 2 === 0 ? "bg-slate-50/50 dark:bg-zinc-800/40" : ""}`}
                 >
-                  <span className="font-semibold text-slate-500">{k}</span>
-                  <span className="col-span-2 font-bold text-zinc-900">{v as string}</span>
+                  <span className="font-semibold text-slate-500 dark:text-zinc-400">{k}</span>
+                  <span className="col-span-2 font-bold text-zinc-900 dark:text-zinc-100">{v as string}</span>
                 </div>
               ))}
 
             <div className="grid grid-cols-3 py-3 px-4 text-xs">
-              <span className="font-semibold text-slate-500">Warranty Term</span>
-              <span className="col-span-2 font-medium text-emerald-800">
+              <span className="font-semibold text-slate-500 dark:text-zinc-400">Warranty Term</span>
+              <span className="col-span-2 font-medium text-emerald-800 dark:text-emerald-400">
                 24 Months Return-To-Base Precision Care
               </span>
             </div>
-            <div className="grid grid-cols-3 py-3 px-4 text-xs bg-slate-50/50">
-              <span className="font-semibold text-slate-500">Warehouse Location</span>
-              <span className="col-span-2 text-slate-600 font-medium">
+            <div className="grid grid-cols-3 py-3 px-4 text-xs bg-slate-50/50 dark:bg-zinc-800/40">
+              <span className="font-semibold text-slate-500 dark:text-zinc-400">Warehouse Location</span>
+              <span className="col-span-2 text-slate-600 dark:text-zinc-300 font-medium">
                 Flagship Store Aisle 3 / Holding Bin B-12
               </span>
             </div>
@@ -474,17 +474,17 @@ export default function ProductDetailPage() {
 
         {/* Right Info Box */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 uppercase tracking-wider">
-              <Info className="w-4 h-4 text-zinc-700" />
+          <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-2xs space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
+              <Info className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
               <span>Compatibility & Fitment Notes</span>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
               All components sold by Tethera are factory-sealed brand new stock. If you are ordering for self-assembly, verify motherboards, cooling clearance, and power supply rating prior to assembly.
             </p>
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-              <div className="font-bold text-zinc-900">Need Verification?</div>
-              <p className="text-[11px] text-slate-500">
+            <div className="p-3 bg-slate-50 dark:bg-zinc-800/80 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs text-slate-600 dark:text-zinc-300 space-y-1">
+              <div className="font-bold text-zinc-900 dark:text-zinc-100">Need Verification?</div>
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                 Our technicians can verify your parts list on WhatsApp prior to ordering.
               </p>
             </div>
@@ -495,12 +495,12 @@ export default function ProductDetailPage() {
       {/* ========================================================================= */}
       {/* RELATED / SUGGESTED PAIRINGS */}
       {/* ========================================================================= */}
-      <div className="pt-8 border-t border-slate-200 space-y-6">
+      <div className="pt-8 border-t border-slate-200 dark:border-zinc-800 space-y-6">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
             Suggested Pairings
           </span>
-          <h2 className="text-xl font-bold text-zinc-900 tracking-tight mt-0.5">
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight mt-0.5">
             Matching Hardware & Components
           </h2>
         </div>
@@ -510,10 +510,10 @@ export default function ProductDetailPage() {
             <Link
               key={item.id}
               href={`/products/${item.id}`}
-              className="rounded-2xl bg-white border border-slate-200 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group"
+              className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group"
             >
               <div>
-                <div className="relative h-36 bg-slate-50 rounded-xl overflow-hidden mb-3 border border-slate-100 flex items-center justify-center p-2">
+                <div className="relative h-36 bg-slate-50 dark:bg-zinc-800/80 rounded-xl overflow-hidden mb-3 border border-slate-100 dark:border-zinc-700/60 flex items-center justify-center p-2 item-frame">
                   <Image
                     src={item.image}
                     alt={item.name}
@@ -521,19 +521,19 @@ export default function ProductDetailPage() {
                     sizes="(max-width: 640px) 100vw, 25vw"
                     className="object-contain p-2 group-hover:scale-105 transition-transform"
                   />
-                  <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 px-2 py-0.5 rounded shadow-2xs text-slate-700">
+                  <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 dark:bg-zinc-800 px-2 py-0.5 rounded shadow-2xs text-slate-700 dark:text-zinc-200 border border-transparent dark:border-zinc-700">
                     {item.brand}
                   </span>
                 </div>
-                <div className="text-[11px] font-mono text-slate-400">SKU: {item.sku}</div>
-                <h4 className="text-xs sm:text-sm font-bold text-zinc-900 line-clamp-2 mt-0.5 group-hover:text-zinc-700 transition-colors">
+                <div className="text-[11px] font-mono text-slate-400 dark:text-zinc-500">SKU: {item.sku}</div>
+                <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 mt-0.5 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                   {item.name}
                 </h4>
               </div>
 
-              <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between">
-                <div className="text-base font-black text-zinc-900">{formatRupiah(item.price)}</div>
-                <span className="text-xs font-bold text-zinc-700 group-hover:text-zinc-900 flex items-center gap-1">
+              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                <div className="text-base font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(item.price)}</div>
+                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white flex items-center gap-1 transition-colors">
                   <span>View Specs</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </span>

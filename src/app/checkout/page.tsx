@@ -408,20 +408,20 @@ export default function CheckoutPage() {
     MIDTRANS_PAYMENT_METHODS[0];
 
   return (
-    <div className="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Checkout Header & Breadcrumbs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-zinc-800 pb-6">
           <div>
-            <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
-              <Link href="/" className="hover:text-zinc-900">Home</Link>
+            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-zinc-400 font-semibold uppercase tracking-wider mb-1">
+              <Link href="/" className="hover:text-zinc-900 dark:hover:text-white">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
               <span>Checkout</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 tracking-tight flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center gap-2.5">
               <span>Secure Checkout</span>
-              <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-xs font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>256-Bit SSL Encrypted</span>
               </span>
             </h1>
@@ -433,43 +433,43 @@ export default function CheckoutPage() {
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 step === "account"
-                  ? "bg-zinc-900 text-white shadow-xs"
-                  : "bg-white text-zinc-600 border border-slate-200"
+                  ? "bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white border border-transparent dark:border-zinc-700 shadow-xs"
+                  : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800"
               }`}
             >
-              <span className="w-5 h-5 rounded-full bg-slate-700/50 flex items-center justify-center text-[10px]">
+              <span className="w-5 h-5 rounded-full bg-slate-700/50 dark:bg-zinc-700 flex items-center justify-center text-[10px]">
                 1
               </span>
               <span>Account</span>
             </div>
 
-            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
 
             {/* Step 2: Information */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 step === "information"
-                  ? "bg-zinc-900 text-white shadow-xs"
-                  : "bg-white text-zinc-600 border border-slate-200"
+                  ? "bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white border border-transparent dark:border-zinc-700 shadow-xs"
+                  : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800"
               }`}
             >
-              <span className="w-5 h-5 rounded-full bg-slate-700/50 flex items-center justify-center text-[10px]">
+              <span className="w-5 h-5 rounded-full bg-slate-700/50 dark:bg-zinc-700 flex items-center justify-center text-[10px]">
                 2
               </span>
               <span>Delivery & Address</span>
             </div>
 
-            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
 
             {/* Step 3: Midtrans Payment */}
             <div
               className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 step === "payment"
-                  ? "bg-zinc-900 text-white shadow-xs"
-                  : "bg-white text-zinc-600 border border-slate-200"
+                  ? "bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white border border-transparent dark:border-zinc-700 shadow-xs"
+                  : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-800"
               }`}
             >
-              <span className="w-5 h-5 rounded-full bg-slate-700/50 flex items-center justify-center text-[10px]">
+              <span className="w-5 h-5 rounded-full bg-slate-700/50 dark:bg-zinc-700 flex items-center justify-center text-[10px]">
                 3
               </span>
               <span>Midtrans Payment</span>
@@ -487,35 +487,35 @@ export default function CheckoutPage() {
             {/* STEP 1: ACCOUNT IDENTIFICATION (SIGN IN / REGISTER / GUEST) */}
             {/* ----------------------------------------------------------------------- */}
             {step === "account" && (
-              <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6 animate-in fade-in">
+              <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 sm:p-8 shadow-xs space-y-6 animate-in fade-in">
                 {isAuthenticated && user ? (
                   /* Authenticated User Card */
                   <div className="space-y-6">
-                    <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                    <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
                       <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center text-lg font-black">
                         {user.fullName.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-black text-sm text-zinc-900 truncate">
+                          <span className="font-black text-sm text-zinc-900 dark:text-zinc-100 truncate">
                             {user.fullName}
                           </span>
-                          <span className="text-[10px] bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-full font-bold">
+                          <span className="text-[10px] bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 px-2 py-0.5 rounded-full font-bold">
                             Logged In Profile
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-zinc-400 truncate mt-0.5">
                           {user.email} • {user.phone}
                         </p>
                       </div>
                     </div>
 
                     {user.address && (
-                      <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                        <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
+                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 text-xs space-y-1">
+                        <span className="font-bold text-slate-400 dark:text-zinc-400 uppercase tracking-wider text-[10px]">
                           Saved Default Shipping Destination
                         </span>
-                        <div className="font-bold text-zinc-900">
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100">
                           {user.address.street}, {user.address.unit ? `Unit ${user.address.unit}, ` : ""}
                           {user.address.subdistrict}, {user.address.city}, {user.address.province} {user.address.postalCode}
                         </div>
@@ -529,7 +529,7 @@ export default function CheckoutPage() {
                           setIsGuest(false);
                           setStep("information");
                         }}
-                        className="flex-1 py-3.5 px-6 bg-zinc-900 hover:bg-zinc-800 text-white font-bold rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2"
+                        className="flex-1 py-3.5 px-6 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 font-bold rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2"
                       >
                         <span>Use This Account & Continue</span>
                         <ArrowRight className="w-4 h-4" />
@@ -538,7 +538,7 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         onClick={handleContinueAsGuest}
-                        className="py-3.5 px-6 bg-white hover:bg-slate-50 text-zinc-700 font-bold rounded-xl text-xs border border-slate-200 transition-colors"
+                        className="py-3.5 px-6 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-bold rounded-xl text-xs border border-slate-200 dark:border-zinc-700 transition-colors"
                       >
                         Checkout as Guest Instead
                       </button>
@@ -548,23 +548,23 @@ export default function CheckoutPage() {
                   /* Unauthenticated: Choose Sign In, Register, or Guest */
                   <div className="space-y-6">
                     <div>
-                      <h2 className="text-xl font-black text-zinc-900 tracking-tight">
+                      <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">
                         How would you like to check out?
                       </h2>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
                         Log into your existing account, create a new profile for instant address sync & vouchers, or continue immediately as a guest.
                       </p>
                     </div>
 
                     {/* Mode Navigation Tabs */}
-                    <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 rounded-2xl">
+                    <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-zinc-800/80 rounded-2xl">
                       <button
                         type="button"
                         onClick={() => setAuthTab("signin")}
                         className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                           authTab === "signin"
-                            ? "bg-white text-zinc-900 shadow-xs"
-                            : "text-slate-600 hover:text-zinc-900"
+                            ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                            : "text-slate-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                         }`}
                       >
                         Sign In
@@ -574,8 +574,8 @@ export default function CheckoutPage() {
                         onClick={() => setAuthTab("register")}
                         className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                           authTab === "register"
-                            ? "bg-white text-zinc-900 shadow-xs"
-                            : "text-slate-600 hover:text-zinc-900"
+                            ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                            : "text-slate-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                         }`}
                       >
                         Create Account
@@ -585,8 +585,8 @@ export default function CheckoutPage() {
                         onClick={() => setAuthTab("guest")}
                         className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
                           authTab === "guest"
-                            ? "bg-white text-zinc-900 shadow-xs"
-                            : "text-slate-600 hover:text-zinc-900"
+                            ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
+                            : "text-slate-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                         }`}
                       >
                         Guest Checkout
@@ -597,37 +597,37 @@ export default function CheckoutPage() {
                     {authTab === "signin" && (
                       <form onSubmit={handleSignIn} className="space-y-4 pt-2 animate-in fade-in">
                         {signInError && (
-                          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                          <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 rounded-xl text-xs flex items-center gap-2">
                             <AlertCircle className="w-4 h-4 shrink-0" />
                             <span>{signInError}</span>
                           </div>
                         )}
                         <div>
-                          <label className="block text-xs font-bold text-zinc-800 mb-1">Email Address</label>
+                          <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Email Address</label>
                           <div className="relative">
-                            <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Mail className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                               type="email"
                               required
                               value={signInEmail}
                               onChange={(e) => setSignInEmail(e.target.value)}
                               placeholder="you@domain.com"
-                              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-zinc-800 mb-1">Password</label>
+                          <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Password</label>
                           <div className="relative">
-                            <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Lock className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                               type="password"
                               required
                               value={signInPassword}
                               onChange={(e) => setSignInPassword(e.target.value)}
                               placeholder="••••••••"
-                              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                         </div>
@@ -635,7 +635,7 @@ export default function CheckoutPage() {
                         <button
                           type="submit"
                           disabled={isAuthLoading}
-                          className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                          className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           {isAuthLoading ? (
                             <span>Logging In & Loading Location...</span>
@@ -653,7 +653,7 @@ export default function CheckoutPage() {
                     {authTab === "register" && (
                       <form onSubmit={handleRegister} className="space-y-4 pt-2 animate-in fade-in">
                         {regError && (
-                          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                          <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 rounded-xl text-xs flex items-center gap-2">
                             <AlertCircle className="w-4 h-4 shrink-0" />
                             <span>{regError}</span>
                           </div>
@@ -661,84 +661,84 @@ export default function CheckoutPage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">Full Name *</label>
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Full Name *</label>
                             <input
                               type="text"
                               required
                               value={regFullName}
                               onChange={(e) => setRegFullName(e.target.value)}
                               placeholder="Budi Santoso"
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">Phone Number (WhatsApp) *</label>
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Phone Number (WhatsApp) *</label>
                             <input
                               type="tel"
                               required
                               value={regPhone}
                               onChange={(e) => setRegPhone(e.target.value)}
                               placeholder="081234567890"
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">Email Address *</label>
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Email Address *</label>
                             <input
                               type="email"
                               required
                               value={regEmail}
                               onChange={(e) => setRegEmail(e.target.value)}
                               placeholder="budi@gmail.com"
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">Create Password *</label>
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Create Password *</label>
                             <input
                               type="password"
                               required
                               value={regPassword}
                               onChange={(e) => setRegPassword(e.target.value)}
                               placeholder="••••••••"
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-zinc-800 mb-1">Street Address</label>
+                          <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Street Address</label>
                           <input
                             type="text"
                             value={regStreet}
                             onChange={(e) => setRegStreet(e.target.value)}
                             placeholder="Jl. Sudirman No. 45, RT 01/RW 02"
-                            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                           />
                         </div>
 
                         <div className="grid grid-cols-3 gap-2">
                           <div className="col-span-2">
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">Sub-district (Kecamatan)</label>
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Sub-district (Kecamatan)</label>
                             <input
                               type="text"
                               value={regSubdistrict}
                               onChange={(e) => setRegSubdistrict(e.target.value)}
                               placeholder="Tanah Abang"
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">Postal Code</label>
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Postal Code</label>
                             <input
                               type="text"
                               value={regPostalCode}
                               onChange={(e) => setRegPostalCode(e.target.value)}
                               placeholder="10250"
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                             />
                           </div>
                         </div>
@@ -746,7 +746,7 @@ export default function CheckoutPage() {
                         <button
                           type="submit"
                           disabled={isAuthLoading}
-                          className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                          className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           {isAuthLoading ? (
                             <span>Creating Profile...</span>
@@ -763,12 +763,12 @@ export default function CheckoutPage() {
                     {/* TAB 3: GUEST CHECKOUT */}
                     {authTab === "guest" && (
                       <div className="space-y-4 pt-2 animate-in fade-in">
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900">
-                            <User className="w-4 h-4 text-emerald-600" />
+                        <div className="p-4 bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 rounded-2xl space-y-2">
+                          <div className="flex items-center gap-2 font-bold text-xs text-zinc-900 dark:text-zinc-100">
+                            <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                             <span>Fast Guest Checkout</span>
                           </div>
-                          <p className="text-xs text-slate-500 leading-relaxed">
+                          <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                             No account creation required. Simply fill in your contact information and physical shipping address on the next step to receive your shipment.
                           </p>
                         </div>
@@ -776,7 +776,7 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           onClick={handleContinueAsGuest}
-                          className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
+                          className="w-full py-3.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                           <span>Continue as Guest Customer</span>
                           <ArrowRight className="w-4 h-4" />
@@ -794,25 +794,25 @@ export default function CheckoutPage() {
             {step === "information" && (
               <form onSubmit={handleProceedToPayment} className="space-y-6 animate-in fade-in">
                 {formError && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                  <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 rounded-xl text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{formError}</span>
                   </div>
                 )}
 
                 {/* Card 1: Contact Details */}
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 sm:p-8 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-emerald-600" />
-                      <h2 className="text-base font-black text-zinc-900">Customer Contact Details</h2>
+                      <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <h2 className="text-base font-black text-zinc-900 dark:text-white">Customer Contact Details</h2>
                     </div>
                     {isGuest ? (
-                      <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-[10px] bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 px-2 py-0.5 rounded-full font-bold">
                         Guest Checkout
                       </span>
                     ) : (
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                      <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
                         Verified Member
                       </span>
                     )}
@@ -820,49 +820,49 @@ export default function CheckoutPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-zinc-800 mb-1">Recipient Name *</label>
+                      <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Recipient Name *</label>
                       <input
                         type="text"
                         required
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
                         placeholder="John Doe"
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-zinc-800 mb-1">WhatsApp Phone *</label>
+                      <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">WhatsApp Phone *</label>
                       <input
                         type="tel"
                         required
                         value={customerPhone}
                         onChange={(e) => setCustomerPhone(e.target.value)}
                         placeholder="081234567890"
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-zinc-800 mb-1">Email (For Invoice) *</label>
+                      <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Email (For Invoice) *</label>
                       <input
                         type="email"
                         required
                         value={customerEmail}
                         onChange={(e) => setCustomerEmail(e.target.value)}
                         placeholder="john@example.com"
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                        className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Card 2: Fulfillment Choice & Address */}
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-5">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 sm:p-8 shadow-xs space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2">
-                      <Truck className="w-4 h-4 text-emerald-600" />
-                      <h2 className="text-base font-black text-zinc-900">Fulfillment & Shipping Method</h2>
+                      <Truck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <h2 className="text-base font-black text-zinc-900 dark:text-white">Fulfillment & Shipping Method</h2>
                     </div>
                   </div>
 
@@ -873,15 +873,15 @@ export default function CheckoutPage() {
                       onClick={() => setFulfillmentMethod("click_and_collect")}
                       className={`p-4 rounded-2xl border text-left text-xs transition-all flex flex-col gap-1.5 ${
                         fulfillmentMethod === "click_and_collect"
-                          ? "bg-white border-zinc-900 ring-2 ring-zinc-900 shadow-xs"
-                          : "bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-white"
+                          ? "bg-white dark:bg-zinc-800 border-zinc-900 dark:border-zinc-400 ring-2 ring-zinc-900 dark:ring-zinc-400 shadow-xs"
+                          : "bg-slate-50/70 dark:bg-zinc-950/60 border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800"
                       }`}
                     >
-                      <div className="flex items-center gap-2 font-black text-zinc-900">
-                        <Store className="w-4 h-4 text-emerald-600" />
+                      <div className="flex items-center gap-2 font-black text-zinc-900 dark:text-white">
+                        <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>Click & Collect (FREE)</span>
                       </div>
-                      <span className="text-[11px] text-slate-500 leading-snug">
+                      <span className="text-[11px] text-slate-500 dark:text-zinc-400 leading-snug">
                         Ready in <strong>60 Mins</strong> at Flagship Experience Store (Mangga Dua Mall Lt. 3 No. 36).
                       </span>
                     </button>
@@ -891,15 +891,15 @@ export default function CheckoutPage() {
                       onClick={() => setFulfillmentMethod("delivery")}
                       className={`p-4 rounded-2xl border text-left text-xs transition-all flex flex-col gap-1.5 ${
                         fulfillmentMethod === "delivery"
-                          ? "bg-white border-zinc-900 ring-2 ring-zinc-900 shadow-xs"
-                          : "bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-white"
+                          ? "bg-white dark:bg-zinc-800 border-zinc-900 dark:border-zinc-400 ring-2 ring-zinc-900 dark:ring-zinc-400 shadow-xs"
+                          : "bg-slate-50/70 dark:bg-zinc-950/60 border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-white dark:hover:bg-zinc-800"
                       }`}
                     >
-                      <div className="flex items-center gap-2 font-black text-zinc-900">
-                        <Truck className="w-4 h-4 text-zinc-800" />
+                      <div className="flex items-center gap-2 font-black text-zinc-900 dark:text-white">
+                        <Truck className="w-4 h-4 text-zinc-800 dark:text-zinc-200" />
                         <span>Courier Delivery</span>
                       </div>
-                      <span className="text-[11px] text-slate-500 leading-snug">
+                      <span className="text-[11px] text-slate-500 dark:text-zinc-400 leading-snug">
                         Multi-courier transit via <strong>Biteship</strong> (Gojek, Grab, JNE, SiCepat, AnterAja).
                       </span>
                     </button>
@@ -907,12 +907,12 @@ export default function CheckoutPage() {
 
                   {/* If Click & Collect */}
                   {fulfillmentMethod === "click_and_collect" && (
-                    <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs space-y-2">
-                      <div className="flex items-center gap-2 font-bold text-emerald-950">
-                        <Zap className="w-4 h-4 text-emerald-600" />
+                    <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs space-y-2">
+                      <div className="flex items-center gap-2 font-bold text-emerald-950 dark:text-emerald-200">
+                        <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>In-Store Counter Pickup Procedure</span>
                       </div>
-                      <p className="text-emerald-800 leading-relaxed text-[11px]">
+                      <p className="text-emerald-800 dark:text-emerald-300 leading-relaxed text-[11px]">
                         Upon payment completion, you will receive a unique 4-digit verification PIN and QR code via WhatsApp & Email. Present this PIN at Counter 1 of our Mangga Dua Flagship store for instant handoff.
                       </p>
                     </div>
@@ -922,7 +922,7 @@ export default function CheckoutPage() {
                   {fulfillmentMethod === "delivery" && (
                     <div className="space-y-4 pt-2">
                       <div>
-                        <label className="block text-xs font-bold text-zinc-800 mb-1">
+                        <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
                           Street Address & Building / Unit *
                         </label>
                         <input
@@ -931,13 +931,13 @@ export default function CheckoutPage() {
                           value={streetAddress}
                           onChange={(e) => setStreetAddress(e.target.value)}
                           placeholder="Jl. Senopati No. 88, Gedung Cyber Lt. 4"
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-zinc-800 mb-1">
+                          <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
                             Sub-district (Kecamatan) *
                           </label>
                           <input
@@ -946,36 +946,36 @@ export default function CheckoutPage() {
                             value={subdistrict}
                             onChange={(e) => setSubdistrict(e.target.value)}
                             placeholder="Kebayoran Baru"
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-zinc-800 mb-1">City *</label>
+                          <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">City *</label>
                           <input
                             type="text"
                             required
                             value={city}
                             onChange={(e) => setCity(e.target.value)}
                             placeholder="Jakarta Selatan"
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-zinc-800 mb-1">Postal Code</label>
+                          <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">Postal Code</label>
                           <input
                             type="text"
                             value={postalCode}
                             onChange={(e) => setPostalCode(e.target.value)}
                             placeholder="12190"
-                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-zinc-800 mb-1">
+                        <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
                           Delivery Instructions / Landmarks (Optional)
                         </label>
                         <input
@@ -983,24 +983,24 @@ export default function CheckoutPage() {
                           value={deliveryNotes}
                           onChange={(e) => setDeliveryNotes(e.target.value)}
                           placeholder="e.g. Leave with lobby security, fragile hardware"
-                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-zinc-900"
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 text-xs font-medium focus:bg-white dark:focus:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400"
                         />
                       </div>
 
                       {/* Selected Courier Summary */}
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                      <div className="p-3 bg-slate-50 dark:bg-zinc-950/60 rounded-xl border border-slate-200 dark:border-zinc-800 flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                          <span className="font-bold text-zinc-900">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">
                             {selectedRate
                               ? `${selectedRate.courierName} ${selectedRate.serviceName}`
                               : "Biteship Multi-Courier (Gojek / Grab / JNE)"}
                           </span>
-                          <span className="text-slate-500">
+                          <span className="text-slate-500 dark:text-zinc-400">
                             {selectedRate ? `• ${selectedRate.etd}` : "• Same-day or Next-day"}
                           </span>
                         </div>
-                        <span className="font-bold text-zinc-900">
+                        <span className="font-bold text-zinc-900 dark:text-zinc-100">
                           {formatRupiah(shippingFee)}
                         </span>
                       </div>
@@ -1013,7 +1013,7 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() => setStep("account")}
-                    className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-zinc-900 transition-colors py-3 px-4"
+                    className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors py-3 px-4"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     <span>Back to Account</span>
@@ -1021,7 +1021,7 @@ export default function CheckoutPage() {
 
                   <button
                     type="submit"
-                    className="py-3.5 px-8 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2"
+                    className="py-3.5 px-8 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2"
                   >
                     <span>Continue to Midtrans Payment</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1066,19 +1066,19 @@ export default function CheckoutPage() {
                 {paymentError && (
                   <div
                     id="payment-error-banner"
-                    className="p-4 bg-red-50 border border-red-200 text-red-900 rounded-2xl text-xs flex items-start justify-between gap-3 animate-in fade-in"
+                    className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-900 dark:text-red-300 rounded-2xl text-xs flex items-start justify-between gap-3 animate-in fade-in"
                   >
                     <div className="flex items-start gap-2.5">
-                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-red-900 block">Payment Verification Notice</span>
-                        <p className="text-red-800 leading-relaxed mt-0.5">{paymentError}</p>
+                        <span className="font-bold text-red-900 dark:text-red-200 block">Payment Verification Notice</span>
+                        <p className="text-red-800 dark:text-red-300 leading-relaxed mt-0.5">{paymentError}</p>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => setPaymentError(null)}
-                      className="text-red-400 hover:text-red-700 p-1 rounded-lg transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+                      className="text-red-400 hover:text-red-700 dark:hover:text-red-200 p-1 rounded-lg transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
                       aria-label="Dismiss notification"
                     >
                       <X className="w-4 h-4" />
@@ -1087,8 +1087,8 @@ export default function CheckoutPage() {
                 )}
 
                 {/* All Midtrans Payment Channels Grid */}
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 shadow-xs space-y-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-zinc-400">
                     Available Midtrans Channels ({MIDTRANS_PAYMENT_METHODS.length} Options)
                   </h3>
 
@@ -1100,8 +1100,8 @@ export default function CheckoutPage() {
                         onClick={() => handleSelectChannel(method.id)}
                         className={`p-3.5 rounded-2xl border text-left transition-all flex items-start justify-between gap-3 ${
                           selectedChannel === method.id
-                            ? "bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20"
-                            : "bg-slate-50/80 hover:bg-slate-100 text-zinc-900 border-slate-200"
+                            ? "bg-slate-900 dark:bg-zinc-800 text-white border-slate-900 dark:border-zinc-600 shadow-md ring-2 ring-slate-900/20 dark:ring-zinc-600"
+                            : "bg-slate-50/80 dark:bg-zinc-950/60 hover:bg-slate-100 dark:hover:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 border-slate-200 dark:border-zinc-800"
                         }`}
                       >
                         <div className="min-w-0">
@@ -1114,7 +1114,7 @@ export default function CheckoutPage() {
                                 className={`text-[9px] font-black px-1.5 py-0.5 rounded ${
                                   selectedChannel === method.id
                                     ? "bg-emerald-500/20 text-emerald-300"
-                                    : "bg-emerald-100 text-emerald-800"
+                                    : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300"
                                 }`}
                               >
                                 {method.badge}
@@ -1124,8 +1124,8 @@ export default function CheckoutPage() {
                           <p
                             className={`text-[11px] truncate mt-0.5 ${
                               selectedChannel === method.id
-                                ? "text-slate-300"
-                                : "text-slate-500"
+                                ? "text-slate-300 dark:text-zinc-300"
+                                : "text-slate-500 dark:text-zinc-400"
                             }`}
                           >
                             {method.description}
@@ -1137,7 +1137,7 @@ export default function CheckoutPage() {
                             className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                               selectedChannel === method.id
                                 ? "border-emerald-400 bg-emerald-400 text-zinc-900"
-                                : "border-slate-300"
+                                : "border-slate-300 dark:border-zinc-600"
                             }`}
                           >
                             {selectedChannel === method.id && (
@@ -1151,27 +1151,27 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Active Payment Channel Interactive Details */}
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs space-y-6">
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 sm:p-8 shadow-xs space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block">
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">
                         Selected Method
                       </span>
-                      <h3 className="text-lg font-black text-zinc-900 mt-0.5">
+                      <h3 className="text-lg font-black text-zinc-900 dark:text-white mt-0.5">
                         {currentMethod.name}
                       </h3>
                     </div>
 
-                    <span className="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full font-bold">
+                    <span className="text-xs bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 px-3 py-1 rounded-full font-bold">
                       {currentMethod.categoryName}
                     </span>
                   </div>
 
                   {/* CHANNEL 1: QRIS */}
                   {currentMethod.category === "qris" && (
-                    <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4 text-center">
-                      <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center">
-                        <div className="text-[10px] font-black text-zinc-900 uppercase tracking-wider mb-2">
+                    <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-zinc-950/60 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-4 text-center">
+                      <div className="p-4 bg-white dark:bg-zinc-800 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-700 flex flex-col items-center">
+                        <div className="text-[10px] font-black text-zinc-900 dark:text-zinc-100 uppercase tracking-wider mb-2">
                           QRIS STANDAR PEMBAYARAN NASIONAL
                         </div>
                         {/* Dynamic Stylized QR Representation */}
@@ -1185,14 +1185,14 @@ export default function CheckoutPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="text-[11px] font-mono text-slate-500 mt-2">
+                        <div className="text-[11px] font-mono text-slate-500 dark:text-zinc-400 mt-2">
                           NMID: ID1020023912853 • A01
                         </div>
                       </div>
 
-                      <div className="text-xs text-slate-600 max-w-sm space-y-1">
-                        <p className="font-bold text-zinc-900">Scan with any supported e-wallet or banking app</p>
-                        <p className="text-[11px] text-slate-500">
+                      <div className="text-xs text-slate-600 dark:text-zinc-300 max-w-sm space-y-1">
+                        <p className="font-bold text-zinc-900 dark:text-zinc-100">Scan with any supported e-wallet or banking app</p>
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                           BCA Mobile, Livin' Mandiri, GoPay, OVO, DANA, ShopeePay, LinkAja, and all QRIS-enabled apps.
                         </p>
                       </div>
@@ -1202,9 +1202,9 @@ export default function CheckoutPage() {
                   {/* CHANNEL 2: VIRTUAL ACCOUNT */}
                   {currentMethod.category === "va" && (
                     <div className="space-y-4">
-                      <div className="p-5 bg-slate-900 text-white rounded-2xl space-y-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="p-5 bg-slate-900 dark:bg-zinc-800 text-white rounded-2xl space-y-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-zinc-800 dark:border-zinc-700">
                         <div>
-                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-zinc-400 tracking-wider">
                             {currentMethod.id === "mandiri_bill" ? "Company Code & Bill Key" : "Virtual Account Number"}
                           </span>
                           <div className="text-2xl font-mono font-black text-emerald-400 tracking-wider mt-0.5">
@@ -1212,7 +1212,7 @@ export default function CheckoutPage() {
                               ? `${activePaymentDetails?.billerCode || "70012"} / ${activePaymentDetails?.billKey || "8912849102"}`
                               : activePaymentDetails?.vaNumber || "700128910284910"}
                           </div>
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-slate-400 dark:text-zinc-400">
                             Merchant: <strong>Tethera Hardware (Midtrans)</strong>
                           </span>
                         </div>
@@ -1245,11 +1245,11 @@ export default function CheckoutPage() {
 
                       {/* Bank Step-by-Step Payment Instructions */}
                       {currentMethod.instructions.length > 0 && (
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-                          <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                        <div className="p-4 bg-slate-50 dark:bg-zinc-950/60 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-3">
+                          <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
                             Payment Instructions: {currentMethod.instructions[0].title}
                           </h4>
-                          <ol className="list-decimal list-inside text-xs text-slate-600 space-y-1.5">
+                          <ol className="list-decimal list-inside text-xs text-slate-600 dark:text-zinc-300 space-y-1.5">
                             {currentMethod.instructions[0].steps.map((stepText, i) => (
                               <li key={i} className="leading-relaxed">
                                 {stepText}
@@ -1264,27 +1264,27 @@ export default function CheckoutPage() {
                   {/* CHANNEL 3: CREDIT / DEBIT CARD */}
                   {currentMethod.category === "card" && (
                     <div className="space-y-4">
-                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="p-4 bg-slate-50 dark:bg-zinc-950/60 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-3">
                         <div>
-                          <label className="block text-xs font-bold text-zinc-800 mb-1">
+                          <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
                             Card Number (Visa / Mastercard / JCB / Amex)
                           </label>
                           <div className="relative">
-                            <CreditCard className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <CreditCard className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               maxLength={19}
                               value={cardNumber}
                               onChange={(e) => setCardNumber(e.target.value)}
                               placeholder="4000 1234 5678 9010"
-                              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-mono font-medium focus:ring-2 focus:ring-zinc-900 focus:outline-hidden"
+                              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-mono font-medium text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400 focus:outline-hidden"
                             />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
                               Expiry Date (MM/YY)
                             </label>
                             <input
@@ -1293,11 +1293,11 @@ export default function CheckoutPage() {
                               value={cardExpiry}
                               onChange={(e) => setCardExpiry(e.target.value)}
                               placeholder="12/28"
-                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-mono font-medium focus:ring-2 focus:ring-zinc-900 focus:outline-hidden"
+                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-mono font-medium text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400 focus:outline-hidden"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-zinc-800 mb-1">
+                            <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 mb-1">
                               CVV / CVC (3-4 digits)
                             </label>
                             <input
@@ -1306,14 +1306,14 @@ export default function CheckoutPage() {
                               value={cardCvv}
                               onChange={(e) => setCardCvv(e.target.value)}
                               placeholder="•••"
-                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-mono font-medium focus:ring-2 focus:ring-zinc-900 focus:outline-hidden"
+                              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-mono font-medium text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400 focus:outline-hidden"
                             />
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-950 flex items-center gap-2">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-950 dark:text-emerald-200 flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                         <span>Protected by Midtrans 3D-Secure 2.0 with Bank One-Time OTP Verification.</span>
                       </div>
                     </div>
@@ -1323,11 +1323,11 @@ export default function CheckoutPage() {
                   {(currentMethod.category === "ewallet" ||
                     currentMethod.category === "store" ||
                     currentMethod.category === "paylater") && (
-                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <div className="p-5 bg-slate-50 dark:bg-zinc-950/60 rounded-2xl border border-slate-200 dark:border-zinc-800 space-y-3">
                       {currentMethod.category === "store" && (
-                        <div className="p-4 bg-zinc-900 text-white rounded-xl flex items-center justify-between">
+                        <div className="p-4 bg-zinc-900 dark:bg-zinc-800 text-white rounded-xl flex items-center justify-between border border-zinc-800 dark:border-zinc-700">
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-400">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-zinc-400">
                               Payment Code
                             </span>
                             <div className="text-xl font-mono font-black text-emerald-400">
@@ -1346,10 +1346,10 @@ export default function CheckoutPage() {
                         </div>
                       )}
 
-                      <h4 className="text-xs font-bold text-zinc-900 uppercase tracking-wider">
+                      <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wider">
                         {currentMethod.instructions[0]?.title || "Payment Procedure"}
                       </h4>
-                      <ol className="list-decimal list-inside text-xs text-slate-600 space-y-1.5">
+                      <ol className="list-decimal list-inside text-xs text-slate-600 dark:text-zinc-300 space-y-1.5">
                         {currentMethod.instructions[0]?.steps.map((s, idx) => (
                           <li key={idx}>{s}</li>
                         ))}
@@ -1358,11 +1358,11 @@ export default function CheckoutPage() {
                   )}
 
                   {/* Confirm & Process Payment Action Button */}
-                  <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <button
                       type="button"
                       onClick={() => setStep("information")}
-                      className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-zinc-900 transition-colors"
+                      className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
                     >
                       <ArrowLeft className="w-4 h-4" />
                       <span>Back to Delivery Info</span>
@@ -1396,13 +1396,13 @@ export default function CheckoutPage() {
           {/* RIGHT COLUMN: ITEMIZED ORDER SUMMARY */}
           {/* ========================================================================= */}
           <div className="lg:col-span-4 space-y-5">
-            <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5 sticky top-24">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 shadow-xs space-y-5 sticky top-24">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4 text-zinc-900" />
-                  <h3 className="text-sm font-bold text-zinc-900">Order Summary</h3>
+                  <ShoppingBag className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Order Summary</h3>
                 </div>
-                <span className="text-xs bg-slate-100 text-zinc-700 font-bold px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold px-2 py-0.5 rounded-full">
                   {items.length + customPCs.length} items
                 </span>
               </div>
@@ -1413,17 +1413,17 @@ export default function CheckoutPage() {
                 {customPCs.map((pc) => (
                   <div
                     key={pc.id}
-                    className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5"
+                    className="p-3 bg-slate-50 dark:bg-zinc-950/60 rounded-xl border border-slate-200 dark:border-zinc-800 text-xs space-y-1.5"
                   >
                     <div className="flex justify-between items-start">
-                      <span className="font-bold text-zinc-900 truncate max-w-[180px]">
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-[180px]">
                         {pc.name}
                       </span>
-                      <span className="font-black text-zinc-900">
+                      <span className="font-black text-zinc-900 dark:text-zinc-100">
                         {formatRupiah(pc.totalPrice)}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-slate-500 dark:text-zinc-400">
                       {pc.serviceTier.name} (~{pc.wattage}W)
                     </p>
                   </div>
@@ -1435,7 +1435,7 @@ export default function CheckoutPage() {
                     key={it.id}
                     className="flex items-center justify-between gap-3 text-xs py-1"
                   >
-                    <div className="relative w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
+                    <div className="relative w-10 h-10 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 overflow-hidden shrink-0 item-frame">
                       <Image
                         src={it.item.image}
                         alt={it.item.name}
@@ -1445,14 +1445,14 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="font-bold text-zinc-900 truncate block">
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100 truncate block">
                         {it.item.name}
                       </span>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-500 dark:text-zinc-400">
                         Qty: {it.quantity} × {formatRupiah(it.item.price)}
                       </span>
                     </div>
-                    <span className="font-bold text-zinc-900 shrink-0">
+                    <span className="font-bold text-zinc-900 dark:text-zinc-100 shrink-0">
                       {formatRupiah(it.item.price * it.quantity)}
                     </span>
                   </div>
@@ -1460,13 +1460,13 @@ export default function CheckoutPage() {
               </div>
 
               {/* Breakdown */}
-              <div className="space-y-2 pt-3 border-t border-slate-100 text-xs">
-                <div className="flex justify-between text-slate-600">
+              <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-zinc-800 text-xs">
+                <div className="flex justify-between text-slate-600 dark:text-zinc-400">
                   <span>Subtotal</span>
-                  <span className="font-bold text-zinc-900">{formatRupiah(subtotal)}</span>
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">{formatRupiah(subtotal)}</span>
                 </div>
 
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-slate-600 dark:text-zinc-400">
                   <span>
                     Fulfillment (
                     {fulfillmentMethod === "click_and_collect"
@@ -1476,25 +1476,25 @@ export default function CheckoutPage() {
                       : "Delivery"}
                     )
                   </span>
-                  <span className="font-bold text-zinc-900">
+                  <span className="font-bold text-zinc-900 dark:text-zinc-100">
                     {shippingFee === 0 ? "FREE" : formatRupiah(shippingFee)}
                   </span>
                 </div>
 
-                <div className="flex justify-between text-base font-black text-zinc-900 pt-3 border-t border-slate-200">
+                <div className="flex justify-between text-base font-black text-zinc-900 dark:text-white pt-3 border-t border-slate-200 dark:border-zinc-800">
                   <span>Total Amount</span>
-                  <span className="text-xl text-emerald-700">{formatRupiah(grandTotal)}</span>
+                  <span className="text-xl text-emerald-700 dark:text-emerald-400">{formatRupiah(grandTotal)}</span>
                 </div>
               </div>
 
               {/* Reassurance Footer */}
-              <div className="pt-2 text-[11px] text-slate-500 space-y-2 border-t border-slate-100">
+              <div className="pt-2 text-[11px] text-slate-500 dark:text-zinc-400 space-y-2 border-t border-slate-100 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>100% Genuine Distributor Hardware Guaranteed</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>Bank Indonesia Licensed Midtrans Gateway</span>
                 </div>
               </div>

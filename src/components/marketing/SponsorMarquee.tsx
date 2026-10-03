@@ -193,9 +193,6 @@ const SPONSORS: Sponsor[] = [
 ];
 
 export function SponsorMarquee() {
-  // We duplicate the sponsors array to create a seamless infinite loop
-  const marqueeItems = [...SPONSORS, ...SPONSORS];
-
   return (
     <section className="max-w-7xl mx-auto px-4 w-full">
       <div className="w-full bg-slate-100/70 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden relative group shadow-2xs transition-colors">
@@ -215,38 +212,70 @@ export function SponsorMarquee() {
           </div>
         </div>
 
-        {/* Marquee Track Container with gradient edge fades */}
-        <div className="relative py-3 overflow-x-hidden w-full">
-          {/* Left Fade Gradient */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-r from-slate-100/90 dark:from-zinc-900/90 to-transparent z-10 pointer-events-none" />
-          
-          {/* Right Fade Gradient */}
-          <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-24 bg-gradient-to-l from-slate-100/90 dark:from-zinc-900/90 to-transparent z-10 pointer-events-none" />
+        {/* Marquee Track Container with CSS mask so logos fade smoothly at the exact border */}
+        <div
+          className="relative py-3 overflow-hidden w-full"
+          style={{
+            maskImage:
+              "linear-gradient(to right, transparent 0%, black 40px, black calc(100% - 40px), transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0%, black 40px, black calc(100% - 40px), transparent 100%)",
+          }}
+        >
+          {/* Moving Marquee Track: two identical blocks for seamless 50% loop */}
+          <div className="animate-marquee flex items-center w-max hover:[animation-play-state:paused]">
+            {/* Primary Track */}
+            <div className="flex items-center gap-6 sm:gap-8 pr-6 sm:pr-8 shrink-0">
+              {SPONSORS.map((sponsor) => (
+                <Link
+                  key={`track1-${sponsor.id}`}
+                  href={sponsor.categoryLink}
+                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800 border border-slate-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-all shadow-2xs hover:shadow-sm shrink-0 group/item hover:scale-105 duration-200"
+                >
+                  {/* Logo / Emblem */}
+                  <div className="text-zinc-800 dark:text-zinc-200 group-hover/item:text-zinc-950 dark:group-hover/item:text-white transition-colors">
+                    {sponsor.logoSvg}
+                  </div>
 
-          {/* Moving Marquee Track */}
-          <div className="animate-marquee flex items-center gap-6 sm:gap-8 px-4">
-            {marqueeItems.map((sponsor, idx) => (
-              <Link
-                key={`${sponsor.id}-${idx}`}
-                href={sponsor.categoryLink}
-                className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800 border border-slate-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-all shadow-2xs hover:shadow-sm shrink-0 group/item hover:scale-105 duration-200"
-              >
-                {/* Logo / Emblem */}
-                <div className="text-zinc-800 dark:text-zinc-200 group-hover/item:text-zinc-950 dark:group-hover/item:text-white transition-colors">
-                  {sponsor.logoSvg}
-                </div>
+                  {/* Sponsor info pill */}
+                  <div className="border-l border-slate-200 dark:border-zinc-700 pl-3 hidden lg:block text-left">
+                    <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-400 dark:text-zinc-500 group-hover/item:text-slate-600 dark:group-hover/item:text-zinc-300">
+                      {sponsor.tier}
+                    </span>
+                    <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                      {sponsor.badge}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
 
-                {/* Sponsor info pill */}
-                <div className="border-l border-slate-200 dark:border-zinc-700 pl-3 hidden lg:block text-left">
-                  <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-400 dark:text-zinc-500 group-hover/item:text-slate-600 dark:group-hover/item:text-zinc-300">
-                    {sponsor.tier}
-                  </span>
-                  <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
-                    {sponsor.badge}
-                  </span>
-                </div>
-              </Link>
-            ))}
+            {/* Seamless Duplicate Track for continuous infinite scroll */}
+            <div className="flex items-center gap-6 sm:gap-8 pr-6 sm:pr-8 shrink-0" aria-hidden="true">
+              {SPONSORS.map((sponsor) => (
+                <Link
+                  key={`track2-${sponsor.id}`}
+                  href={sponsor.categoryLink}
+                  tabIndex={-1}
+                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800 border border-slate-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-all shadow-2xs hover:shadow-sm shrink-0 group/item hover:scale-105 duration-200"
+                >
+                  {/* Logo / Emblem */}
+                  <div className="text-zinc-800 dark:text-zinc-200 group-hover/item:text-zinc-950 dark:group-hover/item:text-white transition-colors">
+                    {sponsor.logoSvg}
+                  </div>
+
+                  {/* Sponsor info pill */}
+                  <div className="border-l border-slate-200 dark:border-zinc-700 pl-3 hidden lg:block text-left">
+                    <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-400 dark:text-zinc-500 group-hover/item:text-slate-600 dark:group-hover/item:text-zinc-300">
+                      {sponsor.tier}
+                    </span>
+                    <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
+                      {sponsor.badge}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
