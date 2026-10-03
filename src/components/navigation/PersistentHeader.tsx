@@ -31,7 +31,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { FlagshipStoreModal } from "./FlagshipStoreModal";
-import { PredictiveSearchModal } from "./PredictiveSearchModal";
+import { PredictiveSearchDropdown } from "./PredictiveSearchDropdown";
 import { CartDrawer } from "./CartDrawer";
 import { ThemeToggle } from "./ThemeToggle";
 import { GlobalLocationModal } from "../shipping/GlobalLocationModal";
@@ -43,7 +43,6 @@ import { useAuthStore } from "../../lib/store/useAuthStore";
 export function PersistentHeader() {
   const [isSticky, setIsSticky] = useState(false);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAllCategoriesOpen, setIsAllCategoriesOpen] = useState(false);
   const categoriesTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -120,14 +119,6 @@ export function PersistentHeader() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
-      if (e.key === "/" && (e.target as HTMLElement).tagName !== "INPUT") {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
       if (e.key === "Escape") {
         setIsMobileMenuOpen(false);
         setIsAllCategoriesOpen(false);
@@ -179,7 +170,7 @@ export function PersistentHeader() {
       {/* TIER 2: Main Search & Action Bar */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-4 py-2.5 sm:py-3 w-full max-w-full transition-colors">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-8">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-8 relative">
           {/* Mobile Hamburger Menu Toggle (Visible on <lg screens) */}
           <button
             type="button"
@@ -202,25 +193,9 @@ export function PersistentHeader() {
             />
           </Link>
 
-          {/* Predictive Search Bar Trigger */}
+          {/* Predictive Autocomplete Search Bar & Dropdown */}
           <div className="flex-1 min-w-0 max-w-2xl mx-1 sm:mx-0">
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100/90 hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-900 text-slate-400 dark:text-zinc-400 rounded-xl border border-slate-200 hover:border-slate-300 dark:border-zinc-800 dark:hover:border-zinc-700 transition-all text-xs sm:text-sm text-left shadow-inner min-h-[44px]"
-            >
-              <div className="flex items-center gap-2 truncate">
-                <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="truncate">Search components, SKUs, pre-builts...</span>
-              </div>
-              <div className="hidden sm:flex items-center gap-1 shrink-0 ml-2">
-                <kbd className="px-2 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400 bg-white dark:bg-zinc-800 rounded border border-slate-200 dark:border-zinc-700 shadow-2xs">
-                  ⌘K
-                </kbd>
-                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400 bg-white dark:bg-zinc-800 rounded border border-slate-200 dark:border-zinc-700 shadow-2xs">
-                  /
-                </kbd>
-              </div>
-            </button>
+            <PredictiveSearchDropdown />
           </div>
 
           {/* Quick Actions (Location, Account, Theme Toggle, Cart) */}
@@ -999,10 +974,6 @@ export function PersistentHeader() {
       <FlagshipStoreModal
         isOpen={isStoreModalOpen}
         onClose={() => setIsStoreModalOpen(false)}
-      />
-      <PredictiveSearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
       />
       <CartDrawer />
       <GlobalLocationModal />
