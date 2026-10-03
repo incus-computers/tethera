@@ -674,17 +674,22 @@ export function PersistentHeader() {
       {/* MOBILE NAVIGATION DRAWER (Slide-Over from Left) */}
       {/* ========================================================================= */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden lg:hidden">
+        <div 
+          className="fixed inset-0 z-50 overflow-hidden lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
           {/* Backdrop */}
           <div
-            onClick={() => setIsMobileMenuOpen(false)}
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
             aria-hidden="true"
           />
 
           {/* Drawer Sheet */}
-          <div className="fixed inset-y-0 left-0 max-w-full flex pr-10">
-            <div className="w-screen max-w-sm bg-white dark:bg-zinc-900 shadow-2xl flex flex-col justify-between overflow-y-auto border-r border-transparent dark:border-zinc-800 transition-colors">
+          <div className="fixed inset-y-0 left-0 max-w-full flex">
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="w-[68vw] max-w-[280px] bg-white dark:bg-zinc-900 shadow-2xl flex flex-col justify-between overflow-y-auto border-r border-transparent dark:border-zinc-800 transition-colors"
+            >
               <div>
                 {/* Drawer Top Header */}
                 <div className="p-4 bg-slate-50 dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
