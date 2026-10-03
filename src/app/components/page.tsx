@@ -270,8 +270,26 @@ export default function ComponentsCatalogPage() {
 
                 <div className="pt-4 mt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
                   <div>
-                    <div className="text-base font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(item.price)}</div>
-                    <div className="text-[10px] text-slate-400 dark:text-zinc-500">incl. tax</div>
+                    {item.sale_price && item.sale_price < item.price ? (
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base font-black text-zinc-900 dark:text-zinc-100">
+                            {formatRupiah(item.sale_price)}
+                          </span>
+                          <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900/60">
+                            -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 line-through">
+                          {formatRupiah(item.price)}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-base font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(item.price)}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-zinc-500">incl. tax</div>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5">
@@ -283,7 +301,7 @@ export default function ComponentsCatalogPage() {
                     </Link>
 
                     <button
-                      onClick={() => addStandardItem(item)}
+                      onClick={() => addStandardItem(item.sale_price ? { ...item, price: item.sale_price } : item)}
                       className="p-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn active:scale-90"
                       title="Add to Cart"
                       aria-label="Add to Cart"

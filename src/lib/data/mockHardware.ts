@@ -6,7 +6,10 @@ export interface ComponentItem {
   category: string;
   slot: string;
   price: number;
+  sale_price?: number | null;
+  salePrice?: number | null;
   image: string;
+  images?: string[];
   inStock: boolean;
   stockCount: number;
   description?: string;
@@ -36,7 +39,12 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     category: "Processors",
     slot: "cpu",
     price: 7199000,
+    sale_price: 6499000,
     image: "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60",
+    images: [
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60",
+      "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60"
+    ],
     inStock: true,
     stockCount: 14,
     specs: { socket: "AM5", tdpWatts: 120 }
@@ -198,7 +206,12 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     category: "Graphics Cards",
     slot: "gpu",
     price: 16799000,
+    sale_price: 15499000,
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    images: [
+      "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=60"
+    ],
     inStock: true,
     stockCount: 5,
     specs: { tdpWatts: 320, lengthMm: 348 }
@@ -657,6 +670,7 @@ export const PREBUILT_SYSTEMS = [
     psu: "850W 80+ Gold Fully Modular",
     os: "Windows 11 Home 64-Bit Pre-installed",
     price: 43199000,
+    sale_price: 39999000,
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
     status: "In Stock at Flagship (Ready for Pickup in 60m)",
     inStock: true,

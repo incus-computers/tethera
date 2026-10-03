@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
@@ -17,6 +17,7 @@ import { formatRupiah } from "../../../lib/utils/currency";
 import { useBuilderStore, BuilderSlotKey } from "../../../lib/store/useBuilderStore";
 import { WhatsAppInquiryButton } from "../../../components/whatsapp/WhatsAppInquiryButton";
 import { DeliveryEstimatorWidget } from "../../../components/shipping/DeliveryEstimatorWidget";
+import { RichTextRenderer } from "../../../components/ui/RichTextRenderer";
 import {
   ShieldCheck,
   Store,
@@ -29,6 +30,7 @@ import {
   ChevronRight,
   Info,
   FileText,
+  Tag,
 } from "lucide-react";
 
 export default function ProductDetailPage() {
@@ -36,12 +38,30 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const id = params?.id as string;
 
-  const product = getProductOrPrebuiltById(id);
+  const mockProduct = getProductOrPrebuiltById(id);
+  const [liveProduct, setLiveProduct] = useState<any | null>(null);
+  const [selectedImage, setSelectedImage] = useState(0);
+
   const { addStandardItem, addCustomPC, setFulfillmentMethod, fulfillmentMethod, openCart } = useCartStore();
   const { selectedRate } = useLocationStore();
   const { selectSlotItem } = useBuilderStore();
 
-  const [selectedImage, setSelectedImage] = useState(0);
+  useEffect(() => {
+    let isSubscribed = true;
+    fetch(`/api/products/${id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (isSubscribed && data.success && data.product) {
+          setLiveProduct(data.product);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isSubscribed = false;
+    };
+  }, [id]);
+
+  const product = liveProduct || mockProduct;
 
   if (!product) {
     return (
@@ -61,14 +81,36 @@ export default function ProductDetailPage() {
     );
   }
 
-  const isComponent = "slot" in product;
+  const isComponent = "slot" in product || "pc_builder_slot" in product;
   const componentItem = isComponent ? (product as ComponentItem) : null;
   const overviewData = getProductOverviewData(product);
+
+  // Pricing & Slashed-off Discount Calculation
+  const retailPrice = Number(product.retail_price || product.price || 0);
+  const salePrice =
+    product.sale_price !== null && product.sale_price !== undefined
+      ? Number(product.sale_price)
+      : product.salePrice !== null && product.salePrice !== undefined
+      ? Number(product.salePrice)
+      : null;
+  const hasDiscount = salePrice !== null && salePrice > 0 && salePrice < retailPrice;
+  const activePrice = hasDiscount ? salePrice! : retailPrice;
+  const discountPercent = hasDiscount ? Math.round(((retailPrice - activePrice) / retailPrice) * 100) : 0;
+  const savingsAmount = hasDiscount ? retailPrice - activePrice : 0;
+
+  // Gallery Pictures reflecting exact order
+  const galleryImages: string[] =
+    product.images && Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : [product.image];
 
   // Handle Add to Cart
   const handleAddToCart = () => {
     if (componentItem) {
-      addStandardItem(componentItem);
+      addStandardItem({
+        ...componentItem,
+        price: activePrice,
+      });
       openCart();
     } else {
       // Prebuilt system
@@ -91,10 +133,10 @@ export default function ProductDetailPage() {
           price: 0,
           leadTime: "Ready in 60 Mins",
         },
-        totalPrice: pb.price,
+        totalPrice: activePrice,
         wattage: 750,
         isPrebuilt: true,
-        image: pb.image,
+        image: galleryImages[0] || pb.image,
       });
       openCart();
     }
@@ -103,7 +145,10 @@ export default function ProductDetailPage() {
   // Handle Configure in Builder
   const handleConfigureInBuilder = () => {
     if (componentItem && componentItem.slot) {
-      selectSlotItem(componentItem.slot as BuilderSlotKey, componentItem);
+      selectSlotItem(componentItem.slot as BuilderSlotKey, {
+        ...componentItem,
+        price: activePrice,
+      });
       router.push("/builder");
     } else {
       router.push("/builder");
@@ -138,15 +183,12 @@ export default function ProductDetailPage() {
       {/* TOP SECTION: IMAGE GALLERY (LEFT) + SPECS & OMNICHANNEL CTA (RIGHT) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Product Visuals */}
+        {/* Left Column: Product Visuals Gallery (With Rearranged Order Support) */}
         <div className="lg:col-span-6 space-y-4">
           <div className="relative rounded-3xl bg-slate-100/90 dark:bg-zinc-800/90 border border-slate-200 dark:border-zinc-700 p-8 flex items-center justify-center min-h-[380px] sm:min-h-[460px] shadow-xs overflow-hidden item-frame">
-            <Image
-              src={product.image}
+            <img
+              src={galleryImages[selectedImage] || galleryImages[0] || product.image}
               alt={product.name}
-              width={600}
-              height={600}
-              priority
               className="max-h-[360px] w-auto max-w-full object-contain transition-transform duration-300 hover:scale-105"
             />
 
@@ -159,6 +201,15 @@ export default function ProductDetailPage() {
               </span>
             </div>
 
+            {hasDiscount && (
+              <div className="absolute top-4 right-4">
+                <span className="px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider bg-rose-600 text-white shadow-md flex items-center gap-1">
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>-{discountPercent}% OFF</span>
+                </span>
+              </div>
+            )}
+
             <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-xs">
               <span className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1 rounded-full font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-600" />
@@ -166,6 +217,35 @@ export default function ProductDetailPage() {
               </span>
             </div>
           </div>
+
+          {/* Multiple Pictures Gallery Strip (Order preserved as rearranged by admin) */}
+          {galleryImages.length > 1 && (
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 pt-0.5">
+              {galleryImages.map((imgUrl: string, idx: number) => {
+                const isSelected = selectedImage === idx;
+                return (
+                  <button
+                    key={`${imgUrl}-${idx}`}
+                    type="button"
+                    onClick={() => setSelectedImage(idx)}
+                    className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all shrink-0 bg-slate-50 dark:bg-zinc-800/80 p-1.5 cursor-pointer ${
+                      isSelected
+                        ? "border-zinc-900 dark:border-white ring-2 ring-zinc-900/10 dark:ring-white/20 scale-102"
+                        : "border-slate-200 dark:border-zinc-700/80 opacity-70 hover:opacity-100 hover:border-slate-400"
+                    }`}
+                    aria-label={`View photo ${idx + 1}`}
+                  >
+                    <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-contain" />
+                    {idx === 0 && (
+                      <span className="absolute bottom-0.5 left-0.5 right-0.5 bg-zinc-900/80 text-[8px] font-bold text-white uppercase text-center rounded">
+                        Cover
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Right Column: Details & Fulfillment */}
@@ -182,11 +262,32 @@ export default function ProductDetailPage() {
             <p className="text-xs text-slate-400 dark:text-zinc-500 font-mono mt-1">Manufacturer Part Number: {product.sku}</p>
           </div>
 
-          {/* Pricing Row */}
-          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-2xs flex items-baseline justify-between">
-            <div>
-              <div className="text-3xl sm:text-4xl font-black text-zinc-900 dark:text-white">{formatRupiah(product.price)}</div>
-              <span className="text-xs text-slate-400 dark:text-zinc-500 font-semibold">Tax included • Official Invoice Provided</span>
+          {/* Pricing Row with Slashed MSRP & Percentage Off Badge */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-2xs flex flex-wrap items-baseline justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="text-3xl sm:text-4xl font-black text-zinc-900 dark:text-white">
+                  {formatRupiah(activePrice)}
+                </div>
+                {hasDiscount && (
+                  <>
+                    <div className="text-base sm:text-lg font-bold text-slate-400 dark:text-zinc-500 line-through">
+                      {formatRupiah(retailPrice)}
+                    </div>
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-600 text-white shadow-2xs">
+                      -{discountPercent}% OFF
+                    </span>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-400 dark:text-zinc-500 font-semibold">Tax included • Official Invoice Provided</span>
+                {hasDiscount && (
+                  <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                    • You save {formatRupiah(savingsAmount)}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="text-right">
               <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-200 dark:border-emerald-800">
@@ -296,7 +397,7 @@ export default function ProductDetailPage() {
               product={{
                 productName: product.name,
                 sku: product.sku,
-                price: formatRupiah(product.price),
+                price: formatRupiah(activePrice),
                 productUrl: typeof window !== "undefined" ? window.location.href : "https://tethera.com",
               }}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs sm:text-sm transition-colors shadow-2xs flex items-center justify-center gap-2"
@@ -327,17 +428,25 @@ export default function ProductDetailPage() {
                 <span>Product Description</span>
               </div>
 
-              {/* Lead Summary */}
-              <p className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-relaxed">
-                {overviewData.summary}
-              </p>
+              {product.description ? (
+                <div className="py-1">
+                  <RichTextRenderer content={product.description} />
+                </div>
+              ) : (
+                <>
+                  {/* Lead Summary */}
+                  <p className="text-sm sm:text-base font-semibold text-zinc-900 dark:text-zinc-100 leading-relaxed">
+                    {overviewData.summary}
+                  </p>
 
-              {/* Detailed Breakdown Paragraphs */}
-              {overviewData.paragraphs.map((para, i) => (
-                <p key={i} className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
-                  {para}
-                </p>
-              ))}
+                  {/* Detailed Breakdown Paragraphs */}
+                  {overviewData.paragraphs.map((para, i) => (
+                    <p key={i} className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
+                      {para}
+                    </p>
+                  ))}
+                </>
+              )}
 
               {/* Key Highlights Grid */}
               {overviewData.highlights.length > 0 && (

@@ -40,7 +40,7 @@ export default function PrebuiltsPage() {
         price: 0,
         leadTime: "Ready in 60 Mins",
       },
-      totalPrice: pb.price,
+      totalPrice: (pb as any).sale_price && (pb as any).sale_price < pb.price ? (pb as any).sale_price : pb.price,
       wattage: 750,
       isPrebuilt: true,
       image: pb.image,
@@ -138,8 +138,26 @@ export default function PrebuiltsPage() {
               <div className="p-6 pt-0">
                 <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className="text-xl font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(pb.price)}</div>
-                    <span className="text-[10px] text-slate-400 dark:text-zinc-500 block -mt-1">Tax Included</span>
+                    {(pb as any).sale_price && (pb as any).sale_price < pb.price ? (
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-black text-zinc-900 dark:text-zinc-100">
+                            {formatRupiah((pb as any).sale_price)}
+                          </span>
+                          <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/60">
+                            -{Math.round(((pb.price - (pb as any).sale_price) / pb.price) * 100)}%
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-400 dark:text-zinc-500 line-through block">
+                          {formatRupiah(pb.price)}
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-xl font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(pb.price)}</div>
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-500 block -mt-1">Tax Included</span>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -161,7 +179,7 @@ export default function PrebuiltsPage() {
                       product={{
                         productName: pb.name,
                         sku: pb.sku,
-                        price: formatRupiah(pb.price),
+                        price: formatRupiah((pb as any).sale_price && (pb as any).sale_price < pb.price ? (pb as any).sale_price : pb.price),
                         productUrl: typeof window !== "undefined" ? window.location.href : "https://tethera.com",
                       }}
                     />

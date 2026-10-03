@@ -42,6 +42,8 @@ import {
 import { useAdminStore } from "@/lib/store/useAdminStore";
 import { formatRupiah } from "@/lib/utils/currency";
 import { Product, Order, Promotion, DynamicBannerSlide, CustomerProfileRow } from "@/lib/db/types";
+import { ProductGalleryManager } from "@/components/admin/ProductGalleryManager";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 
 const HARDWARE_CATEGORIES = [
   { slug: "cpu", name: "Processors (CPUs)", slot: "cpu" },
@@ -83,6 +85,12 @@ export default function AdminPortalPage() {
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [newProductModalOpen, setNewProductModalOpen] = useState(false);
   const [newProductImageUrl, setNewProductImageUrl] = useState("");
+  const [newProductImages, setNewProductImages] = useState<string[]>([]);
+  const [newProductDescription, setNewProductDescription] = useState("");
+  const [newProductRetailPrice, setNewProductRetailPrice] = useState<number | "">("");
+  const [newProductSalePrice, setNewProductSalePrice] = useState<number | "">("");
+  const [newProductDiscountPercent, setNewProductDiscountPercent] = useState<number | "">("");
+  const [newProductDiscountEnabled, setNewProductDiscountEnabled] = useState(false);
 
   const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
   const [selectedCourierProvider, setSelectedCourierProvider] = useState<
@@ -240,6 +248,7 @@ export default function AdminPortalPage() {
 
       const res = await fetch("/api/admin/upload", {
         method: "POST",
+        credentials: "include",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
@@ -251,7 +260,7 @@ export default function AdminPortalPage() {
         return;
       }
 
-      const finalUrl = data.url || data.dataUrl;
+      const finalUrl = data.url || data.publicUrl || data.dataUrl;
 
       if (destination === "edit_product" && editingProduct) {
         const existingImages = editingProduct.images || [];
@@ -262,6 +271,7 @@ export default function AdminPortalPage() {
         showToast("Image uploaded from PC and added to product gallery.");
       } else if (destination === "new_product") {
         setNewProductImageUrl(finalUrl);
+        setNewProductImages((prev) => [...prev, finalUrl]);
         showToast("Image uploaded from PC and assigned to new product.");
       } else if (destination === "banner") {
         setNewBannerForm((prev) => ({ ...prev, image_url: finalUrl }));
@@ -428,6 +438,7 @@ export default function AdminPortalPage() {
     try {
       const res = await fetch("/api/admin/products", {
         method: "PUT",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -472,6 +483,17 @@ export default function AdminPortalPage() {
     }
   };
 
+  const openEditProductModal = (prod: any) => {
+    const images = Array.isArray(prod.images) && prod.images.length > 0
+      ? prod.images
+      : prod.image ? [prod.image] : [];
+    setEditingProduct({
+      ...prod,
+      images,
+      sale_price: prod.sale_price ?? null,
+    });
+  };
+
   const handleCreateProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -481,9 +503,18 @@ export default function AdminPortalPage() {
     const selectedCat = HARDWARE_CATEGORIES.find((c) => c.slug === categorySlug);
 
     const primaryImg =
+      (newProductImages.length > 0 && newProductImages[0]) ||
       newProductImageUrl ||
       (formData.get("image_url") as string) ||
       "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60";
+
+    const allImages = newProductImages.length > 0 ? newProductImages : [primaryImg];
+
+    const retailPriceNum = Number(formData.get("retail_price")) || Number(newProductRetailPrice);
+    const salePriceNum =
+      newProductDiscountEnabled && Number(newProductSalePrice) > 0 && Number(newProductSalePrice) < retailPriceNum
+        ? Number(newProductSalePrice)
+        : null;
 
     const payload = {
       name: formData.get("name") as string,
@@ -491,10 +522,11 @@ export default function AdminPortalPage() {
       sku: formData.get("sku") as string,
       category_slug: categorySlug,
       pc_builder_slot: selectedCat?.slot || null,
-      retail_price: Number(formData.get("retail_price")),
+      retail_price: retailPriceNum,
+      sale_price: salePriceNum,
       initial_stock: Number(formData.get("initial_stock")),
-      description: formData.get("description") as string,
-      images: [primaryImg],
+      description: newProductDescription || (formData.get("description") as string),
+      images: allImages,
       specs: {
         socket: (formData.get("spec_socket") as string) || undefined,
         tdpWatts: Number(formData.get("spec_tdp")) || undefined,
@@ -504,6 +536,7 @@ export default function AdminPortalPage() {
     try {
       const res = await fetch("/api/admin/products", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -517,6 +550,12 @@ export default function AdminPortalPage() {
         setProducts((prev) => [data.product, ...prev]);
         setNewProductModalOpen(false);
         setNewProductImageUrl("");
+        setNewProductImages([]);
+        setNewProductDescription("");
+        setNewProductRetailPrice("");
+        setNewProductSalePrice("");
+        setNewProductDiscountPercent("");
+        setNewProductDiscountEnabled(false);
       } else {
         alert(data.error || "Failed to create product");
       }
@@ -1504,7 +1543,21 @@ export default function AdminPortalPage() {
                             </td>
 
                             <td className="py-3.5 px-4 font-mono font-bold text-white">
-                              {formatRupiah(prod.retail_price)}
+                              {prod.sale_price && prod.sale_price < prod.retail_price ? (
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-emerald-400 font-bold">{formatRupiah(prod.sale_price)}</span>
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-600 text-white">
+                                      -{Math.round(((prod.retail_price - prod.sale_price) / prod.retail_price) * 100)}%
+                                    </span>
+                                  </div>
+                                  <span className="text-slate-400 line-through text-[11px] block">
+                                    {formatRupiah(prod.retail_price)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span>{formatRupiah(prod.retail_price)}</span>
+                              )}
                             </td>
 
                             <td className="py-3.5 px-4">
@@ -1537,7 +1590,7 @@ export default function AdminPortalPage() {
                             <td className="py-3.5 px-4 text-right">
                               <div className="inline-flex items-center gap-1.5">
                                 <button
-                                  onClick={() => setEditingProduct({ ...prod })}
+                                  onClick={() => openEditProductModal(prod)}
                                   className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 transition flex items-center gap-1"
                                   title="Edit category, price, stock & pictures"
                                 >
@@ -1952,138 +2005,155 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              {/* Price & Stock on Hand */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Retail Price (IDR)</label>
-                  <input
-                    type="number"
-                    value={editingProduct.retail_price}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, retail_price: Number(e.target.value) })
-                    }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
-                  />
+              {/* Pricing & Stock on Hand + Promotional Discount Controls */}
+              <div className="space-y-3 p-3.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Retail Price (Original MSRP)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingProduct.retail_price}
+                      onChange={(e) => {
+                        const newRetail = Number(e.target.value);
+                        setEditingProduct({
+                          ...editingProduct,
+                          retail_price: newRetail,
+                        });
+                      }}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Store Stock on Hand (Inventory)
+                    </label>
+                    <input
+                      type="number"
+                      value={editingProduct.stock_on_hand}
+                      onChange={(e) =>
+                        setEditingProduct({ ...editingProduct, stock_on_hand: Number(e.target.value) })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">
-                    Store Stock on Hand (Inventory)
-                  </label>
-                  <input
-                    type="number"
-                    value={editingProduct.stock_on_hand}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, stock_on_hand: Number(e.target.value) })
-                    }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
-                  />
+
+                {/* Promotional Discount Fields */}
+                <div className="pt-2.5 border-t border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5" />
+                      <span>Promotional Discount / Sale Price</span>
+                    </span>
+                    {editingProduct.sale_price ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct({ ...editingProduct, sale_price: null })}
+                        className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold"
+                      >
+                        Remove Discount
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1">
+                        Discounted Sale Price (IDR)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Leave empty for regular price"
+                        value={editingProduct.sale_price ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value ? Number(e.target.value) : null;
+                          setEditingProduct({
+                            ...editingProduct,
+                            sale_price: val,
+                          });
+                        }}
+                        className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-400 mb-1">
+                        Discount Percentage (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        placeholder="e.g. 15"
+                        value={
+                          editingProduct.sale_price && editingProduct.retail_price && editingProduct.sale_price < editingProduct.retail_price
+                            ? Math.round(((editingProduct.retail_price - editingProduct.sale_price) / editingProduct.retail_price) * 100)
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const percent = Number(e.target.value);
+                          if (percent > 0 && percent < 100 && editingProduct.retail_price) {
+                            const computedSale = Math.round(editingProduct.retail_price * (1 - percent / 100));
+                            setEditingProduct({
+                              ...editingProduct,
+                              sale_price: computedSale,
+                            });
+                          } else if (!e.target.value) {
+                            setEditingProduct({
+                              ...editingProduct,
+                              sale_price: null,
+                            });
+                          }
+                        }}
+                        className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Discount Preview Badge */}
+                  {editingProduct.sale_price && editingProduct.retail_price && editingProduct.sale_price < editingProduct.retail_price && (
+                    <div className="flex items-center justify-between p-2 rounded-lg bg-amber-950/40 border border-amber-800/60 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white font-mono">
+                          {formatRupiah(editingProduct.sale_price)}
+                        </span>
+                        <span className="text-slate-400 line-through font-mono text-[11px]">
+                          {formatRupiah(editingProduct.retail_price)}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[10px]">
+                          -{Math.round(((editingProduct.retail_price - editingProduct.sale_price) / editingProduct.retail_price) * 100)}% OFF
+                        </span>
+                      </div>
+                      <span className="text-emerald-400 font-semibold text-[11px]">
+                        Save {formatRupiah(editingProduct.retail_price - editingProduct.sale_price)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Product Description</label>
-                <textarea
-                  rows={3}
+              {/* Rich Description (Formatting & In-text Pictures) */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Rich Product Description (Formatting &amp; In-text Pictures)</span>
+                </label>
+                <RichTextEditor
                   value={editingProduct.description || ""}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                  onChange={(val) => setEditingProduct({ ...editingProduct, description: val })}
+                  availableImages={editingProduct.images || []}
+                  token={token}
                 />
               </div>
 
-              {/* PICTURE GALLERY: INSERT FROM PC (LOCAL COMPUTER) & DELETE PICTURES */}
-              <div className="border-t border-slate-800 pt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Product Pictures Gallery ({editingProduct.images?.length || 0})</span>
-                  </label>
-                  <span className="text-[11px] text-cyan-400">Upload pictures directly from your PC</span>
-                </div>
-
-                {/* Thumbnails Strip with Delete button */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  {editingProduct.images?.map((imgUrl: string, idx: number) => (
-                    <div
-                      key={idx}
-                      className="relative w-20 h-20 rounded-xl bg-slate-950 border border-slate-700 overflow-hidden group shadow-sm"
-                    >
-                      <img src={imgUrl} alt="Product" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const filtered = editingProduct.images.filter((_: any, i: number) => i !== idx);
-                          setEditingProduct({ ...editingProduct, images: filtered });
-                        }}
-                        className="absolute inset-0 bg-red-950/85 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                        title="Delete picture"
-                      >
-                        <Trash2 className="w-5 h-5 text-red-400 mb-0.5" />
-                        <span className="text-[9px] font-bold">Remove</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Upload from Local PC or paste URL */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  {/* Local Computer File Upload Button */}
-                  <div>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept="image/png,image/jpeg,image/webp,image/gif"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleUploadFileFromPC(file, "edit_product");
-                          e.target.value = "";
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      disabled={uploadingImage}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-9 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium text-xs flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
-                    >
-                      {uploadingImage ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="w-3.5 h-3.5" />
-                      )}
-                      <span>📁 Upload Picture from Computer (PC)</span>
-                    </button>
-                  </div>
-
-                  {/* Image URL fallback */}
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="url"
-                      placeholder="Or paste image URL..."
-                      value={newImageUrlInput}
-                      onChange={(e) => setNewImageUrlInput(e.target.value)}
-                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 h-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!newImageUrlInput.trim()) return;
-                        const currentImages = editingProduct.images || [];
-                        setEditingProduct({
-                          ...editingProduct,
-                          images: [...currentImages, newImageUrlInput.trim()],
-                        });
-                        setNewImageUrlInput("");
-                      }}
-                      className="px-3 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs transition whitespace-nowrap"
-                    >
-                      Add URL
-                    </button>
-                  </div>
-                </div>
-              </div>
+              {/* Product Gallery Manager with Rearrange, Delete, Upload */}
+              <ProductGalleryManager
+                images={editingProduct.images || []}
+                onChange={(newImgs) => setEditingProduct({ ...editingProduct, images: newImgs })}
+                token={token}
+                onUploadSuccess={(msg) => showToast(msg)}
+              />
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-3">
@@ -2416,7 +2486,7 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {newProductModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-6 space-y-4 my-8">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full p-6 space-y-4 my-8 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Crown className="w-5 h-5 text-purple-400" />
@@ -2427,7 +2497,7 @@ export default function AdminPortalPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateProduct} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateProduct} className="space-y-4 text-xs max-h-[75vh] overflow-y-auto pr-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-300 mb-1">Product Name</label>
@@ -2474,81 +2544,141 @@ export default function AdminPortalPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Retail Price (IDR)</label>
-                  <input
-                    name="retail_price"
-                    type="number"
-                    required
-                    placeholder="e.g. 10999000"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Initial Stock on Hand</label>
-                  <input
-                    name="initial_stock"
-                    type="number"
-                    defaultValue={10}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* PC Image Upload or URL */}
-              <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-300">Product Picture (Upload from PC or URL)</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="file"
-                    ref={newProductFileInputRef}
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleUploadFileFromPC(file, "new_product");
-                        e.target.value = "";
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={uploadingImage}
-                    onClick={() => newProductFileInputRef.current?.click()}
-                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-medium text-xs flex items-center gap-1.5 whitespace-nowrap"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>📁 Upload from PC</span>
-                  </button>
-
-                  <input
-                    name="image_url"
-                    value={newProductImageUrl}
-                    onChange={(e) => setNewProductImageUrl(e.target.value)}
-                    placeholder="Or paste image URL (e.g. /tethera.png)"
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
-                  />
-                </div>
-
-                {newProductImageUrl && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <img src={newProductImageUrl} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700" />
-                    <span className="text-[11px] text-emerald-400">Picture attached successfully</span>
+              {/* Pricing & Promotional Discount */}
+              <div className="space-y-3 p-3.5 bg-slate-950/70 rounded-xl border border-slate-800">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Retail Price (IDR)</label>
+                    <input
+                      name="retail_price"
+                      type="number"
+                      required
+                      placeholder="e.g. 10999000"
+                      value={newProductRetailPrice}
+                      onChange={(e) => setNewProductRetailPrice(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">Initial Stock on Hand</label>
+                    <input
+                      name="initial_stock"
+                      type="number"
+                      defaultValue={10}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Promotional Discount Inputs */}
+                <div className="pt-2 border-t border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newProductDiscountEnabled}
+                        onChange={(e) => setNewProductDiscountEnabled(e.target.checked)}
+                        className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0"
+                      />
+                      <span className="font-bold text-amber-400 flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>Apply Promotional Discount / Slashed Price</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {newProductDiscountEnabled && (
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1">
+                          Discounted Sale Price (IDR)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g. 9499000"
+                          value={newProductSalePrice}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : "";
+                            setNewProductSalePrice(val);
+                            if (val && typeof newProductRetailPrice === "number" && newProductRetailPrice > 0) {
+                              setNewProductDiscountPercent(
+                                Math.round(((newProductRetailPrice - Number(val)) / newProductRetailPrice) * 100)
+                              );
+                            }
+                          }}
+                          className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1">
+                          Discount Percentage (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          placeholder="e.g. 15"
+                          value={newProductDiscountPercent}
+                          onChange={(e) => {
+                            const pct = e.target.value ? Number(e.target.value) : "";
+                            setNewProductDiscountPercent(pct);
+                            if (pct && typeof newProductRetailPrice === "number" && newProductRetailPrice > 0) {
+                              setNewProductSalePrice(
+                                Math.round(newProductRetailPrice * (1 - Number(pct) / 100))
+                              );
+                            }
+                          }}
+                          className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {newProductDiscountEnabled &&
+                    typeof newProductSalePrice === "number" &&
+                    typeof newProductRetailPrice === "number" &&
+                    newProductSalePrice > 0 &&
+                    newProductSalePrice < newProductRetailPrice && (
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-amber-950/40 border border-amber-800/60 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white font-mono">
+                            {formatRupiah(newProductSalePrice)}
+                          </span>
+                          <span className="text-slate-400 line-through font-mono text-[11px]">
+                            {formatRupiah(newProductRetailPrice)}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[10px]">
+                            -{Math.round(((newProductRetailPrice - newProductSalePrice) / newProductRetailPrice) * 100)}% OFF
+                          </span>
+                        </div>
+                        <span className="text-emerald-400 font-semibold text-[11px]">
+                          Save {formatRupiah(newProductRetailPrice - newProductSalePrice)}
+                        </span>
+                      </div>
+                    )}
+                </div>
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Product Description</label>
-                <textarea
-                  name="description"
-                  rows={2}
-                  placeholder="High-performance hardware component designed for enthusiast computing..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+              {/* Rich Product Description with Formatting & Image Inserter */}
+              <div className="space-y-1.5">
+                <label className="block font-semibold text-slate-300">
+                  Product Description (Headers, Bold, Italics &amp; In-text Pictures)
+                </label>
+                <RichTextEditor
+                  value={newProductDescription}
+                  onChange={setNewProductDescription}
+                  availableImages={newProductImages}
+                  token={token}
                 />
               </div>
+
+              {/* Product Gallery Manager (Multi-upload & Rearrange) */}
+              <ProductGalleryManager
+                images={newProductImages}
+                onChange={setNewProductImages}
+                token={token}
+                onUploadSuccess={(msg) => showToast(msg)}
+              />
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
