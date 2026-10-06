@@ -97,7 +97,7 @@ export default function ComponentsCatalogPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 space-y-8">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-6 border-b border-slate-200 dark:border-zinc-800 gap-4">
         <div>
@@ -231,7 +231,7 @@ export default function ComponentsCatalogPage() {
         </div>
       ) : (
         <div className="space-y-6" id="catalog-results">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
             {paginatedItems.map((item) => (
               <div
                 key={`${activeCategory}-${item.id}-${selectedBrand}-${sortBy}`}

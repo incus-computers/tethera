@@ -52,7 +52,7 @@ export default function RootLayout({
 
         {/* Footer (Dark Mode Responsive) */}
         <footer className="bg-white dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800/80 mt-16 w-full max-w-full overflow-x-hidden">
-          <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-12">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-200 dark:border-zinc-800">
               {/* Brand Col */}
               <div className="space-y-3">

@@ -96,7 +96,7 @@ export default function HomePage() {
       {/* HERO SECTION: Tethera Precision Light / Dark Zinc Concept */}
       {/* ========================================================================= */}
       <section className="bg-gradient-to-b from-white to-slate-100/60 dark:from-zinc-950 dark:to-zinc-900/60 border-y border-slate-200 dark:border-zinc-800 py-12 sm:py-16 transition-colors">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             {/* Hero Left Content */}
             <div className="lg:col-span-7 space-y-6">
@@ -187,7 +187,7 @@ export default function HomePage() {
       {/* ========================================================================= */}
       {/* PRE-BUILT SYSTEMS SHOWCASE (Click & Collect Ready) */}
       {/* ========================================================================= */}
-      <section id="prebuilt" className="max-w-7xl mx-auto px-4">
+      <section id="prebuilt" className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 pb-4 border-b border-slate-200 dark:border-zinc-800 gap-2">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
@@ -208,7 +208,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
           {prebuilts.map((pb) => (
             <div
               key={pb.id}
@@ -301,7 +301,7 @@ export default function HomePage() {
       {/* ========================================================================= */}
       {/* PC HARDWARE & COMPONENTS CATALOG */}
       {/* ========================================================================= */}
-      <section id="components" className="max-w-7xl mx-auto px-4">
+      <section id="components" className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 pb-4 border-b border-slate-200 dark:border-zinc-800 gap-4">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
@@ -331,7 +331,7 @@ export default function HomePage() {
         </div>
 
         {/* Product Cards Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
           {paginatedComponents.map((item) => (
             <div
               key={`${activeCategory}-${item.id}`}

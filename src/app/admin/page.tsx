@@ -1421,7 +1421,7 @@ export default function AdminPortalPage() {
       )}
 
       {/* Top Header Bar */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between">
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
@@ -1490,7 +1490,7 @@ export default function AdminPortalPage() {
       </header>
 
       {/* Main Container & Navigation Tabs */}
-      <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+      <div className="flex-1 flex flex-col w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
         {/* ==================================================================== */}
         {/* ACTIONABLE NOTIFICATIONS BAR (ORDERS NEEDING FULFILLMENT & LOW STOCK) */}
         {/* ==================================================================== */}

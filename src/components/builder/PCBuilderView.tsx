@@ -213,7 +213,7 @@ export function PCBuilderView() {
   const wattagePct = Math.min(100, Math.round((estimated / (slots.psu?.specs.wattage || 850)) * 100));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between pb-6 mb-8 border-b border-slate-200 dark:border-zinc-800 gap-4">
         <div>

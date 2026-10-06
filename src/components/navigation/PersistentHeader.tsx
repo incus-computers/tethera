@@ -147,11 +147,11 @@ export function PersistentHeader() {
       {/* TIER 1: Announcement Banner (Top-of-page announcement strip, persists on scroll) */}
       {/* ========================================================================= */}
       <div
-        className={`bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800/80 w-full max-w-full overflow-hidden px-3 sm:px-4 transition-all duration-200 ${
+        className={`bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800/80 w-full max-w-full overflow-hidden px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 transition-all duration-200 ${
           isSticky ? "py-1 text-[11px]" : "py-2 text-xs"
         }`}
       >
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+        <div className="w-full max-w-[1920px] mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200 text-[11px] sm:text-xs">
               <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
@@ -187,11 +187,11 @@ export function PersistentHeader() {
       {/* TIER 2: Main Search & Action Bar (Reverts to full size, shrinks on scroll) */}
       {/* ========================================================================= */}
         <div
-          className={`bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-4 w-full max-w-full transition-all duration-200 ${
+          className={`bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full max-w-full transition-all duration-200 ${
             isSticky ? "py-1.5 sm:py-2" : "py-2.5 sm:py-3"
           }`}
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-8 relative">
+          <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-2 sm:gap-4 md:gap-8 relative">
             {/* Mobile Hamburger Menu Toggle (Visible on <lg screens) */}
             <button
               type="button"
@@ -217,7 +217,7 @@ export function PersistentHeader() {
             </Link>
 
           {/* Predictive Autocomplete Search Bar & Dropdown */}
-          <div className="flex-1 min-w-0 max-w-2xl mx-1 sm:mx-0">
+          <div className="flex-1 min-w-0 max-w-2xl xl:max-w-4xl mx-1 sm:mx-0">
             <PredictiveSearchDropdown isCompact={isSticky} />
           </div>
 
@@ -302,7 +302,7 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 3: Category Mega-Nav & Custom PC Builder CTA (Slim, persistent) */}
       {/* ========================================================================= */}
-      <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-4 relative w-full transition-colors">
+      <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 relative w-full transition-colors">
         {/* Mobile Category Quick Strip (<sm viewports) */}
         <div className="sm:hidden flex items-center gap-1 py-1 overflow-x-auto scrollbar-none w-full max-w-full">
           <Link
@@ -369,7 +369,7 @@ export function PersistentHeader() {
         </div>
 
         {/* Desktop Category Bar (>=sm viewports) */}
-        <div className={`hidden sm:flex max-w-7xl mx-auto items-center justify-between font-semibold text-zinc-700 dark:text-zinc-300 transition-all ${
+        <div className={`hidden sm:flex w-full max-w-[1920px] mx-auto items-center justify-between font-semibold text-zinc-700 dark:text-zinc-300 transition-all ${
           isSticky ? "text-[11px]" : "text-xs"
         }`}>
           {/* Left Navigation: All Categories Hover Dropdown + Direct Category Links */}

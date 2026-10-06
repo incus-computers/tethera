@@ -49,7 +49,7 @@ export default function PrebuiltsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-10">
+    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 space-y-10">
       {/* Header */}
       <div className="pb-6 border-b border-slate-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
@@ -79,7 +79,7 @@ export default function PrebuiltsPage() {
 
       {/* Grid of Prebuilt Rigs */}
       <div className="space-y-8" id="prebuilts-list">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8">
           {paginatedPrebuilts.map((pb) => (
             <div
               key={pb.id}

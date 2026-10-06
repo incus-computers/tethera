@@ -397,8 +397,8 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 py-10 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+      <div className="w-full max-w-[1920px] mx-auto space-y-6">
         {/* Profile Header Summary */}
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">

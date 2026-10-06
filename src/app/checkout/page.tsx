@@ -408,8 +408,8 @@ export default function CheckoutPage() {
     MIDTRANS_PAYMENT_METHODS[0];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 py-10 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+      <div className="w-full max-w-[1920px] mx-auto space-y-8">
         {/* Checkout Header & Breadcrumbs */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-zinc-800 pb-6">
           <div>

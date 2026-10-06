@@ -194,7 +194,7 @@ const SPONSORS: Sponsor[] = [
 
 export function SponsorMarquee() {
   return (
-    <section className="max-w-7xl mx-auto px-4 w-full">
+    <section className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
       <div className="w-full bg-slate-100/70 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden relative group shadow-2xs transition-colors">
         <div className="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/50 dark:border-zinc-800/80">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-zinc-300">

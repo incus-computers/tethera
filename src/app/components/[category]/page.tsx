@@ -79,7 +79,7 @@ export default function CategoryProductsPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 space-y-8">
       {/* Header & Breadcrumb */}
       <div className="pb-6 border-b border-slate-200 dark:border-zinc-800">
         <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-zinc-400 font-medium mb-2">
@@ -160,7 +160,7 @@ export default function CategoryProductsPage() {
 
       {/* Product Cards Grid */}
       <div className="space-y-6" id="category-results">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
           {paginatedItems.map((item) => (
             <div
               key={`${item.id}-${selectedBrand}-${selectedSocket}`}

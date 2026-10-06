@@ -161,7 +161,7 @@ export default function ProductDetailPage() {
   ).slice(0, 4);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
+    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 space-y-12">
       {/* ========================================================================= */}
       {/* BREADCRUMB TRAIL */}
       {/* ========================================================================= */}
@@ -614,7 +614,7 @@ export default function ProductDetailPage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
           {relatedComponents.map((item) => (
             <Link
               key={item.id}

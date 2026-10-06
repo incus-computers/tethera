@@ -294,8 +294,8 @@ function TransactionsContent() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 py-8 sm:py-12 px-3 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 py-8 sm:py-12 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+      <div className="w-full max-w-[1920px] mx-auto space-y-6">
         {/* Navigation Breadcrumbs */}
         <nav aria-label="Breadcrumb" className="text-xs text-slate-500 dark:text-zinc-400 flex items-center gap-2">
           <Link href="/" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
