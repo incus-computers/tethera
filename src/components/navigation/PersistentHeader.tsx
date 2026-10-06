@@ -142,11 +142,15 @@ export function PersistentHeader() {
   }, []);
 
   return (
-    <>
+    <header className="sticky top-0 z-50 w-full bg-white dark:bg-zinc-950 shadow-sm dark:shadow-zinc-950/40 transition-all duration-200">
       {/* ========================================================================= */}
-      {/* TIER 1: Announcement Banner (Top-of-page announcement strip) */}
+      {/* TIER 1: Announcement Banner (Top-of-page announcement strip, persists on scroll) */}
       {/* ========================================================================= */}
-      <div className="bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 text-xs border-b border-slate-200 dark:border-zinc-800/80 w-full max-w-full overflow-hidden py-2 px-3 sm:px-4 transition-colors">
+      <div
+        className={`bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800/80 w-full max-w-full overflow-hidden px-3 sm:px-4 transition-all duration-200 ${
+          isSticky ? "py-1 text-[11px]" : "py-2 text-xs"
+        }`}
+      >
         <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200 text-[11px] sm:text-xs">
@@ -180,12 +184,8 @@ export function PersistentHeader() {
       </div>
 
       {/* ========================================================================= */}
-      {/* PERSISTENT STICKY HEADER (Pins to top on scroll, maintains stable space) */}
+      {/* TIER 2: Main Search & Action Bar (Reverts to full size, shrinks on scroll) */}
       {/* ========================================================================= */}
-      <header className="sticky top-0 z-50 w-full bg-white dark:bg-zinc-950 shadow-sm dark:shadow-zinc-950/40 transition-all duration-200">
-        {/* ========================================================================= */}
-        {/* TIER 2: Main Search & Action Bar (Reverts to full size, shrinks on scroll) */}
-        {/* ========================================================================= */}
         <div
           className={`bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-4 w-full max-w-full transition-all duration-200 ${
             isSticky ? "py-1.5 sm:py-2" : "py-2.5 sm:py-3"
@@ -1025,6 +1025,5 @@ export function PersistentHeader() {
       <CartDrawer />
       <GlobalLocationModal />
     </header>
-    </>
   );
 }
