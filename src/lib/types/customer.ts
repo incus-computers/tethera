@@ -44,21 +44,23 @@ export interface RegistrationInput {
   email: string;
   password?: string;
   fullName: string;
-  phone: string;
-  street: string;
+  phone?: string;
+  street?: string;
   unit?: string;
-  subdistrict: string;
-  city: string;
-  province: string;
-  postalCode: string;
+  subdistrict?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
   country?: string;
   addressLabel?: "Home" | "Office" | "Workshop" | "Other";
   deliveryNotes?: string;
-  marketingOptIn: boolean;
+  marketingOptIn?: boolean;
   newsletterFrequency?: NewsletterFrequency;
   customerSegment?: CustomerSegment;
   hardwarePreference?: HardwarePreference;
   whatsappUpdates?: boolean;
+  leadSource?: string;
+  termsAccepted?: boolean;
 }
 
 export interface CrmCampaignPayload {

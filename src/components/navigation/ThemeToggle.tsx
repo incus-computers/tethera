@@ -7,9 +7,10 @@ import { useThemeStore } from "../../lib/store/useThemeStore";
 interface ThemeToggleProps {
   variant?: "header" | "mobile";
   className?: string;
+  isCompact?: boolean;
 }
 
-export function ThemeToggle({ variant = "header", className = "" }: ThemeToggleProps) {
+export function ThemeToggle({ variant = "header", className = "", isCompact = false }: ThemeToggleProps) {
   const { theme, setTheme, initTheme, isMounted } = useThemeStore();
 
   useEffect(() => {
@@ -20,14 +21,20 @@ export function ThemeToggle({ variant = "header", className = "" }: ThemeToggleP
 
   const renderSegmentedControls = (alwaysShowLabels: boolean = false) => (
     <div
-      className={`inline-flex rounded-lg bg-slate-200/80 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 shadow-2xs shrink-0 ${alwaysShowLabels ? "p-1 rounded-xl" : "p-0.5"}`}
+      className={`inline-flex rounded-lg bg-slate-200/80 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 shadow-2xs shrink-0 transition-all ${
+        alwaysShowLabels ? "p-1 rounded-xl" : isCompact ? "p-0.5 rounded-lg" : "p-1 rounded-xl"
+      }`}
       role="group"
       aria-label="Theme mode selection"
     >
       <button
         type="button"
         onClick={() => setTheme("light")}
-        className={`${alwaysShowLabels ? "min-h-[34px] px-2 sm:px-3 text-xs" : "h-7 sm:h-7.5 px-1.5 sm:px-2 text-[10px] sm:text-[11px]"} rounded-md font-bold flex items-center gap-1 transition-all tactile-btn ${
+        className={`${
+          alwaysShowLabels || !isCompact
+            ? "min-h-[34px] px-2 sm:px-3 text-xs"
+            : "h-7 sm:h-7.5 px-1.5 sm:px-2 text-[10px] sm:text-[11px]"
+        } rounded-md font-bold flex items-center gap-1 transition-all tactile-btn ${
           !isDark
             ? "bg-white text-zinc-900 shadow-xs border border-slate-200/80"
             : "text-slate-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
@@ -35,13 +42,17 @@ export function ThemeToggle({ variant = "header", className = "" }: ThemeToggleP
         aria-label="Switch to light theme"
         title="Light theme"
       >
-        <Sun className="w-3 h-3 text-amber-500 shrink-0" />
+        <Sun className={`${isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} text-amber-500 shrink-0`} />
         <span className={`font-bold ${alwaysShowLabels ? "inline" : "hidden sm:inline"}`}>Light</span>
       </button>
       <button
         type="button"
         onClick={() => setTheme("dark")}
-        className={`${alwaysShowLabels ? "min-h-[34px] px-2 sm:px-3 text-xs" : "h-7 sm:h-7.5 px-1.5 sm:px-2 text-[10px] sm:text-[11px]"} rounded-md font-bold flex items-center gap-1 transition-all tactile-btn ${
+        className={`${
+          alwaysShowLabels || !isCompact
+            ? "min-h-[34px] px-2 sm:px-3 text-xs"
+            : "h-7 sm:h-7.5 px-1.5 sm:px-2 text-[10px] sm:text-[11px]"
+        } rounded-md font-bold flex items-center gap-1 transition-all tactile-btn ${
           isDark
             ? "bg-zinc-700 text-emerald-400 shadow-xs border border-zinc-600"
             : "text-slate-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
@@ -49,7 +60,7 @@ export function ThemeToggle({ variant = "header", className = "" }: ThemeToggleP
         aria-label="Switch to dark theme"
         title="Dark theme"
       >
-        <Moon className="w-3 h-3 text-emerald-400 shrink-0" />
+        <Moon className={`${isCompact ? "w-3 h-3" : "w-3.5 h-3.5"} text-emerald-400 shrink-0`} />
         <span className={`font-bold ${alwaysShowLabels ? "inline" : "hidden sm:inline"}`}>Dark</span>
       </button>
     </div>

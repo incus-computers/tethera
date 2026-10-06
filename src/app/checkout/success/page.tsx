@@ -23,8 +23,13 @@ import {
   Mail,
   Cpu,
   Monitor,
+  Download,
+  Receipt,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { formatRupiah } from "@/lib/utils/currency";
+import { downloadInvoiceFile } from "@/lib/utils/invoiceDownload";
 
 interface OrderSnapshot {
   orderNumber: string;
@@ -90,6 +95,11 @@ function OrderSuccessContent() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [order, setOrder] = useState<OrderSnapshot | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [emailResentSuccess, setEmailResentSuccess] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -161,6 +171,71 @@ function OrderSuccessContent() {
     }
   };
 
+  const handleDownloadInvoice = () => {
+    setIsDownloading(true);
+    try {
+      downloadInvoiceFile({
+        orderNumber: currentOrder.orderNumber,
+        paymentId: currentOrder.paymentId,
+        paymentChannel: currentOrder.paymentChannel,
+        createdAt: currentOrder.createdAt,
+        customer: currentOrder.customer,
+        fulfillmentMethod: currentOrder.fulfillmentMethod,
+        shippingAddress: currentOrder.shippingAddress,
+        courier: currentOrder.courier,
+        items: currentOrder.items,
+        customPCs: currentOrder.customPCs,
+        subtotal: currentOrder.subtotal,
+        shippingFee: currentOrder.shippingFee,
+        grandTotal: currentOrder.grandTotal,
+      });
+      setDownloadSuccess(true);
+      setTimeout(() => setDownloadSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to download invoice:", err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!currentOrder.customer?.email) return;
+    setIsResendingEmail(true);
+    setEmailError(null);
+    try {
+      const res = await fetch("/api/orders/invoice/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderNumber: currentOrder.orderNumber,
+          email: currentOrder.customer.email,
+          customerName: currentOrder.customer.name,
+          paymentId: currentOrder.paymentId,
+          paymentMethod: currentOrder.paymentChannel,
+          fulfillmentType: currentOrder.fulfillmentMethod,
+          shippingAddress: currentOrder.shippingAddress
+            ? `${currentOrder.shippingAddress.street}, ${currentOrder.shippingAddress.city}`
+            : undefined,
+          subtotal: currentOrder.subtotal,
+          shippingFee: currentOrder.shippingFee,
+          grandTotal: currentOrder.grandTotal,
+          items: currentOrder.items,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setEmailResentSuccess(true);
+        setTimeout(() => setEmailResentSuccess(false), 4000);
+      } else {
+        setEmailError(data.error || "Failed to dispatch email");
+      }
+    } catch (err: any) {
+      setEmailError(err?.message || "Failed to communicate with server");
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
   const currentOrder = order || {
     orderNumber: queryOrderNumber,
     paymentId: queryPaymentId,
@@ -206,7 +281,7 @@ function OrderSuccessContent() {
               <span>Midtrans Payment Settlement Verified</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight mt-2">
-              Order Confirmed &amp; Stock Reserved!
+              Purchase Successful! Your Order has been received. ({currentOrder.orderNumber})
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 max-w-md mx-auto">
               Thank you for shopping at Tethera. Your transaction has been approved by Midtrans and our warehouse team is preparing your hardware.
@@ -228,7 +303,7 @@ function OrderSuccessContent() {
               <button
                 type="button"
                 onClick={() => handleCopy(currentOrder.paymentId, "paymentId")}
-                className="p-2 rounded-lg bg-slate-800 dark:bg-zinc-700 hover:bg-slate-700 dark:hover:bg-zinc-600 text-white transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
+                className="p-2 rounded-lg bg-slate-800 dark:bg-zinc-700 hover:bg-slate-700 dark:hover:bg-zinc-600 text-white transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 title="Copy Payment ID"
               >
                 {copiedField === "paymentId" ? (
@@ -252,7 +327,7 @@ function OrderSuccessContent() {
               <button
                 type="button"
                 onClick={() => handleCopy(currentOrder.orderNumber, "orderNumber")}
-                className="p-2 rounded-lg bg-white dark:bg-zinc-700/90 hover:bg-slate-200 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors border border-slate-200 dark:border-zinc-600 min-w-[40px] min-h-[40px] flex items-center justify-center"
+                className="p-2 rounded-lg bg-white dark:bg-zinc-700/90 hover:bg-slate-200 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 transition-colors border border-slate-200 dark:border-zinc-600 min-w-[40px] min-h-[40px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                 title="Copy Order Number"
               >
                 {copiedField === "orderNumber" ? (
@@ -262,6 +337,95 @@ function OrderSuccessContent() {
                 )}
               </button>
             </div>
+          </div>
+
+          {/* Primary Action Choices: Transaction Page vs Download Invoice */}
+          <div className="p-5 sm:p-6 bg-slate-50 dark:bg-zinc-800/70 rounded-2xl border border-slate-200 dark:border-zinc-700/80 text-left space-y-4">
+            <div className="space-y-1">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-zinc-300 block">
+                Next Steps for Your Order
+              </span>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">
+                You can review your order progress on the transaction page or download a copy of your official tax invoice:
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Choice 1: Go to Transaction Page */}
+              <Link
+                href="/transactions"
+                className="w-full py-3.5 px-5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2.5 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <Receipt className="w-4 h-4 shrink-0" />
+                <span>Go to Transaction Page</span>
+                <ArrowRight className="w-4 h-4 shrink-0" />
+              </Link>
+
+              {/* Choice 2: Download Invoice */}
+              <button
+                type="button"
+                onClick={handleDownloadInvoice}
+                disabled={isDownloading}
+                className="w-full py-3.5 px-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2.5 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+              >
+                {downloadSuccess ? (
+                  <>
+                    <Check className="w-4 h-4 shrink-0 text-white" />
+                    <span>Invoice Downloaded!</span>
+                  </>
+                ) : isDownloading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+                    <span>Preparing Invoice...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 shrink-0" />
+                    <span>Download Invoice</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Email Dispatch Reassurance */}
+            <div className="pt-3 border-t border-slate-200 dark:border-zinc-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-zinc-300">
+                <Mail className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>
+                  Invoice sent to registered email:{" "}
+                  <strong className="text-zinc-900 dark:text-zinc-100 font-semibold">{currentOrder.customer?.email || "customer@example.com"}</strong>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleResendEmail}
+                disabled={isResendingEmail}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white dark:bg-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-600 text-zinc-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-600 text-[11px] font-semibold transition-colors min-h-[44px] shrink-0 self-start sm:self-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+              >
+                {isResendingEmail ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : emailResentSuccess ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">Sent to Email!</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+                    <span>Resend to Email</span>
+                  </>
+                )}
+              </button>
+            </div>
+            {emailError && (
+              <div className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+                Notice: {emailError}
+              </div>
+            )}
           </div>
         </div>
 
@@ -506,22 +670,44 @@ function OrderSuccessContent() {
 
           {/* Action Buttons */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="w-full sm:w-auto py-3 px-6 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px]"
-            >
-              <Printer className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
-              <span>Print Tax Invoice</span>
-            </button>
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleDownloadInvoice}
+                disabled={isDownloading}
+                className="w-full sm:w-auto py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:opacity-60"
+              >
+                <Download className="w-4 h-4" />
+                <span>{downloadSuccess ? "Invoice Downloaded!" : "Download Invoice"}</span>
+              </button>
 
-            <Link
-              href="/"
-              className="w-full sm:w-auto py-3.5 px-8 bg-zinc-900 hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 min-h-[44px]"
-            >
-              <span>Back to Store</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="w-full sm:w-auto py-3 px-5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              >
+                <Printer className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+                <span>Print Tax Invoice</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+              <Link
+                href="/transactions"
+                className="w-full sm:w-auto py-3 px-5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              >
+                <Receipt className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+                <span>Transaction Records</span>
+              </Link>
+
+              <Link
+                href="/"
+                className="w-full sm:w-auto py-3 px-6 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              >
+                <span>Back to Store</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>

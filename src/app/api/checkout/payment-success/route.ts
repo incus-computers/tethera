@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db, getServerSupabase } from "@/lib/db";
 import { MarketplaceSyncService } from "@/lib/integrations/marketplace";
 import { WhatsAppNotificationService } from "@/lib/notifications/whatsapp";
-import { sendOrderNotificationEmail } from "@/lib/notifications/email";
+import { sendOrderNotificationEmail, sendInvoiceEmail } from "@/lib/notifications/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -88,13 +88,38 @@ export async function POST(req: NextRequest) {
 
     // B. Email Notification
     if (order?.customer_email) {
+      const invoiceItems = order.order_items?.map((it: any) => ({
+        name: it.products?.name || (it.is_custom_build ? "Custom PC Build" : `Hardware Item (${it.product_id || it.id})`),
+        sku: it.products?.sku,
+        quantity: it.quantity,
+        price: it.unit_price,
+        totalPrice: it.quantity * it.unit_price,
+      }));
+
+      sendInvoiceEmail({
+        toEmail: order.customer_email,
+        customerName: order.customer_name,
+        orderNumber: order.order_number,
+        paymentId: paymentReference,
+        paymentMethod: order.payment_method || "Online Payment",
+        fulfillmentType: order.fulfillment_type,
+        pickupCode: order.pickup_code || undefined,
+        shippingAddress: order.shipping_address
+          ? `${order.shipping_address.street}, ${order.shipping_address.city} ${order.shipping_address.postalCode}`
+          : undefined,
+        items: invoiceItems,
+        subtotal: order.subtotal,
+        shippingFee: order.shipping_fee,
+        grandTotal: order.total,
+      }).catch((err) => console.error("Invoice email dispatch error:", err));
+
       sendOrderNotificationEmail({
         toEmail: order.customer_email,
         customerName: order.customer_name,
         orderNumber: order.order_number,
         fulfillmentType: order.fulfillment_type,
         pickupCode: order.pickup_code,
-        total: `$${order.total}`,
+        total: `IDR ${order.total.toLocaleString("id-ID")}`,
         isCustomPc,
         storeDetails: order.stores
           ? {

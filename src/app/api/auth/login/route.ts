@@ -3,16 +3,17 @@ import { crmService } from "@/lib/crm/crmService";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const identifier = (body.identifier || body.email || body.phone || "").trim();
 
-    if (!email) {
+    if (!identifier) {
       return NextResponse.json(
-        { success: false, error: "Email address is required." },
+        { success: false, error: "Please enter your email address or phone number." },
         { status: 400 }
       );
     }
 
-    const result = await crmService.authenticate(email, password);
+    const result = await crmService.authenticate(identifier, body.password);
 
     if (result.error || !result.user) {
       return NextResponse.json(

@@ -12,6 +12,7 @@ export interface PaginationProps {
   scrollToId?: string;
   itemLabel?: string;
   className?: string;
+  options?: number[];
 }
 
 export function Pagination({
@@ -23,6 +24,7 @@ export function Pagination({
   scrollToId,
   itemLabel = "products",
   className = "",
+  options = [20, 40, 60],
 }: PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -110,7 +112,7 @@ export function Pagination({
           <span className="font-bold text-zinc-900 dark:text-zinc-100">{totalItems}</span> {itemLabel}
         </span>
 
-        {/* Per-Page Selector (10, 20, 50) */}
+        {/* Per-Page Selector (multiples of 4: 20, 40, 60) */}
         <div className="flex items-center gap-2">
           <label htmlFor={`items-per-page-${scrollToId || "default"}`} className="text-slate-500 dark:text-zinc-400 font-bold whitespace-nowrap">
             Show:
@@ -122,9 +124,11 @@ export function Pagination({
             className="bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-lg px-2.5 py-1.5 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-600 shadow-2xs min-h-[44px] cursor-pointer"
             aria-label="Products per page"
           >
-            <option value={10}>10 per page</option>
-            <option value={20}>20 per page</option>
-            <option value={50}>50 per page</option>
+            {options.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt} per page
+              </option>
+            ))}
           </select>
         </div>
       </div>

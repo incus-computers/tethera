@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { MIDTRANS_PAYMENT_METHODS, generateMidtransPaymentDetails } from "@/lib/payment/midtrans";
 import { WhatsAppNotificationService } from "@/lib/notifications/whatsapp";
-import { sendOrderNotificationEmail } from "@/lib/notifications/email";
+import { sendOrderNotificationEmail, sendInvoiceEmail } from "@/lib/notifications/email";
 
 export async function POST(req: NextRequest) {
   try {
@@ -65,6 +65,34 @@ export async function POST(req: NextRequest) {
       }
 
       if (order?.customer_email) {
+        // Fetch order items if available for itemized invoice
+        const orderDetails = await db.orders.getOrderWithItems(orderId).catch(() => null);
+        const invoiceItems = orderDetails?.items?.map((it: any) => ({
+          name: it.product?.name || (it.is_custom_build ? "Custom PC Build" : `Hardware Component (${it.product_id || it.id})`),
+          sku: it.product?.sku,
+          quantity: it.quantity,
+          price: it.unit_price,
+          totalPrice: it.quantity * it.unit_price,
+        }));
+
+        // Send official tax invoice to customer registered email
+        sendInvoiceEmail({
+          toEmail: order.customer_email,
+          customerName: order.customer_name,
+          orderNumber: order.order_number,
+          paymentId: paymentReference,
+          paymentMethod: `${channelName} (Midtrans)`,
+          fulfillmentType: order.fulfillment_type,
+          pickupCode: order.pickup_code || undefined,
+          shippingAddress: order.shipping_address
+            ? `${order.shipping_address.street}, ${order.shipping_address.city} ${order.shipping_address.postalCode}`
+            : undefined,
+          items: invoiceItems,
+          subtotal: order.subtotal,
+          shippingFee: order.shipping_fee,
+          grandTotal: order.total,
+        }).catch(console.error);
+
         sendOrderNotificationEmail({
           toEmail: order.customer_email,
           customerName: order.customer_name,

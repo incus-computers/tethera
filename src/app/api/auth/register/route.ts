@@ -6,10 +6,12 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as RegistrationInput;
 
-    // Validation
-    if (!body.email || !body.email.includes("@")) {
+    const hasEmail = Boolean(body.email && body.email.includes("@"));
+    const hasPhone = Boolean(body.phone && body.phone.replace(/[^0-9]/g, "").length >= 8);
+
+    if (!hasEmail && !hasPhone) {
       return NextResponse.json(
-        { success: false, error: "Please provide a valid email address." },
+        { success: false, error: "Please provide a valid email address or phone number." },
         { status: 400 }
       );
     }
@@ -21,19 +23,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!body.phone || body.phone.trim().length < 6) {
+    if (body.password && body.password.length < 6) {
       return NextResponse.json(
-        { success: false, error: "A valid phone number is required for courier delivery & verification." },
-        { status: 400 }
-      );
-    }
-
-    if (!body.street || !body.city || !body.province || !body.postalCode) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Full delivery address (street, city, province, postal code) is required for e-commerce orders.",
-        },
+        { success: false, error: "Password must be at least 6 characters long." },
         { status: 400 }
       );
     }
@@ -50,7 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       user: result.user,
-      message: "Registration successful! Welcome confirmation & discount voucher dispatched to your email.",
+      message: "Account created successfully.",
     });
   } catch (err: any) {
     console.error("[AUTH REGISTER ERROR]:", err);

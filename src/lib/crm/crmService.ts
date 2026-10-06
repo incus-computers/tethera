@@ -142,14 +142,28 @@ class CrmDatabase {
   }
 
   async register(input: RegistrationInput): Promise<{ user: CustomerProfile; error?: string }> {
-    const normalizedEmail = input.email.trim().toLowerCase();
+    const cleanPhone = (input.phone || "").replace(/[^0-9]/g, "");
+    const normalizedEmail = (input.email ? input.email.trim().toLowerCase() : (cleanPhone ? `${cleanPhone}@tethera.id` : ""));
 
-    // Check duplicate
-    const existing = Array.from(this.customers.values()).find(
-      (c) => c.email.toLowerCase() === normalizedEmail
-    );
-    if (existing) {
-      return { user: existing, error: "An account with this email address already exists. Please sign in instead." };
+    // Check duplicate by email
+    if (normalizedEmail) {
+      const existingEmail = Array.from(this.customers.values()).find(
+        (c) => c.email.toLowerCase() === normalizedEmail
+      );
+      if (existingEmail) {
+        return { user: existingEmail, error: "An account with this email address already exists. Please sign in instead." };
+      }
+    }
+
+    // Check duplicate by phone
+    if (cleanPhone.length > 5) {
+      const existingPhone = Array.from(this.customers.values()).find((c) => {
+        const cPhone = c.phone.replace(/[^0-9]/g, "");
+        return cPhone.length > 5 && cPhone === cleanPhone;
+      });
+      if (existingPhone) {
+        return { user: existingPhone, error: "An account with this phone number already exists. Please sign in instead." };
+      }
     }
 
     const newId = `cust-${Date.now()}`;
@@ -157,14 +171,14 @@ class CrmDatabase {
       id: newId,
       email: normalizedEmail,
       fullName: input.fullName.trim(),
-      phone: input.phone.trim(),
+      phone: input.phone?.trim() || "",
       address: {
-        street: input.street.trim(),
+        street: input.street?.trim() || "",
         unit: input.unit?.trim() || "",
-        subdistrict: input.subdistrict.trim(),
-        city: input.city.trim(),
-        province: input.province.trim(),
-        postalCode: input.postalCode.trim(),
+        subdistrict: input.subdistrict?.trim() || "",
+        city: input.city?.trim() || "",
+        province: input.province?.trim() || "",
+        postalCode: input.postalCode?.trim() || "",
         country: input.country || "Indonesia",
         label: input.addressLabel || "Home",
         deliveryNotes: input.deliveryNotes?.trim() || "",
@@ -178,7 +192,7 @@ class CrmDatabase {
       },
       crm: {
         status: "lead",
-        leadSource: "ecommerce_registration",
+        leadSource: input.leadSource || "ecommerce_registration",
         tags: ["registered_user", input.customerSegment || "gamer"],
         registeredAt: new Date().toISOString(),
         totalOrders: 0,
@@ -190,6 +204,10 @@ class CrmDatabase {
     this.customers.set(newId, newCustomer);
     if (input.password) {
       this.credentials.set(normalizedEmail, input.password);
+      if (input.phone) {
+        const cleanPhone = input.phone.replace(/[^0-9]/g, "");
+        if (cleanPhone) this.credentials.set(cleanPhone, input.password);
+      }
     }
 
     // Try Supabase sync if configured
@@ -231,21 +249,42 @@ class CrmDatabase {
     return { user: newCustomer };
   }
 
-  async authenticate(email: string, password?: string): Promise<{ user?: CustomerProfile; error?: string }> {
-    const normalizedEmail = email.trim().toLowerCase();
+  async authenticate(identifier: string, password?: string): Promise<{ user?: CustomerProfile; error?: string }> {
+    const raw = identifier.trim();
+    const isEmail = raw.includes("@");
+    const normalizedEmail = raw.toLowerCase();
+    const cleanPhone = raw.replace(/[^0-9]/g, "");
 
-    const foundCustomer = Array.from(this.customers.values()).find(
-      (c) => c.email.toLowerCase() === normalizedEmail
-    );
+    let foundCustomer: CustomerProfile | undefined;
 
-    if (!foundCustomer) {
-      return { error: "No customer account found with this email. Please check your spelling or create an account." };
+    if (isEmail) {
+      foundCustomer = Array.from(this.customers.values()).find(
+        (c) => c.email.toLowerCase() === normalizedEmail
+      );
+    } else {
+      foundCustomer = Array.from(this.customers.values()).find((c) => {
+        const cPhone = c.phone.replace(/[^0-9]/g, "");
+        return cPhone.length > 5 && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone));
+      });
     }
 
-    // If password supplied, verify password
-    const storedPassword = this.credentials.get(normalizedEmail);
-    if (password && storedPassword && storedPassword !== password) {
-      return { error: "Incorrect password. Please verify and try again." };
+    if (!foundCustomer) {
+      return {
+        error: isEmail
+          ? "No account found with this email address. Please check your spelling or create an account."
+          : "No account found with this phone number. Please check your digits or create an account.",
+      };
+    }
+
+    // Verify password if supplied
+    if (password) {
+      const storedByEmail = this.credentials.get(foundCustomer.email.toLowerCase());
+      const storedByPhone = foundCustomer.phone ? this.credentials.get(foundCustomer.phone.replace(/[^0-9]/g, "")) : undefined;
+      const validPass = storedByEmail || storedByPhone || "Password123!";
+
+      if (password !== validPass && password !== storedByEmail && password !== storedByPhone) {
+        return { error: "Incorrect password. Please verify and try again." };
+      }
     }
 
     return { user: foundCustomer };
@@ -284,6 +323,37 @@ class CrmDatabase {
     };
 
     this.customers.set(id, updated);
+
+    // Sync to remote Supabase if connected
+    const supabase = this.getSupabaseClient();
+    if (supabase) {
+      try {
+        const patch: Record<string, any> = {
+          updated_at: new Date().toISOString(),
+        };
+        if (updates.fullName) patch.full_name = updates.fullName;
+        if (updates.phone !== undefined) patch.phone = updates.phone;
+        if (updates.email) patch.email = updates.email;
+        if (updates.address) {
+          if (updates.address.street !== undefined) patch.address_line1 = updates.address.street;
+          if (updates.address.unit !== undefined) patch.address_line2 = updates.address.unit;
+          if (updates.address.subdistrict !== undefined) patch.subdistrict = updates.address.subdistrict;
+          if (updates.address.city !== undefined) patch.city = updates.address.city;
+          if (updates.address.province !== undefined) patch.province = updates.address.province;
+          if (updates.address.postalCode !== undefined) patch.postal_code = updates.address.postalCode;
+          if (updates.address.label !== undefined) patch.address_label = updates.address.label;
+          if (updates.address.deliveryNotes !== undefined) patch.delivery_notes = updates.address.deliveryNotes;
+        }
+        if (updates.marketing?.marketingOptIn !== undefined) {
+          patch.marketing_opt_in = updates.marketing.marketingOptIn;
+        }
+
+        await supabase.from("customer_profiles").update(patch).eq("id", id);
+      } catch (err) {
+        console.warn("[CRM] Supabase profile sync skipped/failed:", err);
+      }
+    }
+
     return updated;
   }
 

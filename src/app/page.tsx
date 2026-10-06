@@ -24,7 +24,7 @@ import { Pagination } from "../components/ui/Pagination";
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const { addStandardItem, addCustomPC, openCart } = useCartStore();
 
   const categories = [

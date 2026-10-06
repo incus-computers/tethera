@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       customer_email: customer.email,
       customer_phone: customer.phone,
       fulfillment_type: fulfillmentType,
-      pickup_store_id: fulfillmentType === "click_and_collect" ? "store-mangga-dua" : null,
+      pickup_store_id: fulfillmentType === "click_and_collect" ? "00000000-0000-0000-0000-000000000001" : null,
       pickup_code: pickupCode,
       shipping_address: fulfillmentType === "delivery" ? {
         street: shippingAddress.street,

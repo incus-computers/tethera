@@ -159,9 +159,11 @@ export class BaseRepository<T extends { id?: string }> {
       return newRecord;
     }
 
+    const payload = { id, ...data };
+
     const { data: inserted, error } = await (client
       .from(this.tableName)
-      .insert(data as any)
+      .insert(payload as any)
       .select()
       .single() as any);
 

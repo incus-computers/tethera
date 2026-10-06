@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -38,6 +38,24 @@ import {
   Ban,
   FileText,
   Image as ImageIcon,
+  ShoppingBag,
+  Calendar,
+  Compass,
+  Share2,
+  TrendingUp,
+  BarChart3,
+  DollarSign,
+  Percent,
+  ArrowUpDown,
+  RotateCcw,
+  SlidersHorizontal,
+  ChevronUp,
+  ChevronDown,
+  Bell,
+  AlertTriangle,
+  ArrowLeftRight,
+  GripVertical,
+  ChevronLeft,
 } from "lucide-react";
 import { useAdminStore } from "@/lib/store/useAdminStore";
 import { formatRupiah } from "@/lib/utils/currency";
@@ -61,7 +79,7 @@ export default function AdminPortalPage() {
     useAdminStore();
 
   // Navigation State
-  const [activeTab, setActiveTab] = useState<"orders" | "products" | "promotions" | "crm">("orders");
+  const [activeTab, setActiveTab] = useState<"orders" | "products" | "promotions" | "crm" | "analytics">("orders");
 
   // Login Form State
   const [loginIdentifier, setLoginIdentifier] = useState("");
@@ -133,9 +151,542 @@ export default function AdminPortalPage() {
   const [productCategoryFilter, setProductCategoryFilter] = useState("all");
   const [newImageUrlInput, setNewImageUrlInput] = useState("");
 
+  // Customer Management & Inspection State
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerProfileRow | null>(null);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
+  const [customerSegmentFilter, setCustomerSegmentFilter] = useState<string>("all");
+  const [customerOptInOnly, setCustomerOptInOnly] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
   const newProductFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Draggable Table & Sales Analytics State
+  const DEFAULT_ANALYTICS_COL_WIDTHS: Record<string, number> = {
+    product: 260,
+    sku: 120,
+    category: 130,
+    price: 130,
+    cost: 120,
+    unitsWeek: 105,
+    unitsLifetime: 105,
+    revWeek: 140,
+    profitWeek: 140,
+    margin: 95,
+    stock: 110,
+    actions: 125,
+  };
+
+  const [colWidths, setColWidths] = useState<Record<string, number>>(DEFAULT_ANALYTICS_COL_WIDTHS);
+  const [isResizing, setIsResizing] = useState(false);
+  const [analyticsSearch, setAnalyticsSearch] = useState("");
+  const [analyticsCategoryFilter, setAnalyticsCategoryFilter] = useState("all");
+  const [analyticsSortBy, setAnalyticsSortBy] = useState<string>("weeklyGrossProfit");
+  const [analyticsSortOrder, setAnalyticsSortOrder] = useState<"desc" | "asc">("desc");
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<"7d" | "30d" | "all">("7d");
+  const [selectedItemAnalytics, setSelectedItemAnalytics] = useState<any | null>(null);
+
+  // Column Resizing Handler
+  const handleColResizeStart = (colKey: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startWidth = colWidths[colKey] || 120;
+    setIsResizing(true);
+
+    const prevUserSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const nextWidth = Math.max(65, Math.min(650, startWidth + delta));
+      setColWidths((prev) => ({
+        ...prev,
+        [colKey]: nextWidth,
+      }));
+    };
+
+    const onMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  const resetColWidths = () => {
+    setColWidths(DEFAULT_ANALYTICS_COL_WIDTHS);
+    showToast("Table column widths reset to default.");
+  };
+
+  // Product Catalog: Resizable & Arrangeable Table State
+  const DEFAULT_PRODUCT_COL_WIDTHS: Record<string, number> = {
+    product: 280,
+    category: 140,
+    sku: 140,
+    price: 150,
+    stock_on_hand: 120,
+    stock_available: 120,
+    pictures: 100,
+    actions: 160,
+  };
+
+  const DEFAULT_PRODUCT_COL_ORDER = [
+    "product",
+    "category",
+    "sku",
+    "price",
+    "stock_on_hand",
+    "stock_available",
+    "pictures",
+    "actions",
+  ];
+
+  const PRODUCT_COL_LABELS: Record<string, string> = {
+    product: "Hardware Product",
+    category: "Category",
+    sku: "SKU / Brand",
+    price: "Retail Price",
+    stock_on_hand: "Stock on Hand",
+    stock_available: "Available",
+    pictures: "Pictures",
+    actions: "Actions",
+  };
+
+  const [productColWidths, setProductColWidths] = useState<Record<string, number>>(DEFAULT_PRODUCT_COL_WIDTHS);
+  const [productColOrder, setProductColOrder] = useState<string[]>(DEFAULT_PRODUCT_COL_ORDER);
+  const [isProductResizing, setIsProductResizing] = useState(false);
+  const [draggedProductCol, setDraggedProductCol] = useState<string | null>(null);
+  const [dragOverProductCol, setDragOverProductCol] = useState<string | null>(null);
+  const [productLowStockFilter, setProductLowStockFilter] = useState(false);
+
+  // Column Resizing Handler for Product Catalog
+  const handleProductColResizeStart = (colKey: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startWidth = productColWidths[colKey] || 120;
+    setIsProductResizing(true);
+
+    const prevUserSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const nextWidth = Math.max(65, Math.min(650, startWidth + delta));
+      setProductColWidths((prev) => ({
+        ...prev,
+        [colKey]: nextWidth,
+      }));
+    };
+
+    const onMouseUp = () => {
+      setIsProductResizing(false);
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  // Column Reordering Handlers for Product Catalog
+  const moveProductCol = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= productColOrder.length) return;
+    const next = [...productColOrder];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setProductColOrder(next);
+  };
+
+  const handleProductColDragStart = (colKey: string, e: React.DragEvent) => {
+    setDraggedProductCol(colKey);
+    e.dataTransfer.setData("text/plain", colKey);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleProductColDragOver = (colKey: string, e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverProductCol !== colKey) {
+      setDragOverProductCol(colKey);
+    }
+  };
+
+  const handleProductColDrop = (targetColKey: string, e: React.DragEvent) => {
+    e.preventDefault();
+    const sourceColKey = draggedProductCol || e.dataTransfer.getData("text/plain");
+    if (sourceColKey && sourceColKey !== targetColKey) {
+      const fromIndex = productColOrder.indexOf(sourceColKey);
+      const toIndex = productColOrder.indexOf(targetColKey);
+      if (fromIndex !== -1 && toIndex !== -1) {
+        moveProductCol(fromIndex, toIndex);
+        showToast(`Column reordered: '${PRODUCT_COL_LABELS[sourceColKey] || sourceColKey}' moved.`);
+      }
+    }
+    setDraggedProductCol(null);
+    setDragOverProductCol(null);
+  };
+
+  const resetProductTableLayout = () => {
+    setProductColWidths(DEFAULT_PRODUCT_COL_WIDTHS);
+    setProductColOrder(DEFAULT_PRODUCT_COL_ORDER);
+    showToast("Product Catalog table columns and widths reset to default.");
+  };
+
+  // Actionable Notifications Bar State
+  const [notificationsExpanded, setNotificationsExpanded] = useState(false);
+  const [notificationsDismissed, setNotificationsDismissed] = useState(false);
+
+  const notificationsData = useMemo(() => {
+    const unfulfilledOrders = orders.filter((o) =>
+      ["order_received", "order_accepted", "finding_stock", "finding_courier", "ready_for_pickup"].includes(o.status)
+    );
+
+    const newOrders = orders.filter((o) => o.status === "order_received");
+    const findingCourierOrders = orders.filter((o) => o.status === "finding_courier");
+    const readyForPickupOrders = orders.filter((o) => o.status === "ready_for_pickup");
+
+    const lowStockProducts = products.filter((p) => {
+      const avail = p.stock_available !== undefined ? p.stock_available : p.stock_on_hand;
+      return avail > 0 && avail <= 3;
+    });
+
+    const outOfStockProducts = products.filter((p) => {
+      const avail = p.stock_available !== undefined ? p.stock_available : p.stock_on_hand;
+      return avail <= 0;
+    });
+
+    const totalActionCount = unfulfilledOrders.length + lowStockProducts.length + outOfStockProducts.length;
+
+    return {
+      unfulfilledOrders,
+      newOrders,
+      findingCourierOrders,
+      readyForPickupOrders,
+      lowStockProducts,
+      outOfStockProducts,
+      totalActionCount,
+    };
+  }, [orders, products]);
+
+  // Analytics & Profit Intelligence Calculation Engine
+  const analyticsData = useMemo(() => {
+    const now = new Date();
+    const ms7d = 7 * 24 * 60 * 60 * 1000;
+    const ms14d = 14 * 24 * 60 * 60 * 1000;
+
+    const t7d = now.getTime() - ms7d;
+    const t14d = now.getTime() - ms14d;
+
+    // Filter out cancelled orders for sales computations
+    const validOrders = orders.filter((o) => o.status !== "cancelled");
+
+    // Orders in last 7 days vs previous 7 days
+    const orders7d = validOrders.filter((o) => new Date(o.created_at).getTime() >= t7d);
+    const ordersPrev7d = validOrders.filter((o) => {
+      const t = new Date(o.created_at).getTime();
+      return t >= t14d && t < t7d;
+    });
+
+    const calcOrderEconomics = (ord: any) => {
+      let rev = 0;
+      let profit = 0;
+      let units = 0;
+      if (ord.items && Array.isArray(ord.items) && ord.items.length > 0) {
+        for (const it of ord.items) {
+          const qty = it.quantity || 1;
+          const uPrice = it.unit_price || it.product?.retail_price || 0;
+          const uCost =
+            it.product?.cost_price ??
+            (it.product?.retail_price ? Math.round(it.product.retail_price * 0.82) : Math.round(uPrice * 0.82));
+          rev += uPrice * qty;
+          profit += (uPrice - uCost) * qty;
+          units += qty;
+        }
+      } else {
+        rev = ord.total || ord.subtotal || 0;
+        profit = Math.round(rev * 0.18);
+        units = 1;
+      }
+      return { rev, profit, units };
+    };
+
+    // Weekly aggregate (last 7 days)
+    let weeklySales = 0;
+    let weeklyGrossProfit = 0;
+    let weeklyUnits = 0;
+    for (const o of orders7d) {
+      const { rev, profit, units } = calcOrderEconomics(o);
+      weeklySales += rev;
+      weeklyGrossProfit += profit;
+      weeklyUnits += units;
+    }
+
+    // Previous 7 days aggregate for comparison
+    let prevWeeklySales = 0;
+    let prevWeeklyGrossProfit = 0;
+    for (const o of ordersPrev7d) {
+      const { rev, profit } = calcOrderEconomics(o);
+      prevWeeklySales += rev;
+      prevWeeklyGrossProfit += profit;
+    }
+
+    const weeklyOrdersCount = orders7d.length;
+    const weeklyAov = weeklyOrdersCount > 0 ? Math.round(weeklySales / weeklyOrdersCount) : 0;
+    const weeklyMarginPct = weeklySales > 0 ? Math.round((weeklyGrossProfit / weeklySales) * 100) : 18;
+
+    const salesGrowthPct =
+      prevWeeklySales > 0 ? Math.round(((weeklySales - prevWeeklySales) / prevWeeklySales) * 100) : 0;
+    const profitGrowthPct =
+      prevWeeklyGrossProfit > 0
+        ? Math.round(((weeklyGrossProfit - prevWeeklyGrossProfit) / prevWeeklyGrossProfit) * 100)
+        : 0;
+
+    // Lifetime totals
+    let lifetimeSales = 0;
+    let lifetimeGrossProfit = 0;
+    let lifetimeUnits = 0;
+    for (const o of validOrders) {
+      const { rev, profit, units } = calcOrderEconomics(o);
+      lifetimeSales += rev;
+      lifetimeGrossProfit += profit;
+      lifetimeUnits += units;
+    }
+
+    // 7-Day Day-by-Day Series
+    const daysMap: Record<
+      string,
+      { dateStr: string; label: string; revenue: number; profit: number; orders: number; units: number }
+    > = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().split("T")[0];
+      const dayName =
+        i === 0
+          ? "Today"
+          : i === 1
+          ? "Yesterday"
+          : d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      daysMap[key] = {
+        dateStr: key,
+        label: dayName,
+        revenue: 0,
+        profit: 0,
+        orders: 0,
+        units: 0,
+      };
+    }
+
+    for (const o of orders7d) {
+      const key = new Date(o.created_at).toISOString().split("T")[0];
+      if (daysMap[key]) {
+        const { rev, profit, units } = calcOrderEconomics(o);
+        daysMap[key].revenue += rev;
+        daysMap[key].profit += profit;
+        daysMap[key].orders += 1;
+        daysMap[key].units += units;
+      }
+    }
+
+    const dailyBreakdown = Object.values(daysMap);
+
+    // Per-Product Aggregations
+    const productSalesMap: Record<
+      string,
+      {
+        weeklyUnits: number;
+        weeklyRevenue: number;
+        weeklyProfit: number;
+        lifetimeUnits: number;
+        lifetimeRevenue: number;
+        lifetimeProfit: number;
+        orders: Array<{ order: any; item: any; unitCost: number; unitProfit: number }>;
+        dailySales7D: Record<string, { units: number; revenue: number; profit: number }>;
+      }
+    > = {};
+
+    for (const p of products) {
+      const dailyInit: Record<string, { units: number; revenue: number; profit: number }> = {};
+      for (const d of dailyBreakdown) {
+        dailyInit[d.dateStr] = { units: 0, revenue: 0, profit: 0 };
+      }
+      productSalesMap[p.id] = {
+        weeklyUnits: 0,
+        weeklyRevenue: 0,
+        weeklyProfit: 0,
+        lifetimeUnits: 0,
+        lifetimeRevenue: 0,
+        lifetimeProfit: 0,
+        orders: [],
+        dailySales7D: dailyInit,
+      };
+    }
+
+    for (const o of validOrders) {
+      const is7d = new Date(o.created_at).getTime() >= t7d;
+      const dateKey = new Date(o.created_at).toISOString().split("T")[0];
+
+      if (o.items && Array.isArray(o.items)) {
+        for (const it of o.items) {
+          const prodId = it.product_id;
+          if (!prodId) continue;
+
+          if (!productSalesMap[prodId]) {
+            const dailyInit: Record<string, { units: number; revenue: number; profit: number }> = {};
+            for (const d of dailyBreakdown) {
+              dailyInit[d.dateStr] = { units: 0, revenue: 0, profit: 0 };
+            }
+            productSalesMap[prodId] = {
+              weeklyUnits: 0,
+              weeklyRevenue: 0,
+              weeklyProfit: 0,
+              lifetimeUnits: 0,
+              lifetimeRevenue: 0,
+              lifetimeProfit: 0,
+              orders: [],
+              dailySales7D: dailyInit,
+            };
+          }
+
+          const qty = it.quantity || 1;
+          const uPrice = it.unit_price || it.product?.retail_price || 0;
+          const uCost =
+            it.product?.cost_price ??
+            (it.product?.retail_price ? Math.round(it.product.retail_price * 0.82) : Math.round(uPrice * 0.82));
+          const uProfit = uPrice - uCost;
+          const lineRev = uPrice * qty;
+          const lineProfit = uProfit * qty;
+
+          const stat = productSalesMap[prodId];
+          stat.lifetimeUnits += qty;
+          stat.lifetimeRevenue += lineRev;
+          stat.lifetimeProfit += lineProfit;
+          stat.orders.push({ order: o, item: it, unitCost: uCost, unitProfit: uProfit });
+
+          if (is7d) {
+            stat.weeklyUnits += qty;
+            stat.weeklyRevenue += lineRev;
+            stat.weeklyProfit += lineProfit;
+            if (stat.dailySales7D[dateKey]) {
+              stat.dailySales7D[dateKey].units += qty;
+              stat.dailySales7D[dateKey].revenue += lineRev;
+              stat.dailySales7D[dateKey].profit += lineProfit;
+            }
+          }
+        }
+      }
+    }
+
+    const enrichedProducts = products.map((p) => {
+      const stats = productSalesMap[p.id] || {
+        weeklyUnits: 0,
+        weeklyRevenue: 0,
+        weeklyProfit: 0,
+        lifetimeUnits: 0,
+        lifetimeRevenue: 0,
+        lifetimeProfit: 0,
+        orders: [],
+        dailySales7D: {},
+      };
+
+      const costPrice = p.cost_price ?? Math.round(p.retail_price * 0.82);
+      const unitGrossProfit = p.retail_price - costPrice;
+      const marginPct = p.retail_price > 0 ? Math.round((unitGrossProfit / p.retail_price) * 100) : 0;
+
+      const dailyRunRate = stats.weeklyUnits / 7;
+      const daysOfSupply =
+        dailyRunRate > 0 ? Math.round(p.stock_on_hand / dailyRunRate) : p.stock_on_hand > 0 ? 999 : 0;
+
+      return {
+        ...p,
+        cost_price: costPrice,
+        unitGrossProfit,
+        marginPct,
+        weeklyUnits: stats.weeklyUnits,
+        weeklyRevenue: stats.weeklyRevenue,
+        weeklyGrossProfit: stats.weeklyProfit,
+        lifetimeUnits: stats.lifetimeUnits,
+        lifetimeRevenue: stats.lifetimeRevenue,
+        lifetimeGrossProfit: stats.lifetimeProfit,
+        ordersCount: stats.orders.length,
+        orders: stats.orders,
+        dailySales7D: stats.dailySales7D,
+        daysOfSupply,
+      };
+    });
+
+    return {
+      weeklySales,
+      weeklyGrossProfit,
+      weeklyUnits,
+      weeklyOrdersCount,
+      weeklyAov,
+      weeklyMarginPct,
+      salesGrowthPct,
+      profitGrowthPct,
+      lifetimeSales,
+      lifetimeGrossProfit,
+      lifetimeUnits,
+      lifetimeOrdersCount: validOrders.length,
+      dailyBreakdown,
+      enrichedProducts,
+    };
+  }, [orders, products]);
+
+  // Filtered & Sorted Products for Draggable Analytics Table
+  const sortedAndFilteredProducts = useMemo(() => {
+    let list = [...analyticsData.enrichedProducts];
+
+    if (analyticsSearch.trim()) {
+      const q = analyticsSearch.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.sku?.toLowerCase().includes(q) ||
+          p.brand?.toLowerCase().includes(q)
+      );
+    }
+
+    if (analyticsCategoryFilter !== "all") {
+      list = list.filter((p) => p.category_slug === analyticsCategoryFilter);
+    }
+
+    list.sort((a, b) => {
+      let valA: any = a[analyticsSortBy];
+      let valB: any = b[analyticsSortBy];
+
+      if (analyticsSortBy === "name") {
+        valA = (a.name || "").toLowerCase();
+        valB = (b.name || "").toLowerCase();
+        return analyticsSortOrder === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      }
+
+      const numA = typeof valA === "number" ? valA : 0;
+      const numB = typeof valB === "number" ? valB : 0;
+      return analyticsSortOrder === "asc" ? numA - numB : numB - numA;
+    });
+
+    return list;
+  }, [
+    analyticsData.enrichedProducts,
+    analyticsSearch,
+    analyticsCategoryFilter,
+    analyticsSortBy,
+    analyticsSortOrder,
+  ]);
 
   // Initialize Session
   useEffect(() => {
@@ -181,15 +732,13 @@ export default function AdminPortalPage() {
         if (d.success) setBanners(d.banners || []);
       }
 
-      // 4. Load Customers (Superadmin only)
-      if (isSuperAdmin) {
-        const resCustomers = await fetch("/api/admin/customers", { headers });
-        if (resCustomers.ok) {
-          const d = await resCustomers.json();
-          if (d.success) {
-            setCustomers(d.customers || []);
-            setCrmStats(d.stats);
-          }
+      // 4. Load Customers (for all authenticated admins)
+      const resCustomers = await fetch("/api/admin/customers", { headers });
+      if (resCustomers.ok) {
+        const d = await resCustomers.json();
+        if (d.success) {
+          setCustomers(d.customers || []);
+          setCrmStats(d.stats);
         }
       }
     } catch (err) {
@@ -901,6 +1450,22 @@ export default function AdminPortalPage() {
 
         <div className="flex items-center gap-4">
           <button
+            onClick={() => {
+              setNotificationsDismissed((prev) => !prev);
+              setNotificationsExpanded(true);
+            }}
+            className="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            title="Toggle Actionable Operations Notifications"
+          >
+            <Bell className="w-4 h-4 text-amber-400" />
+            {notificationsData.totalActionCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-bold text-[10px] flex items-center justify-center animate-pulse">
+                {notificationsData.totalActionCount}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={loadAllDashboardData}
             disabled={loadingData}
             className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
@@ -926,6 +1491,294 @@ export default function AdminPortalPage() {
 
       {/* Main Container & Navigation Tabs */}
       <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+        {/* ==================================================================== */}
+        {/* ACTIONABLE NOTIFICATIONS BAR (ORDERS NEEDING FULFILLMENT & LOW STOCK) */}
+        {/* ==================================================================== */}
+        {notificationsData.totalActionCount > 0 && !notificationsDismissed && (
+          <div className="mb-6 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-amber-500/40 rounded-2xl shadow-xl overflow-hidden transition-all duration-300">
+            {/* Main Bar */}
+            <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 bg-amber-500/5">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shadow-sm animate-pulse">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Action Required</span>
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Live store operations need administrative action
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-6 w-[1px] bg-slate-800 hidden sm:block" />
+
+                {/* Orders needing fulfillment badge & action */}
+                {notificationsData.unfulfilledOrders.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("orders");
+                      setOrderStatusFilter("all");
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 border border-amber-700/60 text-amber-200 text-xs font-medium transition group"
+                    title="Jump to Orders &amp; Fulfillment Pipeline"
+                  >
+                    <Truck className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+                    <span>
+                      <strong className="text-white font-bold">{notificationsData.unfulfilledOrders.length}</strong> Order(s) Awaiting Fulfillment
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                )}
+
+                {/* Low / Out of stock badge & action */}
+                {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab("products");
+                      setProductLowStockFilter(true);
+                      setProductCategoryFilter("all");
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 text-rose-200 text-xs font-medium transition group"
+                    title="Filter Product Catalog to Low-Stock items"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+                    <span>
+                      <strong className="text-white font-bold">
+                        {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length}
+                      </strong> Hardware Item(s) Low / Out of Stock
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                )}
+              </div>
+
+              {/* Right Controls: View Details Drawer & Dismiss */}
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => setNotificationsExpanded(!notificationsExpanded)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5 border border-slate-700"
+                >
+                  <span>{notificationsExpanded ? "Hide Details" : `Inspect Details (${notificationsData.totalActionCount})`}</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${
+                      notificationsExpanded ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNotificationsDismissed(true)}
+                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition"
+                  title="Minimize notification bar (Can be reopened from the bell icon in header)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Expandable Action Drawer */}
+            {notificationsExpanded && (
+              <div className="border-t border-slate-800/80 p-5 bg-slate-950/90 grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Column 1: Fulfillment Action Queue */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      <Truck className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Fulfillment Queue ({notificationsData.unfulfilledOrders.length})</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("orders");
+                        setOrderStatusFilter("all");
+                      }}
+                      className="text-cyan-400 hover:text-cyan-300 text-xs font-medium flex items-center gap-1"
+                    >
+                      <span>Open Pipeline</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {notificationsData.unfulfilledOrders.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
+                      All orders have been fulfilled or collected!
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {notificationsData.unfulfilledOrders.slice(0, 6).map((ord) => {
+                        return (
+                          <div
+                            key={ord.id}
+                            className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 text-xs transition"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-white">
+                                  #{ord.order_number || ord.id.slice(0, 8)}
+                                </span>
+                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-slate-800 text-amber-300 border border-amber-800/60">
+                                  {ord.status.replace(/_/g, " ")}
+                                </span>
+                              </div>
+                              <div className="text-slate-400 text-[11px] truncate mt-0.5">
+                                {ord.customer_name} • <span className="font-mono text-cyan-300">{formatRupiah(ord.total)}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              {ord.status === "order_received" && (
+                                <button
+                                  type="button"
+                                  onClick={() => advanceOrderStage(ord.id, "order_accepted")}
+                                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition"
+                                >
+                                  Accept
+                                </button>
+                              )}
+                              {ord.status === "finding_courier" && (
+                                <button
+                                  type="button"
+                                  onClick={() => setDispatchModalOrder(ord)}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
+                                >
+                                  Dispatch
+                                </button>
+                              )}
+                              {ord.status === "ready_for_pickup" && (
+                                <button
+                                  type="button"
+                                  onClick={() => advanceOrderStage(ord.id, "collected")}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
+                                >
+                                  Handover
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTab("orders");
+                                  setOrderStatusFilter(ord.status);
+                                }}
+                                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                                title="View in Orders"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 2: Low-Stock Inventory Alerts */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                      <span>
+                        Low Stock Alerts ({notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("products");
+                        setProductLowStockFilter(true);
+                      }}
+                      className="text-cyan-400 hover:text-cyan-300 text-xs font-medium flex items-center gap-1"
+                    >
+                      <span>View in Catalog</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {notificationsData.outOfStockProducts.length === 0 && notificationsData.lowStockProducts.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
+                      Warehouse stock levels are healthy across all categories!
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {[...notificationsData.outOfStockProducts, ...notificationsData.lowStockProducts].slice(0, 6).map((prod) => {
+                        const avail = prod.stock_available !== undefined ? prod.stock_available : prod.stock_on_hand;
+                        const isOut = avail <= 0;
+
+                        return (
+                          <div
+                            key={prod.id}
+                            className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 text-xs transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                {prod.images?.[0] ? (
+                                  <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <Package className="w-4 h-4 text-slate-600" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-white truncate max-w-[170px]" title={prod.name}>
+                                  {prod.name}
+                                </div>
+                                <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                  <span className="font-mono text-cyan-400">{prod.sku}</span>
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded font-bold uppercase ${
+                                      isOut
+                                        ? "bg-rose-950 text-rose-300 border border-rose-800"
+                                        : "bg-amber-950 text-amber-300 border border-amber-800"
+                                    }`}
+                                  >
+                                    {isOut ? "Out of Stock" : `${avail} left in store`}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => openEditProductModal(prod)}
+                                className="px-2.5 py-1 rounded-lg bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-medium transition flex items-center gap-1"
+                                title="Adjust inventory stock level"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>Restock</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const itemStats =
+                                    analyticsData.enrichedProducts.find((p: any) => p.id === prod.id) || prod;
+                                  setSelectedItemAnalytics(itemStats);
+                                }}
+                                className="p-1 rounded-lg hover:bg-slate-800 text-purple-400 transition"
+                                title="View Sales Stats"
+                              >
+                                <BarChart3 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-4 mb-6">
           <button
             onClick={() => setActiveTab("orders")}
@@ -979,24 +1832,41 @@ export default function AdminPortalPage() {
           </button>
 
           <button
-            onClick={() => {
-              if (!isSuperAdmin) {
-                alert("Superadmin clearance required to access Customer CRM Suite.");
-                return;
-              }
-              setActiveTab("crm");
-            }}
+            onClick={() => setActiveTab("crm")}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
               activeTab === "crm"
-                ? "bg-purple-600 text-white shadow-md shadow-purple-600/25 font-semibold"
-                : isSuperAdmin
-                ? "bg-slate-900 hover:bg-slate-800 text-purple-300 border border-purple-900/50"
-                : "bg-slate-900/40 text-slate-600 border border-slate-800/40 cursor-not-allowed"
+                ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Customer CRM Suite</span>
-            {!isSuperAdmin && <Lock className="w-3 h-3 ml-1 text-slate-600" />}
+            <span>Customers &amp; Profiles</span>
+            <span
+              className={`ml-1 px-1.5 py-0.2 rounded-full text-xs ${
+                activeTab === "crm" ? "bg-slate-950 text-cyan-300" : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              {customers.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+              activeTab === "analytics"
+                ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold"
+                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>Sales &amp; Profit Analytics</span>
+            <span
+              className={`ml-1 px-1.5 py-0.2 rounded-full text-xs ${
+                activeTab === "analytics" ? "bg-slate-950 text-cyan-300" : "bg-slate-800 text-slate-400"
+              }`}
+            >
+              Live
+            </span>
           </button>
         </div>
 
@@ -1428,196 +2298,398 @@ export default function AdminPortalPage() {
         )}
 
         {/* ==================================================================== */}
-        {/* TAB 2: PRODUCT CATALOG & IMAGE MANAGEMENT (PC UPLOAD & CATEGORY)     */}
+        {/* TAB 2: PRODUCT CATALOG & IMAGE MANAGEMENT (RESIZABLE & ARRANGEABLE)  */}
         {/* ==================================================================== */}
-        {activeTab === "products" && (
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800">
-              <div className="flex items-center gap-3 flex-1 min-w-[280px]">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search by hardware name, brand, or SKU..."
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                  />
+        {activeTab === "products" && (() => {
+          const filteredProducts = products.filter((p) => {
+            const matchesSearch =
+              !productSearch ||
+              p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+              p.brand.toLowerCase().includes(productSearch.toLowerCase()) ||
+              p.sku.toLowerCase().includes(productSearch.toLowerCase());
+            const matchesCat =
+              productCategoryFilter === "all" ||
+              p.category_slug === productCategoryFilter ||
+              p.pc_builder_slot === productCategoryFilter;
+            const avail = p.stock_available !== undefined ? p.stock_available : p.stock_on_hand;
+            const matchesLowStock = !productLowStockFilter || avail <= 3;
+            return matchesSearch && matchesCat && matchesLowStock;
+          });
+
+          return (
+            <div className="space-y-6">
+              {/* Product Toolbar */}
+              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-[280px] flex-wrap">
+                    {/* Search */}
+                    <div className="relative flex-1 min-w-[220px]">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search by hardware name, brand, or SKU..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    {/* Category Filter */}
+                    <select
+                      value={productCategoryFilter}
+                      onChange={(e) => setProductCategoryFilter(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="all">All Categories ({products.length})</option>
+                      {HARDWARE_CATEGORIES.map((c) => (
+                        <option key={c.slug} value={c.slug}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Low Stock Toggle Filter */}
+                    <button
+                      type="button"
+                      onClick={() => setProductLowStockFilter(!productLowStockFilter)}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
+                        productLowStockFilter
+                          ? "bg-rose-950 text-rose-300 border border-rose-700 shadow-md shadow-rose-950/40"
+                          : "bg-slate-950/80 hover:bg-slate-800 text-slate-300 border border-slate-700"
+                      }`}
+                      title="Filter table to only show low stock and out-of-stock hardware"
+                    >
+                      <AlertTriangle className={`w-3.5 h-3.5 ${productLowStockFilter ? "text-rose-400" : "text-slate-400"}`} />
+                      <span>{productLowStockFilter ? "Low Stock Active" : "Filter Low Stock"}</span>
+                      {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white">
+                          {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Reset Column Layout Button */}
+                    <button
+                      type="button"
+                      onClick={resetProductTableLayout}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+                      title="Reset table column widths and order to default layout"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Reset Layout</span>
+                    </button>
+
+                    {/* Add Product Button (Superadmin) */}
+                    {isSuperAdmin && (
+                      <button
+                        onClick={() => setNewProductModalOpen(true)}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs shadow-lg shadow-purple-600/20 flex items-center gap-1.5 transition"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add New Hardware Product</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <select
-                  value={productCategoryFilter}
-                  onChange={(e) => setProductCategoryFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-                >
-                  <option value="all">All Categories</option>
-                  {HARDWARE_CATEGORIES.map((c) => (
-                    <option key={c.slug} value={c.slug}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                {/* Sub-bar with count and arrangeable/resizable guidance */}
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-cyan-400" />
+                    <span>
+                      Showing <strong className="text-white">{filteredProducts.length}</strong> of{" "}
+                      <strong className="text-white">{products.length}</strong> products
+                      {productLowStockFilter && " (Filtered to Low Stock)"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <GripVertical className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>
+                      <strong>Arrangeable &amp; Resizable:</strong> Drag headers to reorder columns • Drag borders to resize widths.
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {isSuperAdmin ? (
-                <button
-                  onClick={() => setNewProductModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs shadow-lg shadow-purple-600/20 flex items-center gap-1.5 transition"
+              {/* Resizable & Arrangeable Table Container */}
+              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+                <table
+                  style={{
+                    width: `${productColOrder.reduce((acc, colKey) => acc + (productColWidths[colKey] || 120), 0)}px`,
+                    minWidth: "100%",
+                  }}
+                  className="table-fixed border-collapse divide-y divide-slate-800 text-left text-xs"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Add New Hardware Product</span>
-                </button>
-              ) : (
-                <div className="text-xs text-slate-400 italic">
-                  Note: Adding or deleting products requires Superadmin clearance.
-                </div>
-              )}
-            </div>
-
-            {/* Products Table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
+                  <thead className="bg-slate-950 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800 select-none">
                     <tr>
-                      <th className="py-3.5 px-4">Hardware Product</th>
-                      <th className="py-3.5 px-4">Category</th>
-                      <th className="py-3.5 px-4">SKU / Brand</th>
-                      <th className="py-3.5 px-4">Retail Price</th>
-                      <th className="py-3.5 px-4">Stock on Hand</th>
-                      <th className="py-3.5 px-4">Available</th>
-                      <th className="py-3.5 px-4">Pictures</th>
-                      <th className="py-3.5 px-4 text-right">Actions</th>
+                      {productColOrder.map((colKey, index) => {
+                        const isDragging = draggedProductCol === colKey;
+                        const isDragOver = dragOverProductCol === colKey;
+                        const isActions = colKey === "actions";
+
+                        return (
+                          <th
+                            key={colKey}
+                            draggable={!isProductResizing}
+                            onDragStart={(e) => handleProductColDragStart(colKey, e)}
+                            onDragOver={(e) => handleProductColDragOver(colKey, e)}
+                            onDragLeave={() => setDragOverProductCol(null)}
+                            onDrop={(e) => handleProductColDrop(colKey, e)}
+                            style={{
+                              width: `${productColWidths[colKey]}px`,
+                              minWidth: `${productColWidths[colKey]}px`,
+                            }}
+                            className={`py-3.5 px-3 relative group transition-colors ${
+                              isDragging ? "opacity-40 bg-slate-800" : ""
+                            } ${
+                              isDragOver ? "border-l-2 border-cyan-400 bg-cyan-950/40" : ""
+                            } ${isActions ? "text-right" : "text-left"}`}
+                          >
+                            <div className={`flex items-center gap-1.5 ${isActions ? "justify-end" : "justify-between"}`}>
+                              <div
+                                className="flex items-center gap-1 min-w-0 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
+                                title="Drag header to rearrange column position"
+                              >
+                                {!isActions && (
+                                  <GripVertical className="w-3.5 h-3.5 text-slate-600 group-hover:text-cyan-400 flex-shrink-0" />
+                                )}
+                                <span className="truncate">{PRODUCT_COL_LABELS[colKey] || colKey}</span>
+                              </div>
+
+                              {/* Left / Right Move Arrows for click accessibility */}
+                              {!isActions && (
+                                <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+                                  {index > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveProductCol(index, index - 1);
+                                      }}
+                                      className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
+                                      title="Move column left"
+                                    >
+                                      <ChevronLeft className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {index < productColOrder.length - 1 && productColOrder[index + 1] !== "actions" && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveProductCol(index, index + 1);
+                                      }}
+                                      className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
+                                      title="Move column right"
+                                    >
+                                      <ChevronRight className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Draggable resize handle on right border */}
+                            <div
+                              onMouseDown={(e) => handleProductColResizeStart(colKey, e)}
+                              className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                              title="Drag to resize column width"
+                            >
+                              <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                            </div>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
+
                   <tbody className="divide-y divide-slate-800 text-slate-300">
-                    {products
-                      .filter((p) => {
-                        const matchesSearch =
-                          !productSearch ||
-                          p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                          p.brand.toLowerCase().includes(productSearch.toLowerCase()) ||
-                          p.sku.toLowerCase().includes(productSearch.toLowerCase());
-                        const matchesCat =
-                          productCategoryFilter === "all" ||
-                          p.category_slug === productCategoryFilter ||
-                          p.pc_builder_slot === productCategoryFilter;
-                        return matchesSearch && matchesCat;
-                      })
-                      .map((prod) => {
+                    {filteredProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={productColOrder.length} className="py-12 text-center text-slate-400">
+                          <Package className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                          <div className="font-medium text-slate-300">No hardware items match your filter criteria</div>
+                          <div className="text-xs text-slate-500 mt-1">
+                            {productLowStockFilter
+                              ? "No products are currently low on stock."
+                              : "Try clearing your search query or selecting All Categories."}
+                          </div>
+                          {productLowStockFilter && (
+                            <button
+                              type="button"
+                              onClick={() => setProductLowStockFilter(false)}
+                              className="mt-3 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-medium"
+                            >
+                              Show All Products
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredProducts.map((prod) => {
                         const catObj = HARDWARE_CATEGORIES.find(
                           (c) => c.slug === prod.category_slug || c.slot === prod.pc_builder_slot
                         );
 
                         return (
                           <tr key={prod.id} className="hover:bg-slate-800/40 transition">
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex-shrink-0 relative">
-                                  {prod.images?.[0] ? (
-                                    <img
-                                      src={prod.images[0]}
-                                      alt={prod.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <Package className="w-6 h-6 text-slate-600 m-auto" />
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-semibold text-white max-w-xs truncate">{prod.name}</div>
-                                  <div className="text-[11px] text-slate-400">{prod.brand}</div>
-                                </div>
-                              </div>
-                            </td>
+                            {productColOrder.map((colKey) => {
+                              switch (colKey) {
+                                case "product":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex-shrink-0 relative">
+                                          {prod.images?.[0] ? (
+                                            <img
+                                              src={prod.images[0]}
+                                              alt={prod.name}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          ) : (
+                                            <Package className="w-6 h-6 text-slate-600 m-auto" />
+                                          )}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="font-semibold text-white truncate max-w-xs" title={prod.name}>
+                                            {prod.name}
+                                          </div>
+                                          <div className="text-[11px] text-slate-400">{prod.brand}</div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  );
 
-                            <td className="py-3.5 px-4">
-                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-cyan-300 border border-slate-700">
-                                {catObj?.name || prod.category_slug || "Hardware"}
-                              </span>
-                            </td>
+                                case "category":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3">
+                                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-cyan-300 border border-slate-700 truncate inline-block">
+                                        {catObj?.name || prod.category_slug || "Hardware"}
+                                      </span>
+                                    </td>
+                                  );
 
-                            <td className="py-3.5 px-4">
-                              <div className="font-mono text-cyan-400">{prod.sku}</div>
-                              <div className="text-[11px] text-slate-400">{prod.brand}</div>
-                            </td>
+                                case "sku":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3">
+                                      <div className="font-mono text-cyan-400 text-xs">{prod.sku}</div>
+                                      <div className="text-[11px] text-slate-400">{prod.brand}</div>
+                                    </td>
+                                  );
 
-                            <td className="py-3.5 px-4 font-mono font-bold text-white">
-                              {prod.sale_price && prod.sale_price < prod.retail_price ? (
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-emerald-400 font-bold">{formatRupiah(prod.sale_price)}</span>
-                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-600 text-white">
-                                      -{Math.round(((prod.retail_price - prod.sale_price) / prod.retail_price) * 100)}%
-                                    </span>
-                                  </div>
-                                  <span className="text-slate-400 line-through text-[11px] block">
-                                    {formatRupiah(prod.retail_price)}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span>{formatRupiah(prod.retail_price)}</span>
-                              )}
-                            </td>
+                                case "price":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3 font-mono font-bold text-white">
+                                      {prod.sale_price && prod.sale_price < prod.retail_price ? (
+                                        <div className="space-y-0.5">
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-emerald-400 font-bold">{formatRupiah(prod.sale_price)}</span>
+                                            <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-600 text-white">
+                                              -{Math.round(((prod.retail_price - prod.sale_price) / prod.retail_price) * 100)}%
+                                            </span>
+                                          </div>
+                                          <span className="text-slate-400 line-through text-[11px] block">
+                                            {formatRupiah(prod.retail_price)}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <span>{formatRupiah(prod.retail_price)}</span>
+                                      )}
+                                    </td>
+                                  );
 
-                            <td className="py-3.5 px-4">
-                              <span className="font-mono font-semibold text-slate-200">
-                                {prod.stock_on_hand}
-                              </span>
-                              <span className="text-[10px] text-slate-500 block">units in store</span>
-                            </td>
+                                case "stock_on_hand":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3">
+                                      <span className="font-mono font-semibold text-slate-200">
+                                        {prod.stock_on_hand}
+                                      </span>
+                                      <span className="text-[10px] text-slate-500 block">units in store</span>
+                                    </td>
+                                  );
 
-                            <td className="py-3.5 px-4">
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
-                                  prod.stock_available > 3
-                                    ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-                                    : prod.stock_available > 0
-                                    ? "bg-amber-950 text-amber-300 border border-amber-800"
-                                    : "bg-red-950 text-red-300 border border-red-800"
-                                }`}
-                              >
-                                {prod.stock_available} available
-                              </span>
-                            </td>
+                                case "stock_available":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3">
+                                      <span
+                                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                          prod.stock_available > 3
+                                            ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                                            : prod.stock_available > 0
+                                            ? "bg-amber-950 text-amber-300 border border-amber-800"
+                                            : "bg-red-950 text-red-300 border border-red-800"
+                                        }`}
+                                      >
+                                        {prod.stock_available} available
+                                      </span>
+                                    </td>
+                                  );
 
-                            <td className="py-3.5 px-4">
-                              <span className="text-slate-400 text-xs">
-                                {prod.images?.length || 0} picture(s)
-                              </span>
-                            </td>
+                                case "pictures":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3">
+                                      <span className="text-slate-400 text-xs">
+                                        {prod.images?.length || 0} picture(s)
+                                      </span>
+                                    </td>
+                                  );
 
-                            <td className="py-3.5 px-4 text-right">
-                              <div className="inline-flex items-center gap-1.5">
-                                <button
-                                  onClick={() => openEditProductModal(prod)}
-                                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 transition flex items-center gap-1"
-                                  title="Edit category, price, stock & pictures"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                  <span>Edit</span>
-                                </button>
+                                case "actions":
+                                  return (
+                                    <td key={colKey} className="py-3.5 px-3 text-right">
+                                      <div className="inline-flex items-center gap-1.5">
+                                        <button
+                                          onClick={() => {
+                                            const itemStats =
+                                              analyticsData.enrichedProducts.find((p: any) => p.id === prod.id) || prod;
+                                            setSelectedItemAnalytics(itemStats);
+                                          }}
+                                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-purple-200 border border-slate-700 transition flex items-center gap-1"
+                                          title="View detailed sales statistics and profit dashboard"
+                                        >
+                                          <BarChart3 className="w-3.5 h-3.5" />
+                                          <span>Stats</span>
+                                        </button>
 
-                                {isSuperAdmin && (
-                                  <button
-                                    onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                                    className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800 transition"
-                                    title="Delete Product (Superadmin)"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
+                                        <button
+                                          onClick={() => openEditProductModal(prod)}
+                                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 transition flex items-center gap-1"
+                                          title="Edit category, price, stock &amp; pictures"
+                                        >
+                                          <Edit3 className="w-3.5 h-3.5" />
+                                          <span>Edit</span>
+                                        </button>
+
+                                        {isSuperAdmin && (
+                                          <button
+                                            onClick={() => handleDeleteProduct(prod.id, prod.name)}
+                                            className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800 transition"
+                                            title="Delete Product (Superadmin)"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  );
+
+                                default:
+                                  return null;
+                              }
+                            })}
                           </tr>
                         );
-                      })}
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ==================================================================== */}
         {/* TAB 3: PROMOTIONS & BANNERS (SUPERADMIN ONLY - REORDERING & UPLOAD)   */}
@@ -1824,23 +2896,19 @@ export default function AdminPortalPage() {
         )}
 
         {/* ==================================================================== */}
-        {/* TAB 4: CUSTOMER CRM SUITE (SUPERADMIN ONLY)                          */}
+        {/* TAB 4: CUSTOMER DIRECTORY & DETAILED PROFILES                         */}
         {/* ==================================================================== */}
-        {activeTab === "crm" && isSuperAdmin && (
+        {activeTab === "crm" && (
           <div className="space-y-6">
             {crmStats && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                  <div className="text-xs text-slate-400">Total Registered Leads</div>
+                  <div className="text-xs text-slate-400">Total Registered Customers</div>
                   <div className="text-2xl font-bold text-white mt-1">{crmStats.totalLeads}</div>
                 </div>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
                   <div className="text-xs text-slate-400">Marketing Opt-In Rate</div>
                   <div className="text-2xl font-bold text-emerald-400 mt-1">{crmStats.optInRate}%</div>
-                </div>
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                  <div className="text-xs text-slate-400">VIP High-Spend Clients</div>
-                  <div className="text-2xl font-bold text-purple-400 mt-1">{crmStats.vipCount}</div>
                 </div>
                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
                   <div className="text-xs text-slate-400">Cumulative GMV Spent</div>
@@ -1851,70 +2919,891 @@ export default function AdminPortalPage() {
               </div>
             )}
 
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+            {/* Filter and Search Bar */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={customerSearchTerm}
+                    onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                    placeholder="Search name, email, phone, city, or source..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <select
+                    value={customerSegmentFilter}
+                    onChange={(e) => setCustomerSegmentFilter(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="all">All Segments</option>
+                    <option value="gamer">Gamer</option>
+                    <option value="pc_builder">PC Builder</option>
+                    <option value="creator">Content Creator</option>
+                    <option value="enterprise">Enterprise</option>
+                    <option value="general">General</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setCustomerOptInOnly(!customerOptInOnly)}
+                    className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                      customerOptInOnly
+                        ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300 font-semibold"
+                        : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {customerOptInOnly ? "Opt-In Only (Active)" : "Opt-In Only"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Customers Table */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
               <div className="p-4 border-b border-slate-800 flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-white text-sm">Customer Database & Marketing Profiles</h3>
-                  <p className="text-xs text-slate-400">Omnichannel customer spend, preferences, and verified contact numbers.</p>
+                  <h3 className="font-bold text-white text-sm">Registered Customer Directory</h3>
+                  <p className="text-xs text-slate-400">
+                    Comprehensive customer profiles, contact numbers, delivery addresses, and attribution details.
+                  </p>
                 </div>
-                <span className="text-xs text-slate-400 font-mono">{customers.length} records</span>
+                <span className="text-xs text-slate-400 font-mono">
+                  {
+                    customers.filter((c) => {
+                      if (customerOptInOnly && !c.marketing_opt_in) return false;
+                      if (customerSegmentFilter !== "all" && c.customer_segment !== customerSegmentFilter) return false;
+                      if (customerSearchTerm.trim()) {
+                        const q = customerSearchTerm.toLowerCase();
+                        const matchName = c.full_name?.toLowerCase().includes(q);
+                        const matchEmail = c.email?.toLowerCase().includes(q);
+                        const matchPhone = c.phone?.includes(q);
+                        const matchCity = c.city?.toLowerCase().includes(q);
+                        const matchSource = c.lead_source?.toLowerCase().includes(q);
+                        if (!matchName && !matchEmail && !matchPhone && !matchCity && !matchSource) return false;
+                      }
+                      return true;
+                    }).length
+                  }{" "}
+                  of {customers.length} records
+                </span>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-950 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
                     <tr>
-                      <th className="py-3 px-4">Client Name & Email</th>
-                      <th className="py-3 px-4">Phone Number</th>
+                      <th className="py-3 px-4">Customer</th>
+                      <th className="py-3 px-4">Phone & Location</th>
+                      <th className="py-3 px-4">Discovery Source</th>
                       <th className="py-3 px-4">Segment</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Total Orders</th>
-                      <th className="py-3 px-4">Total Spent</th>
-                      <th className="py-3 px-4">Opt-In</th>
+                      <th className="py-3 px-4">Orders &amp; Spend</th>
+                      <th className="py-3 px-4">Marketing</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 text-slate-300">
-                    {customers.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-800/40">
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-white">{c.full_name}</div>
-                          <div className="text-[11px] text-slate-400">{c.email}</div>
-                        </td>
-                        <td className="py-3 px-4 font-mono text-slate-300">{c.phone}</td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-200 uppercase">
-                            {c.customer_segment}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              c.crm_status === "vip"
-                                ? "bg-purple-950 text-purple-300 border border-purple-800"
-                                : c.crm_status === "active_customer"
-                                ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-                                : "bg-slate-800 text-slate-400"
-                            }`}
-                          >
-                            {c.crm_status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono">{c.total_orders}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-cyan-400">
-                          {formatRupiah(c.total_spent)}
-                        </td>
-                        <td className="py-3 px-4">
-                          {c.marketing_opt_in ? (
-                            <span className="text-emerald-400 font-semibold">Yes (WhatsApp + Email)</span>
-                          ) : (
-                            <span className="text-slate-500">No</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {customers
+                      .filter((c) => {
+                        if (customerOptInOnly && !c.marketing_opt_in) return false;
+                        if (customerSegmentFilter !== "all" && c.customer_segment !== customerSegmentFilter) return false;
+                        if (customerSearchTerm.trim()) {
+                          const q = customerSearchTerm.toLowerCase();
+                          const matchName = c.full_name?.toLowerCase().includes(q);
+                          const matchEmail = c.email?.toLowerCase().includes(q);
+                          const matchPhone = c.phone?.includes(q);
+                          const matchCity = c.city?.toLowerCase().includes(q);
+                          const matchSource = c.lead_source?.toLowerCase().includes(q);
+                          if (!matchName && !matchEmail && !matchPhone && !matchCity && !matchSource) return false;
+                        }
+                        return true;
+                      })
+                      .map((c) => (
+                        <tr
+                          key={c.id}
+                          onClick={() => setSelectedCustomer(c)}
+                          className="hover:bg-slate-800/50 cursor-pointer transition-colors"
+                        >
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-white">{c.full_name}</div>
+                            <div className="text-[11px] text-slate-400 font-mono">{c.email}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-mono text-slate-200">{c.phone || "No phone"}</div>
+                            <div className="text-[11px] text-slate-400">
+                              {c.city}
+                              {c.subdistrict ? `, ${c.subdistrict}` : ""}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-cyan-950/70 border border-cyan-800/50 text-cyan-300 capitalize">
+                              {c.lead_source ? c.lead_source.replace(/_/g, " ") : "Direct"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-200 uppercase">
+                              {c.customer_segment || "general"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-mono">
+                            <div className="font-bold text-cyan-400">{formatRupiah(c.total_spent || 0)}</div>
+                            <div className="text-[10px] text-slate-400">{c.total_orders || 0} orders</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {c.marketing_opt_in ? (
+                              <span className="text-emerald-400 font-medium">Opted-in</span>
+                            ) : (
+                              <span className="text-slate-500">No</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedCustomer(c);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Details</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* TAB 5: SALES & PROFIT ANALYTICS (WITH DRAGGABLE RESIZABLE TABLE)     */}
+        {/* ==================================================================== */}
+        {activeTab === "analytics" && (
+          <div className="space-y-6">
+            {/* Top Overview & Action Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 backdrop-blur-md">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center text-slate-950 font-bold shadow-md shadow-cyan-500/20">
+                    <TrendingUp className="w-4 h-4 text-slate-950" />
+                  </div>
+                  <h2 className="text-lg font-bold text-white tracking-tight">Sales &amp; Profit Intelligence</h2>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                    Live Telemetry
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Storewide sales velocity, unit economics, gross margins, and draggable resizable data grid.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={resetColWidths}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+                  title="Reset table column widths to default layout"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Reset Column Widths</span>
+                </button>
+
+                <div className="px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>
+                    <strong className="text-white font-medium">{products.length}</strong> items tracked
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Overall Sales Statistics Headline Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Card 1: Weekly Gross Profit */}
+              <div className="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-emerald-500/60 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Weekly Gross Profit (7D)
+                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-700/50 flex items-center justify-center text-emerald-400">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-emerald-400 tracking-tight font-mono">
+                  {formatRupiah(analyticsData.weeklyGrossProfit)}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                  <span className="text-slate-400">
+                    Gross Margin: <strong className="text-emerald-300 font-semibold">{analyticsData.weeklyMarginPct}%</strong>
+                  </span>
+                  {analyticsData.profitGrowthPct !== 0 && (
+                    <span
+                      className={`inline-flex items-center gap-0.5 font-medium ${
+                        analyticsData.profitGrowthPct >= 0 ? "text-emerald-400" : "text-red-400"
+                      }`}
+                    >
+                      {analyticsData.profitGrowthPct >= 0 ? "+" : ""}
+                      {analyticsData.profitGrowthPct}% vs prior 7D
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Card 2: Sales in a Week (Revenue) */}
+              <div className="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-cyan-500/60 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Sales in a Week (7D)
+                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-cyan-950/60 border border-cyan-700/50 flex items-center justify-center text-cyan-400">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-cyan-400 tracking-tight font-mono">
+                  {formatRupiah(analyticsData.weeklySales)}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                  <span className="text-slate-400">
+                    Orders: <strong className="text-white font-medium">{analyticsData.weeklyOrdersCount}</strong>
+                  </span>
+                  <span className="text-slate-400">
+                    AOV: <strong className="text-cyan-300 font-mono">{formatRupiah(analyticsData.weeklyAov)}</strong>
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 3: Weekly Units & Run-Rate */}
+              <div className="bg-slate-900/80 border border-purple-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-purple-500/60 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Weekly Volume Sold
+                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-purple-950/60 border border-purple-700/50 flex items-center justify-center text-purple-400">
+                    <ShoppingBag className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-purple-300 tracking-tight font-mono">
+                  {analyticsData.weeklyUnits.toLocaleString()}{" "}
+                  <span className="text-sm font-normal text-slate-400">units</span>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                  <span className="text-slate-400">Daily Velocity:</span>
+                  <span className="text-purple-300 font-medium font-mono">
+                    {(analyticsData.weeklyUnits / 7).toFixed(1)} units / day
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 4: Store Lifetime Totals */}
+              <div className="bg-slate-900/80 border border-blue-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-blue-500/60 transition">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    Store Lifetime Profit
+                  </span>
+                  <div className="w-8 h-8 rounded-lg bg-blue-950/60 border border-blue-700/50 flex items-center justify-center text-blue-400">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-blue-300 tracking-tight font-mono">
+                  {formatRupiah(analyticsData.lifetimeGrossProfit)}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                  <span className="text-slate-400">
+                    Revenue: <strong className="text-slate-300 font-mono">{formatRupiah(analyticsData.lifetimeSales)}</strong>
+                  </span>
+                  <span className="text-slate-400">
+                    <strong className="text-white font-medium">{analyticsData.lifetimeOrdersCount}</strong> orders
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 7-Day Daily Breakdown Bar & Flow */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    <span>7-Day Daily Revenue &amp; Gross Profit Breakdown</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Day-by-day sales pacing and profit margins over the trailing 7 days.
+                  </p>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-cyan-500/80" />
+                    <span>Revenue</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-emerald-500/80" />
+                    <span>Gross Profit</span>
+                  </div>
+                </div>
+              </div>
+
+              {(() => {
+                const maxDayRev = Math.max(...analyticsData.dailyBreakdown.map((d) => d.revenue), 1);
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
+                    {analyticsData.dailyBreakdown.map((day) => {
+                      const revPct = Math.round((day.revenue / maxDayRev) * 100);
+                      const profitPct = Math.round((day.profit / maxDayRev) * 100);
+
+                      return (
+                        <div
+                          key={day.dateStr}
+                          className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between hover:border-slate-700 transition"
+                        >
+                          <div>
+                            <div className="text-xs font-semibold text-slate-300">{day.label}</div>
+                            <div className="text-[10px] text-slate-500 font-mono">{day.dateStr}</div>
+                          </div>
+
+                          <div className="my-3 space-y-1.5">
+                            {/* Revenue Bar */}
+                            <div>
+                              <div className="flex justify-between text-[11px] font-mono text-cyan-300 mb-0.5">
+                                <span>Rev</span>
+                                <span>{formatRupiah(day.revenue)}</span>
+                              </div>
+                              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.max(revPct, day.revenue > 0 ? 6 : 0)}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Profit Bar */}
+                            <div>
+                              <div className="flex justify-between text-[11px] font-mono text-emerald-400 mb-0.5">
+                                <span>Profit</span>
+                                <span>{formatRupiah(day.profit)}</span>
+                              </div>
+                              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.max(profitPct, day.profit > 0 ? 6 : 0)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-800/60 flex items-center justify-between">
+                            <span>{day.orders} order(s)</span>
+                            <span className="font-mono">{day.units} unit(s)</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Draggable Table Toolbar & Filter Controls */}
+            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                {/* Search Bar */}
+                <div className="relative flex-1 min-w-[240px]">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by product title, brand, or SKU code..."
+                    value={analyticsSearch}
+                    onChange={(e) => setAnalyticsSearch(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                  />
+                  {analyticsSearch && (
+                    <button
+                      onClick={() => setAnalyticsSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Filter */}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={analyticsCategoryFilter}
+                    onChange={(e) => setAnalyticsCategoryFilter(e.target.value)}
+                    className="bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
+                  >
+                    <option value="all">All Categories ({products.length})</option>
+                    {HARDWARE_CATEGORIES.map((c) => (
+                      <option key={c.slug} value={c.slug}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Sort Selection */}
+                  <select
+                    value={analyticsSortBy}
+                    onChange={(e) => setAnalyticsSortBy(e.target.value)}
+                    className="bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
+                  >
+                    <option value="weeklyGrossProfit">Sort by 7D Gross Profit</option>
+                    <option value="weeklyRevenue">Sort by 7D Revenue</option>
+                    <option value="weeklyUnits">Sort by 7D Units Sold</option>
+                    <option value="lifetimeGrossProfit">Sort by Lifetime Profit</option>
+                    <option value="lifetimeRevenue">Sort by Lifetime Revenue</option>
+                    <option value="lifetimeUnits">Sort by Lifetime Units</option>
+                    <option value="retail_price">Sort by Retail Price</option>
+                    <option value="marginPct">Sort by Gross Margin %</option>
+                    <option value="stock_on_hand">Sort by Stock On Hand</option>
+                    <option value="name">Sort by Product Name</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setAnalyticsSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+                    className="p-2 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition"
+                    title={`Sort Direction: ${analyticsSortOrder === "asc" ? "Ascending" : "Descending"}`}
+                  >
+                    {analyticsSortOrder === "asc" ? (
+                      <ArrowUp className="w-4 h-4 text-cyan-400" />
+                    ) : (
+                      <ArrowDown className="w-4 h-4 text-cyan-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Helper Bar & Tip */}
+              <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span>
+                    Showing <strong className="text-white">{sortedAndFilteredProducts.length}</strong> of{" "}
+                    <strong className="text-white">{products.length}</strong> items
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>
+                    <strong>Draggable columns active:</strong> Drag the border handle between any two columns to resize.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Draggable Resizable Table */}
+            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60 shadow-2xl">
+              <table
+                style={{
+                  width: `${Object.values(colWidths).reduce((acc, w) => acc + w, 0)}px`,
+                  minWidth: "100%",
+                }}
+                className="table-fixed border-collapse divide-y divide-slate-800 text-left text-xs"
+              >
+                <thead className="bg-slate-950 text-slate-300 font-semibold tracking-wider text-[11px] uppercase sticky top-0 z-10 select-none">
+                  <tr>
+                    {/* 1. Product Name */}
+                    <th
+                      style={{ width: `${colWidths.product}px`, minWidth: `${colWidths.product}px` }}
+                      className="py-3.5 px-4 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("name");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "name" && prev === "asc" ? "desc" : "asc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>Product Elements</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("product", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 2. SKU */}
+                    <th
+                      style={{ width: `${colWidths.sku}px`, minWidth: `${colWidths.sku}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>SKU</span>
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("sku", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 3. Category */}
+                    <th
+                      style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>Category</span>
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("category", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 4. Retail Price */}
+                    <th
+                      style={{ width: `${colWidths.price}px`, minWidth: `${colWidths.price}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("retail_price");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "retail_price" && prev === "desc" ? "asc" : "desc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>Retail Price</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("price", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 5. Unit Cost (COGS) */}
+                    <th
+                      style={{ width: `${colWidths.cost}px`, minWidth: `${colWidths.cost}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>Est. Cost (COGS)</span>
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("cost", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 6. Units Sold (7D) */}
+                    <th
+                      style={{ width: `${colWidths.unitsWeek}px`, minWidth: `${colWidths.unitsWeek}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("weeklyUnits");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "weeklyUnits" && prev === "desc" ? "asc" : "desc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>7D Units</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("unitsWeek", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 7. Lifetime Units */}
+                    <th
+                      style={{ width: `${colWidths.unitsLifetime}px`, minWidth: `${colWidths.unitsLifetime}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("lifetimeUnits");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "lifetimeUnits" && prev === "desc" ? "asc" : "desc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>Total Units</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("unitsLifetime", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 8. 7D Revenue */}
+                    <th
+                      style={{ width: `${colWidths.revWeek}px`, minWidth: `${colWidths.revWeek}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("weeklyRevenue");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "weeklyRevenue" && prev === "desc" ? "asc" : "desc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>7D Revenue</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("revWeek", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 9. 7D Gross Profit */}
+                    <th
+                      style={{ width: `${colWidths.profitWeek}px`, minWidth: `${colWidths.profitWeek}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("weeklyGrossProfit");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "weeklyGrossProfit" && prev === "desc" ? "asc" : "desc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>7D Profit</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("profitWeek", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 10. Margin % */}
+                    <th
+                      style={{ width: `${colWidths.margin}px`, minWidth: `${colWidths.margin}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("marginPct");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "marginPct" && prev === "desc" ? "asc" : "desc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>Margin %</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("margin", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 11. Stock on Hand */}
+                    <th
+                      style={{ width: `${colWidths.stock}px`, minWidth: `${colWidths.stock}px` }}
+                      className="py-3.5 px-3 relative group"
+                    >
+                      <div
+                        onClick={() => {
+                          setAnalyticsSortBy("stock_on_hand");
+                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "stock_on_hand" && prev === "desc" ? "asc" : "desc"));
+                        }}
+                        className="flex items-center justify-between cursor-pointer hover:text-white"
+                      >
+                        <span>Stock</span>
+                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
+                      </div>
+                      <div
+                        onMouseDown={(e) => handleColResizeStart("stock", e)}
+                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
+                        title="Drag to resize column"
+                      >
+                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
+                      </div>
+                    </th>
+
+                    {/* 12. Actions */}
+                    <th
+                      style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px` }}
+                      className="py-3.5 px-4 text-right"
+                    >
+                      <span>Dashboard</span>
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-800/80">
+                  {sortedAndFilteredProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="py-12 text-center text-slate-400">
+                        <Package className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                        <div className="font-medium text-slate-300">No products found</div>
+                        <div className="text-xs text-slate-500 mt-1">Try adjusting your search criteria or category filter.</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedAndFilteredProducts.map((p) => {
+                      const hasImage = p.images && p.images.length > 0;
+                      return (
+                        <tr
+                          key={p.id}
+                          className="hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                          onClick={() => setSelectedItemAnalytics(p)}
+                        >
+                          {/* Product Info */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex-shrink-0 relative overflow-hidden flex items-center justify-center">
+                                {hasImage ? (
+                                  <Image
+                                    src={p.images[0]}
+                                    alt={p.name}
+                                    fill
+                                    className="object-cover"
+                                    sizes="40px"
+                                  />
+                                ) : (
+                                  <Package className="w-5 h-5 text-slate-500" />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-[11px] font-semibold text-cyan-400 uppercase tracking-wider truncate">
+                                  {p.brand}
+                                </div>
+                                <div className="text-xs font-medium text-white truncate max-w-[200px]" title={p.name}>
+                                  {p.name}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* SKU */}
+                          <td className="py-3 px-3">
+                            <span className="font-mono text-[11px] text-slate-300 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800 truncate block">
+                              {p.sku}
+                            </span>
+                          </td>
+
+                          {/* Category */}
+                          <td className="py-3 px-3">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 truncate">
+                              {p.category_slug}
+                            </span>
+                          </td>
+
+                          {/* Retail Price */}
+                          <td className="py-3 px-3 font-mono text-xs text-white font-medium">
+                            {formatRupiah(p.retail_price)}
+                          </td>
+
+                          {/* Cost (COGS) */}
+                          <td className="py-3 px-3 font-mono text-xs text-slate-400">
+                            {formatRupiah(p.cost_price)}
+                          </td>
+
+                          {/* 7D Units */}
+                          <td className="py-3 px-3 font-mono text-xs">
+                            <span
+                              className={`font-semibold ${
+                                p.weeklyUnits > 0 ? "text-cyan-300" : "text-slate-500"
+                              }`}
+                            >
+                              {p.weeklyUnits}
+                            </span>
+                          </td>
+
+                          {/* Total Units */}
+                          <td className="py-3 px-3 font-mono text-xs text-slate-300">
+                            {p.lifetimeUnits}
+                          </td>
+
+                          {/* 7D Revenue */}
+                          <td className="py-3 px-3 font-mono text-xs text-cyan-400 font-medium">
+                            {formatRupiah(p.weeklyRevenue)}
+                          </td>
+
+                          {/* 7D Gross Profit */}
+                          <td className="py-3 px-3 font-mono text-xs text-emerald-400 font-bold">
+                            {formatRupiah(p.weeklyGrossProfit)}
+                          </td>
+
+                          {/* Margin % */}
+                          <td className="py-3 px-3">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                p.marginPct >= 20
+                                  ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                                  : p.marginPct >= 12
+                                  ? "bg-cyan-950 text-cyan-300 border border-cyan-800"
+                                  : "bg-amber-950 text-amber-300 border border-amber-800"
+                              }`}
+                            >
+                              {p.marginPct}%
+                            </span>
+                          </td>
+
+                          {/* Stock & Velocity */}
+                          <td className="py-3 px-3">
+                            <div className="font-mono text-xs text-white">
+                              {p.stock_on_hand}{" "}
+                              <span className="text-[10px] text-slate-400 font-sans">left</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {p.daysOfSupply === 999 ? "Ample supply" : `${p.daysOfSupply}d supply`}
+                            </div>
+                          </td>
+
+                          {/* Action Button */}
+                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedItemAnalytics(p)}
+                              className="px-2.5 py-1.5 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 hover:text-cyan-200 border border-cyan-800 transition flex items-center gap-1 text-xs font-medium ml-auto"
+                              title="Open full item sales dashboard"
+                            >
+                              <BarChart3 className="w-3.5 h-3.5" />
+                              <span>Dashboard</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -2987,6 +4876,717 @@ export default function AdminPortalPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================== */}
+      {/* MODAL 7: CUSTOMER FULL PROFILE & ORDER HISTORY                         */}
+      {/* ====================================================================== */}
+      {selectedCustomer && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full p-6 space-y-6 my-8 shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg">
+                  {selectedCustomer.full_name
+                    ? selectedCustomer.full_name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()
+                    : "CU"}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-white text-lg">{selectedCustomer.full_name}</h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 uppercase">
+                      {selectedCustomer.customer_segment || "general"}
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 font-mono mt-0.5">
+                    Customer ID: {selectedCustomer.id}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedCustomer(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1 text-xs">
+              {/* Section 1 & 2 Grid: Contact Info & Delivery Address */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Contact Information */}
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs border-b border-slate-800 pb-2">
+                    <Mail className="w-4 h-4 text-cyan-400" />
+                    <span>Contact &amp; Account Details</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Primary Email</span>
+                      <a
+                        href={`mailto:${selectedCustomer.email}`}
+                        className="text-cyan-400 hover:underline font-mono"
+                      >
+                        {selectedCustomer.email}
+                      </a>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Mobile Phone</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-white font-mono">{selectedCustomer.phone || "Not provided"}</span>
+                        {selectedCustomer.phone && (
+                          <a
+                            href={`https://wa.me/${selectedCustomer.phone.replace(/[^0-9]/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-semibold transition-colors"
+                          >
+                            WhatsApp Chat
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Registered Date</span>
+                      <span className="text-slate-300 font-mono">
+                        {selectedCustomer.created_at
+                          ? new Date(selectedCustomer.created_at).toLocaleString("en-US", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })
+                          : "Legacy Customer"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delivery Address */}
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs">
+                      <MapPin className="w-4 h-4 text-emerald-400" />
+                      <span>Primary Delivery Address</span>
+                    </div>
+                    {selectedCustomer.address_label && (
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-medium">
+                        {selectedCustomer.address_label}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 text-slate-300">
+                    <div className="text-white font-medium">
+                      {selectedCustomer.address_line1 || "No street address recorded"}
+                    </div>
+                    {selectedCustomer.address_line2 && (
+                      <div className="text-slate-400">{selectedCustomer.address_line2}</div>
+                    )}
+                    <div>
+                      {[
+                        selectedCustomer.subdistrict,
+                        selectedCustomer.city,
+                        selectedCustomer.province,
+                        selectedCustomer.postal_code,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </div>
+                    <div className="text-slate-400 font-mono text-[11px]">
+                      {selectedCustomer.country || "Indonesia"}
+                    </div>
+
+                    {selectedCustomer.delivery_notes && (
+                      <div className="mt-2 p-2 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
+                        <span className="font-semibold text-slate-300">Delivery Notes:</span>{" "}
+                        {selectedCustomer.delivery_notes}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3 & 4 Grid: Attribution & Preferences */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Discovery & Acquisition Attribution */}
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs border-b border-slate-800 pb-2">
+                    <Compass className="w-4 h-4 text-purple-400" />
+                    <span>Discovery &amp; Attribution</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">How they got to know us</span>
+                      <span className="px-2.5 py-1 rounded-md bg-purple-950/60 border border-purple-800/60 text-purple-200 text-xs font-medium inline-block mt-1 capitalize">
+                        {selectedCustomer.lead_source
+                          ? selectedCustomer.lead_source.replace(/_/g, " ")
+                          : "Direct / Unknown"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Hardware Architecture Preference</span>
+                      <span className="text-slate-200 uppercase font-mono mt-0.5 block">
+                        {selectedCustomer.hardware_preference || "All Vendors"}
+                      </span>
+                    </div>
+
+                    {selectedCustomer.tags && selectedCustomer.tags.length > 0 && (
+                      <div>
+                        <span className="text-slate-400 block text-[11px] mb-1">Customer Tags</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedCustomer.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300 text-[10px]"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Marketing & Newsletter Preferences */}
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs border-b border-slate-800 pb-2">
+                    <Share2 className="w-4 h-4 text-emerald-400" />
+                    <span>Marketing &amp; Subscriptions</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Promotional Opt-In</span>
+                      <div className="mt-1">
+                        {selectedCustomer.marketing_opt_in ? (
+                          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[11px] font-semibold">
+                            Opted In (Email &amp; WhatsApp Announcements)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[11px]">
+                            Opted Out
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Dispatch Frequency</span>
+                      <span className="text-slate-200 capitalize font-mono mt-0.5 block">
+                        {selectedCustomer.newsletter_frequency || "Weekly"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 5: Order History & Lifetime Financials */}
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs">
+                    <ShoppingBag className="w-4 h-4 text-cyan-400" />
+                    <span>Purchase History &amp; Orders</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono">
+                    <span className="text-slate-400">Total: {selectedCustomer.total_orders || 0} orders</span>
+                    <span className="text-cyan-400 font-bold">
+                      {formatRupiah(selectedCustomer.total_spent || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                {(() => {
+                  const customerCleanPhone = (selectedCustomer.phone || "").replace(/[^0-9]/g, "");
+                  const customerEmail = (selectedCustomer.email || "").toLowerCase();
+
+                  const customerOrders = orders.filter((o) => {
+                    const oEmail = (o.customer_email || "").toLowerCase();
+                    const oPhone = (o.customer_phone || "").replace(/[^0-9]/g, "");
+                    const emailMatch = Boolean(customerEmail && oEmail && oEmail === customerEmail);
+                    const phoneMatch = Boolean(
+                      customerCleanPhone.length > 5 &&
+                        oPhone.length > 5 &&
+                        (oPhone === customerCleanPhone ||
+                          oPhone.endsWith(customerCleanPhone) ||
+                          customerCleanPhone.endsWith(oPhone))
+                    );
+                    return emailMatch || phoneMatch;
+                  });
+
+                  if (customerOrders.length === 0) {
+                    return (
+                      <div className="py-4 text-center text-slate-500 text-xs">
+                        No active orders found in current store database for this customer profile.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-900 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
+                          <tr>
+                            <th className="py-2 px-3">Order ID</th>
+                            <th className="py-2 px-3">Date</th>
+                            <th className="py-2 px-3">Status</th>
+                            <th className="py-2 px-3">Total</th>
+                            <th className="py-2 px-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800 text-slate-300">
+                          {customerOrders.map((ord) => (
+                            <tr key={ord.id} className="hover:bg-slate-900/60">
+                              <td className="py-2 px-3 font-mono text-white font-semibold">{ord.id}</td>
+                              <td className="py-2 px-3 text-slate-400">
+                                {ord.created_at
+                                  ? new Date(ord.created_at).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })
+                                  : "N/A"}
+                              </td>
+                              <td className="py-2 px-3">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-800 text-slate-300">
+                                  {ord.status}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 font-mono text-cyan-400 font-bold">
+                                {formatRupiah(ord.total || 0)}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCustomer(null);
+                                    setActiveTab("orders");
+                                  }}
+                                  className="text-cyan-400 hover:text-cyan-300 text-xs font-medium inline-flex items-center gap-1"
+                                >
+                                  <span>View in Orders</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSelectedCustomer(null)}
+                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+              >
+                Close Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================== */}
+      {/* MODAL 8: ITEM DETAILED SALES DASHBOARD MODAL                           */}
+      {/* ====================================================================== */}
+      {selectedItemAnalytics && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full p-6 space-y-6 my-8 shadow-2xl max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-800 pb-4 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex-shrink-0 relative overflow-hidden flex items-center justify-center">
+                  {selectedItemAnalytics.images && selectedItemAnalytics.images.length > 0 ? (
+                    <Image
+                      src={selectedItemAnalytics.images[0]}
+                      alt={selectedItemAnalytics.name}
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                    />
+                  ) : (
+                    <Package className="w-6 h-6 text-slate-500" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
+                      {selectedItemAnalytics.brand}
+                    </span>
+                    <span className="text-slate-600">•</span>
+                    <span className="font-mono text-xs text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                      SKU: {selectedItemAnalytics.sku}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                      {selectedItemAnalytics.category_slug}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white tracking-tight mt-0.5">
+                    {selectedItemAnalytics.name}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Item Performance Dossier • Weekly &amp; Lifetime Sales Telemetry
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedItemAnalytics(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Modal Content */}
+            <div className="overflow-y-auto pr-1 space-y-6 flex-1 text-xs">
+              {/* Top Highlights Banner: Stock Health & Run Rate */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-cyan-950/70 border border-cyan-800/60 flex items-center justify-center text-cyan-400">
+                    <Package className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-slate-400">Current Warehouse Stock</div>
+                    <div className="text-sm font-bold text-white font-mono">
+                      {selectedItemAnalytics.stock_on_hand} units available
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-purple-950/70 border border-purple-800/60 flex items-center justify-center text-purple-400">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-slate-400">Weekly Run Rate</div>
+                    <div className="text-sm font-bold text-purple-300 font-mono">
+                      {selectedItemAnalytics.weeklyUnits} units/wk ({(selectedItemAnalytics.weeklyUnits / 7).toFixed(2)}/day)
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-950/70 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-slate-400">Estimated Days of Supply</div>
+                    <div className="text-sm font-bold text-emerald-400 font-mono">
+                      {selectedItemAnalytics.daysOfSupply === 999
+                        ? "Ample Supply"
+                        : `${selectedItemAnalytics.daysOfSupply} days remaining`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financials & Unit Economics Grid */}
+              <div>
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <DollarSign className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Unit Economics &amp; Gross Margins</span>
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* Retail Price */}
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">Retail Selling Price</span>
+                    <div className="text-base font-bold text-white font-mono mt-1">
+                      {formatRupiah(selectedItemAnalytics.retail_price)}
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1 block">Active SRP</span>
+                  </div>
+
+                  {/* Estimated Cost (COGS) */}
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">Wholesale Cost (COGS)</span>
+                    <div className="text-base font-bold text-slate-300 font-mono mt-1">
+                      {formatRupiah(selectedItemAnalytics.cost_price)}
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1 block">Distributor base</span>
+                  </div>
+
+                  {/* Gross Profit per Unit */}
+                  <div className="bg-slate-950/80 border border-emerald-900/40 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">Profit Per Unit</span>
+                    <div className="text-base font-bold text-emerald-400 font-mono mt-1">
+                      {formatRupiah(selectedItemAnalytics.unitGrossProfit)}
+                    </div>
+                    <span className="text-[10px] text-emerald-500/80 mt-1 block">Per-sale margin</span>
+                  </div>
+
+                  {/* Gross Margin % */}
+                  <div className="bg-slate-950/80 border border-cyan-900/40 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">Gross Margin %</span>
+                    <div className="text-base font-bold text-cyan-400 font-mono mt-1">
+                      {selectedItemAnalytics.marginPct}%
+                    </div>
+                    <span className="text-[10px] text-cyan-500/80 mt-1 block">Return on sales</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trailing Performance & Volume Aggregates */}
+              <div>
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Sales Volume &amp; Profit Comparison</span>
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {/* 7D Revenue */}
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">7D Gross Revenue</span>
+                    <div className="text-base font-bold text-cyan-400 font-mono mt-1">
+                      {formatRupiah(selectedItemAnalytics.weeklyRevenue)}
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      {selectedItemAnalytics.weeklyUnits} unit(s) in last 7 days
+                    </span>
+                  </div>
+
+                  {/* 7D Gross Profit */}
+                  <div className="bg-slate-950/80 border border-emerald-900/40 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">7D Gross Profit</span>
+                    <div className="text-base font-bold text-emerald-400 font-mono mt-1">
+                      {formatRupiah(selectedItemAnalytics.weeklyGrossProfit)}
+                    </div>
+                    <span className="text-[10px] text-emerald-500/80 mt-1 block">Weekly net profit contribution</span>
+                  </div>
+
+                  {/* Lifetime Revenue */}
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">Lifetime Revenue</span>
+                    <div className="text-base font-bold text-slate-200 font-mono mt-1">
+                      {formatRupiah(selectedItemAnalytics.lifetimeRevenue)}
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      {selectedItemAnalytics.lifetimeUnits} unit(s) all-time
+                    </span>
+                  </div>
+
+                  {/* Lifetime Gross Profit */}
+                  <div className="bg-slate-950/80 border border-emerald-900/40 rounded-xl p-3.5">
+                    <span className="text-[11px] text-slate-400">Lifetime Gross Profit</span>
+                    <div className="text-base font-bold text-emerald-400 font-mono mt-1">
+                      {formatRupiah(selectedItemAnalytics.lifetimeGrossProfit)}
+                    </div>
+                    <span className="text-[10px] text-emerald-500/80 mt-1 block">Total historical profit</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 7-Day Day-by-Day Performance Table for this Item */}
+              <div>
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Trailing 7-Day Pacing</span>
+                </h4>
+                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+                  <table className="w-full text-left text-xs divide-y divide-slate-800">
+                    <thead className="bg-slate-950 text-slate-400 font-medium">
+                      <tr>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Units Sold</th>
+                        <th className="py-2.5 px-3">Daily Revenue</th>
+                        <th className="py-2.5 px-3">Daily Gross Profit</th>
+                        <th className="py-2.5 px-3">Pacing Visual</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/80 font-mono text-[11px]">
+                      {analyticsData.dailyBreakdown.map((d) => {
+                        const dayData = selectedItemAnalytics.dailySales7D?.[d.dateStr] || {
+                          units: 0,
+                          revenue: 0,
+                          profit: 0,
+                        };
+                        const hasSales = dayData.units > 0;
+                        return (
+                          <tr key={d.dateStr} className="hover:bg-slate-800/30">
+                            <td className="py-2 px-3 font-sans">
+                              <span className="text-slate-300 font-medium">{d.label}</span>{" "}
+                              <span className="text-slate-500 text-[10px]">({d.dateStr})</span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className={hasSales ? "text-cyan-300 font-semibold" : "text-slate-600"}>
+                                {dayData.units}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className={hasSales ? "text-white font-medium" : "text-slate-600"}>
+                                {formatRupiah(dayData.revenue)}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3">
+                              <span className={hasSales ? "text-emerald-400 font-semibold" : "text-slate-600"}>
+                                {formatRupiah(dayData.profit)}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 font-sans w-36">
+                              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                <div
+                                  className="bg-gradient-to-r from-cyan-500 to-emerald-500 h-full rounded-full"
+                                  style={{
+                                    width: `${Math.min(
+                                      100,
+                                      selectedItemAnalytics.weeklyUnits > 0
+                                        ? Math.round((dayData.units / selectedItemAnalytics.weeklyUnits) * 100)
+                                        : 0
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Customer Orders Breakdown Table */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                    <ShoppingBag className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Customer Orders Featuring This SKU ({selectedItemAnalytics.orders.length})</span>
+                  </h4>
+                  {selectedItemAnalytics.orders.length > 0 && (
+                    <span className="text-[11px] text-slate-400">
+                      Total Units: <strong className="text-white">{selectedItemAnalytics.lifetimeUnits}</strong>
+                    </span>
+                  )}
+                </div>
+
+                {selectedItemAnalytics.orders.length === 0 ? (
+                  <div className="p-6 rounded-xl border border-slate-800 bg-slate-950/60 text-center text-slate-400">
+                    <Package className="w-6 h-6 mx-auto mb-1.5 text-slate-600" />
+                    <p className="font-medium text-slate-300 text-xs">No orders recorded for this item yet</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      New customer checkouts containing this product will automatically appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60 max-h-56">
+                    <table className="w-full text-left text-xs divide-y divide-slate-800">
+                      <thead className="bg-slate-950 text-slate-400 font-medium sticky top-0">
+                        <tr>
+                          <th className="py-2 px-3">Order Number</th>
+                          <th className="py-2 px-3">Date</th>
+                          <th className="py-2 px-3">Customer</th>
+                          <th className="py-2 px-3">Qty</th>
+                          <th className="py-2 px-3">Unit Price</th>
+                          <th className="py-2 px-3">Line Revenue</th>
+                          <th className="py-2 px-3">Gross Profit</th>
+                          <th className="py-2 px-3">Status</th>
+                          <th className="py-2 px-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/80 font-mono text-[11px]">
+                        {selectedItemAnalytics.orders.map((record: any, idx: number) => {
+                          const ord = record.order;
+                          const it = record.item;
+                          const lineRev = (it.unit_price || 0) * (it.quantity || 1);
+                          const lineProfit = record.unitProfit * (it.quantity || 1);
+
+                          return (
+                            <tr key={`${ord.id}-${idx}`} className="hover:bg-slate-800/30">
+                              <td className="py-2 px-3 text-cyan-300 font-semibold">
+                                #{ord.order_number || ord.id.slice(0, 8)}
+                              </td>
+                              <td className="py-2 px-3 text-slate-400 font-sans">
+                                {ord.created_at
+                                  ? new Date(ord.created_at).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                    })
+                                  : "N/A"}
+                              </td>
+                              <td className="py-2 px-3 font-sans">
+                                <div className="text-white font-medium truncate max-w-[120px]">
+                                  {ord.customer_name}
+                                </div>
+                                <div className="text-[10px] text-slate-500 truncate max-w-[120px]">
+                                  {ord.customer_email}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-white font-bold">{it.quantity || 1}</td>
+                              <td className="py-2 px-3 text-slate-300">{formatRupiah(it.unit_price || 0)}</td>
+                              <td className="py-2 px-3 text-cyan-300 font-medium">{formatRupiah(lineRev)}</td>
+                              <td className="py-2 px-3 text-emerald-400 font-bold">{formatRupiah(lineProfit)}</td>
+                              <td className="py-2 px-3 font-sans">
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-800 text-slate-300">
+                                  {ord.status}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-right font-sans">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedItemAnalytics(null);
+                                    setActiveTab("orders");
+                                  }}
+                                  className="text-cyan-400 hover:text-cyan-300 text-xs font-medium inline-flex items-center gap-1"
+                                >
+                                  <span>View</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-800 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const prodToEdit = selectedItemAnalytics;
+                  setSelectedItemAnalytics(null);
+                  openEditProductModal(prodToEdit);
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 text-xs font-semibold transition flex items-center gap-1.5"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Product Elements</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedItemAnalytics(null)}
+                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+              >
+                Close Dashboard
+              </button>
+            </div>
           </div>
         </div>
       )}

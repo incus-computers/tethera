@@ -12,7 +12,7 @@ import { Pagination } from "../../components/ui/Pagination";
 
 export default function PrebuiltsPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const { addCustomPC, openCart } = useCartStore();
 
   const totalPrebuilts = PREBUILT_SYSTEMS.length;

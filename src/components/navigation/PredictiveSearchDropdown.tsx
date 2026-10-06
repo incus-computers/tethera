@@ -43,7 +43,11 @@ const POPULAR_SEARCH_TERMS = [
   "Noctua",
 ];
 
-export function PredictiveSearchDropdown() {
+interface PredictiveSearchDropdownProps {
+  isCompact?: boolean;
+}
+
+export function PredictiveSearchDropdown({ isCompact = false }: PredictiveSearchDropdownProps = {}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -191,8 +195,8 @@ export function PredictiveSearchDropdown() {
     <div ref={containerRef} className="static sm:relative w-full">
       {/* Search Input Bar */}
       <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none">
-          <Search className="w-3.5 h-3.5" />
+        <div className={`absolute top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 pointer-events-none transition-all ${isCompact ? "left-2.5" : "left-3.5"}`}>
+          <Search className={isCompact ? "w-3.5 h-3.5" : "w-4 h-4"} />
         </div>
 
         <input
@@ -209,12 +213,16 @@ export function PredictiveSearchDropdown() {
           role="combobox"
           aria-expanded={isOpen}
           aria-autocomplete="list"
-          className="w-full pl-8 pr-8 py-1.5 bg-slate-100/90 dark:bg-zinc-900/90 hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 rounded-lg sm:rounded-xl border border-slate-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 transition-all h-8 sm:h-9 focus:outline-none focus:ring-1 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 shadow-inner"
+          className={`w-full bg-slate-100/90 dark:bg-zinc-900/90 hover:bg-slate-100 dark:hover:bg-zinc-900 focus:bg-white dark:focus:bg-zinc-950 text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 rounded-xl border border-slate-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 transition-all focus:outline-none shadow-inner ${
+            isCompact
+              ? "pl-8 pr-8 py-1.5 h-8 sm:h-9 min-h-[34px] focus:ring-1 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10"
+              : "pl-10 pr-10 py-2 sm:py-2.5 min-h-[44px] focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10"
+          }`}
         />
 
         {/* Right side controls: Clear button only when query is typed */}
         {query && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+          <div className={`absolute top-1/2 -translate-y-1/2 flex items-center ${isCompact ? "right-2" : "right-3"}`}>
             <button
               type="button"
               onClick={() => {
@@ -225,7 +233,7 @@ export function PredictiveSearchDropdown() {
               aria-label="Clear search input"
               title="Clear search input"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className={isCompact ? "w-3.5 h-3.5" : "w-4 h-4"} />
             </button>
           </div>
         )}
