@@ -42,7 +42,7 @@ export default function RootLayout({
         <PersistentHeader />
 
         {/* Page Main Content */}
-        <main className="flex-1 w-full max-w-full overflow-x-hidden">{children}</main>
+        <main className="flex-1 w-full max-w-full">{children}</main>
 
         {/* Global Floating WhatsApp Tech Consultation Widget */}
         <FloatingWhatsAppWidget

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -21,11 +21,42 @@ import { SponsorMarquee } from "../components/marketing/SponsorMarquee";
 import { PromotionalBanners } from "../components/marketing/PromotionalBanners";
 import { Pagination } from "../components/ui/Pagination";
 
+/**
+ * Detect active grid columns matching Tailwind responsive breakpoints:
+ * grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6
+ */
+function getGridColumns(width: number): number {
+  if (width >= 1536) return 6; // 2xl
+  if (width >= 1280) return 5; // xl
+  if (width >= 1024) return 4; // lg
+  if (width >= 768) return 3;  // md
+  return 2;                    // mobile
+}
+
 export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [columns, setColumns] = useState<number>(4);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(4);
   const { addStandardItem, addCustomPC, openCart } = useCartStore();
+
+  useEffect(() => {
+    const handleResize = () => {
+      const detected = getGridColumns(window.innerWidth);
+      setColumns(detected);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Dynamically calculate items per page based on current columns and rows preference
+  const itemsPerPage = columns * rowsPerPage;
+
+  // Row multipliers to offer clean multiples of the dynamic column count
+  const rowMultipliers = columns >= 5 ? [3, 4, 6] : [4, 6, 8];
+  const paginationOptions = rowMultipliers.map((r) => r * columns);
 
   const categories = [
     "All",
@@ -43,6 +74,14 @@ export default function HomePage() {
   );
 
   const totalComponents = filteredComponents.length;
+  const totalPages = Math.max(1, Math.ceil(totalComponents / itemsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
   const paginatedComponents = filteredComponents.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -50,6 +89,12 @@ export default function HomePage() {
 
   const handleCategoryChange = (cat: string) => {
     setActiveCategory(cat);
+    setCurrentPage(1);
+  };
+
+  const handleItemsPerPageChange = (newCount: number) => {
+    const calculatedRows = Math.max(1, Math.round(newCount / columns));
+    setRowsPerPage(calculatedRows);
     setCurrentPage(1);
   };
 
@@ -331,94 +376,104 @@ export default function HomePage() {
         </div>
 
         {/* Product Cards Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
-          {paginatedComponents.map((item) => (
-            <div
-              key={`${activeCategory}-${item.id}`}
-              className="rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between tethera-card-hover group transition-colors"
-            >
-              <div>
-                <Link
-                  href={`/products/${item.id}`}
-                  className="relative h-28 xs:h-36 sm:h-40 bg-slate-50 dark:bg-zinc-800/80 rounded-lg sm:rounded-xl overflow-hidden mb-2 sm:mb-3 border border-slate-100 dark:border-zinc-700/60 flex items-center justify-center p-2 block item-frame"
-                >
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-contain p-1.5 sm:p-2 group-hover:scale-105 transition-transform duration-200"
-                  />
-                  <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-white/90 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded shadow-2xs text-slate-700 dark:text-zinc-200 border border-transparent dark:border-zinc-700">
-                    {item.brand}
-                  </span>
-                </Link>
-
-                <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 dark:text-zinc-500 truncate">SKU: {item.sku}</div>
-                <Link href={`/products/${item.id}`} className="block mt-0.5">
-                  <h4 className="text-[11px] xs:text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-snug group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
-                    {item.name}
-                  </h4>
-                </Link>
-
-                <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 sm:gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
-                  <span className="truncate">Stock: {item.stockCount}</span>
-                </div>
-              </div>
-
-              <div className="pt-2.5 sm:pt-4 mt-2 sm:mt-3 border-t border-slate-100 dark:border-zinc-800 flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 sm:gap-2">
+        {paginatedComponents.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800">
+            <p className="text-sm font-semibold text-slate-600 dark:text-zinc-400">
+              No components available in this category.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
+            {paginatedComponents.map((item) => (
+              <div
+                key={`${activeCategory}-${item.id}`}
+                className="rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between tethera-card-hover group transition-colors"
+              >
                 <div>
-                  {item.sale_price && item.sale_price < item.price ? (
-                    <div>
-                      <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                        <span className="text-xs xs:text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">
-                          {formatRupiah(item.sale_price)}
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900/60">
-                          -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
-                        </span>
-                      </div>
-                      <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-zinc-500 line-through">
-                        {formatRupiah(item.price)}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="text-xs xs:text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(item.price)}</div>
-                      <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500">incl. tax</div>
-                    </>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 sm:gap-1.5 justify-end">
                   <Link
                     href={`/products/${item.id}`}
-                    className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-[10px] sm:text-xs font-bold rounded-lg transition-colors tactile-btn"
+                    className="relative h-28 xs:h-36 sm:h-40 bg-slate-50 dark:bg-zinc-800/80 rounded-lg sm:rounded-xl overflow-hidden mb-2 sm:mb-3 border border-slate-100 dark:border-zinc-700/60 flex items-center justify-center p-2 block item-frame"
                   >
-                    Specs
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
+                      className="object-contain p-1.5 sm:p-2 group-hover:scale-105 transition-transform duration-200"
+                    />
+                    <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-white/90 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded shadow-2xs text-slate-700 dark:text-zinc-200 border border-transparent dark:border-zinc-700">
+                      {item.brand}
+                    </span>
                   </Link>
-                  <button
-                    onClick={() => addStandardItem(item.sale_price ? { ...item, price: item.sale_price } : item)}
-                    className="p-1.5 sm:p-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn min-h-[32px] min-w-[32px] flex items-center justify-center"
-                    title="Add to Cart"
-                    aria-label="Add to Cart"
-                  >
-                    <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </button>
+
+                  <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 dark:text-zinc-500 truncate">SKU: {item.sku}</div>
+                  <Link href={`/products/${item.id}`} className="block mt-0.5">
+                    <h4 className="text-[11px] xs:text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-snug group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                      {item.name}
+                    </h4>
+                  </Link>
+
+                  <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 sm:gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+                    <span className="truncate">Stock: {item.stockCount}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2.5 sm:pt-4 mt-2 sm:mt-3 border-t border-slate-100 dark:border-zinc-800 flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 sm:gap-2">
+                  <div>
+                    {item.sale_price && item.sale_price < item.price ? (
+                      <div>
+                        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                          <span className="text-xs xs:text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">
+                            {formatRupiah(item.sale_price)}
+                          </span>
+                          <span className="text-[9px] sm:text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900/60">
+                            -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                          </span>
+                        </div>
+                        <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-zinc-500 line-through">
+                          {formatRupiah(item.price)}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-xs xs:text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(item.price)}</div>
+                        <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500">incl. tax</div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 sm:gap-1.5 justify-end">
+                    <Link
+                      href={`/products/${item.id}`}
+                      className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-[10px] sm:text-xs font-bold rounded-lg transition-colors tactile-btn"
+                    >
+                      Specs
+                    </Link>
+                    <button
+                      onClick={() => addStandardItem(item.sale_price ? { ...item, price: item.sale_price } : item)}
+                      className="p-1.5 sm:p-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn min-h-[32px] min-w-[32px] flex items-center justify-center"
+                      title="Add to Cart"
+                      aria-label="Add to Cart"
+                    >
+                      <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {/* Catalog Pagination with 10, 20, 50 settings */}
+        {/* Catalog Pagination dynamically aligned with column count */}
         <Pagination
           currentPage={currentPage}
           totalItems={totalComponents}
           itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
-          onItemsPerPageChange={setItemsPerPage}
+          onItemsPerPageChange={handleItemsPerPageChange}
+          options={paginationOptions}
+          columns={columns}
           scrollToId="components"
           itemLabel="components"
         />

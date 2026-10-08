@@ -13,6 +13,7 @@ export interface PaginationProps {
   itemLabel?: string;
   className?: string;
   options?: number[];
+  columns?: number;
 }
 
 export function Pagination({
@@ -25,6 +26,7 @@ export function Pagination({
   itemLabel = "products",
   className = "",
   options = [20, 40, 60],
+  columns,
 }: PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
   const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -112,7 +114,7 @@ export function Pagination({
           <span className="font-bold text-zinc-900 dark:text-zinc-100">{totalItems}</span> {itemLabel}
         </span>
 
-        {/* Per-Page Selector (multiples of 4: 20, 40, 60) */}
+        {/* Per-Page Selector (dynamic multiples based on column count) */}
         <div className="flex items-center gap-2">
           <label htmlFor={`items-per-page-${scrollToId || "default"}`} className="text-slate-500 dark:text-zinc-400 font-bold whitespace-nowrap">
             Show:
@@ -124,9 +126,11 @@ export function Pagination({
             className="bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-lg px-2.5 py-1.5 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-600 shadow-2xs min-h-[44px] cursor-pointer"
             aria-label="Products per page"
           >
-            {options.map((opt) => (
+            {(options.includes(itemsPerPage) ? options : [...options, itemsPerPage].sort((a, b) => a - b)).map((opt) => (
               <option key={opt} value={opt}>
-                {opt} per page
+                {columns && opt % columns === 0
+                  ? `${opt} items (${Math.round(opt / columns)} rows)`
+                  : `${opt} per page`}
               </option>
             ))}
           </select>

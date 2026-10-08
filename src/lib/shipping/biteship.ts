@@ -163,8 +163,6 @@ export const SEED_AREAS: BiteshipArea[] = [
   },
 ];
 
-export const SEEDED_INDONESIA_AREAS: BiteshipArea[] = SEED_AREAS;
-
 /**
  * Courier metadata mapping for styling and branding
  */
