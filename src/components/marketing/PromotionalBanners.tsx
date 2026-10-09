@@ -247,13 +247,13 @@ export function PromotionalBanners() {
       {/* MAIN PROMOTIONAL SLIDER (Full Width) */}
       {/* ========================================================================= */}
       <div
-        className="w-full rounded-3xl border border-slate-200/80 dark:border-zinc-800 shadow-xs relative overflow-hidden bg-slate-900 flex flex-col justify-between min-h-[340px] sm:min-h-[360px]"
+        className="w-full rounded-3xl border border-slate-200/80 dark:border-zinc-800 shadow-xs relative overflow-hidden bg-slate-900 flex flex-col justify-between min-h-[680px] sm:min-h-[720px]"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
         {/* Horizontal Sliding Track */}
         <div
-          className="flex transition-transform duration-500 ease-out h-full min-h-[340px] sm:min-h-[360px]"
+          className="flex transition-transform duration-500 ease-out h-full min-h-[680px] sm:min-h-[720px]"
           style={{ transform: `translateX(-${currentSlide * 100}%)` }}
         >
           {slides.map((slide) => (
@@ -265,10 +265,10 @@ export function PromotionalBanners() {
                 /* ------------------------------------------------------------- */
                 /* SUPPLIER & PARTNER PICTURE BANNER */
                 /* ------------------------------------------------------------- */
-                <div className="relative w-full h-full min-h-[340px] sm:min-h-[360px] overflow-hidden group">
+                <div className="relative w-full h-full min-h-[680px] sm:min-h-[720px] overflow-hidden group">
                   <Link
                     href={slide.ctaLink}
-                    className="relative w-full h-full min-h-[340px] sm:min-h-[360px] flex flex-col justify-between p-6 sm:p-8 md:p-10 block"
+                    className="relative w-full h-full min-h-[680px] sm:min-h-[720px] flex flex-col justify-between p-6 sm:p-8 md:p-10 block"
                   >
                     {/* Supplier Image Asset */}
                     {slide.imageUrl && (
@@ -305,32 +305,32 @@ export function PromotionalBanners() {
                         </div>
 
                         {/* Bottom Content Area */}
-                        <div className="relative z-10 space-y-2 max-w-2xl pb-1 pr-24 sm:pr-36">
-                          <h2 className="text-xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
+                        <div className="relative z-10 space-y-3 max-w-3xl pb-2 pr-24 sm:pr-36">
+                          <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight drop-shadow-sm">
                             {slide.title}
                           </h2>
                           {slide.highlight && (
-                            <div className="text-xs sm:text-sm font-bold text-emerald-400 flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <div className="text-xs sm:text-base font-bold text-emerald-400 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400" />
                               <span>{slide.highlight}</span>
                             </div>
                           )}
                           {slide.description && (
-                            <p className="text-xs sm:text-sm md:text-base text-slate-200 mt-1 line-clamp-2 leading-relaxed">
+                            <p className="text-xs sm:text-base md:text-lg text-slate-200 mt-2 line-clamp-3 leading-relaxed">
                               {slide.description}
                             </p>
                           )}
                           {slide.perk && (
-                            <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-zinc-900/80 backdrop-blur-xs border border-white/20 rounded-lg text-xs font-semibold text-slate-200">
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900/80 backdrop-blur-xs border border-white/20 rounded-lg text-xs sm:text-sm font-semibold text-slate-200">
+                              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                               <span>{slide.perk}</span>
                             </div>
                           )}
                           {slide.ctaText && (
-                            <div className="pt-2">
-                              <span className="inline-flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md group-hover:translate-x-0.5">
+                            <div className="pt-3">
+                              <span className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md group-hover:translate-x-0.5">
                                 <span>{slide.ctaText}</span>
-                                <ArrowRight className="w-3.5 h-3.5" />
+                                <ArrowRight className="w-4 h-4" />
                               </span>
                             </div>
                           )}
@@ -344,7 +344,7 @@ export function PromotionalBanners() {
                 /* PROGRAMMATIC RICH CONTENT BANNER */
                 /* ------------------------------------------------------------- */
                 <div
-                  className={`w-full h-full min-h-[340px] sm:min-h-[360px] p-6 sm:p-8 md:p-10 flex flex-col justify-between bg-gradient-to-br ${
+                  className={`w-full h-full min-h-[680px] sm:min-h-[720px] p-6 sm:p-8 md:p-10 flex flex-col justify-between bg-gradient-to-br ${
                     slide.bgGradient || "from-slate-50 via-white to-slate-100"
                   } dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 relative overflow-hidden transition-colors`}
                 >
@@ -376,38 +376,38 @@ export function PromotionalBanners() {
                     </div>
 
                     {/* Banner Main Title & Highlight */}
-                    <h2 className="text-xl sm:text-3xl md:text-4xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">
+                    <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">
                       {slide.title}
                     </h2>
                     {slide.highlight && (
-                      <div className="text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-1 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <div className="text-xs sm:text-base font-bold text-zinc-700 dark:text-zinc-300 mt-2 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
                         <span>{slide.highlight}</span>
                       </div>
                     )}
 
                     {/* Banner Description */}
                     {slide.description && (
-                      <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-zinc-400 mt-2.5 max-w-3xl leading-relaxed">
+                      <p className="text-xs sm:text-base md:text-lg text-slate-600 dark:text-zinc-400 mt-4 max-w-3xl leading-relaxed">
                         {slide.description}
                       </p>
                     )}
 
                     {/* Benefit perk pill */}
                     {slide.perk && (
-                      <div className="mt-3.5 inline-flex items-center gap-2 px-3 py-1.5 bg-white/90 dark:bg-zinc-800/90 border border-slate-200/80 dark:border-zinc-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-200 shadow-2xs">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <div className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 dark:bg-zinc-800/90 border border-slate-200/80 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 dark:text-zinc-200 shadow-2xs">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                         <span>{slide.perk}</span>
                       </div>
                     )}
                   </div>
 
                   {/* Bottom Action Row */}
-                  <div className="pt-6 mt-4 border-t border-slate-200/60 dark:border-zinc-800 flex items-center justify-between gap-3 pr-24 sm:pr-36">
+                  <div className="pt-6 mt-6 border-t border-slate-200/60 dark:border-zinc-800 flex items-center justify-between gap-3 pr-24 sm:pr-36">
                     <div className="flex items-center gap-3">
                       <Link
                         href={slide.ctaLink}
-                        className="px-5 py-2.5 min-h-[44px] bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-xs flex items-center gap-2 uppercase tracking-wide group"
+                        className="px-6 py-3 min-h-[44px] bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-xs flex items-center gap-2 uppercase tracking-wide group"
                       >
                         <span>{slide.ctaText || "Explore Details"}</span>
                         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />

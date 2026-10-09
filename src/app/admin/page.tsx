@@ -56,12 +56,21 @@ import {
   ArrowLeftRight,
   GripVertical,
   ChevronLeft,
+  Cpu,
+  Store,
+  MessageSquare,
 } from "lucide-react";
 import { useAdminStore } from "@/lib/store/useAdminStore";
 import { formatRupiah } from "@/lib/utils/currency";
 import { Product, Order, Promotion, DynamicBannerSlide, CustomerProfileRow } from "@/lib/db/types";
 import { ProductGalleryManager } from "@/components/admin/ProductGalleryManager";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import {
+  HomepageModuleItem,
+  CustomPcHeroConfig,
+  DEFAULT_HOMEPAGE_MODULES,
+  DEFAULT_CUSTOM_PC_HERO,
+} from "@/lib/data/homepageConfig";
 
 const HARDWARE_CATEGORIES = [
   { slug: "cpu", name: "Processors (CPUs)", slot: "cpu" },
@@ -160,6 +169,15 @@ export default function AdminPortalPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
   const newProductFileInputRef = useRef<HTMLInputElement | null>(null);
+  const customPcHeroFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Homepage Modules & Custom PC Hero Configuration State
+  const [homepageModules, setHomepageModules] = useState<HomepageModuleItem[]>(DEFAULT_HOMEPAGE_MODULES);
+  const [customPcHeroConfig, setCustomPcHeroConfig] = useState<CustomPcHeroConfig>(DEFAULT_CUSTOM_PC_HERO);
+  const [savingModules, setSavingModules] = useState(false);
+  const [savingCustomPcHero, setSavingCustomPcHero] = useState(false);
+  const [draggedModuleIdx, setDraggedModuleIdx] = useState<number | null>(null);
+  const [dragOverModuleIdx, setDragOverModuleIdx] = useState<number | null>(null);
 
   // Draggable Table & Sales Analytics State
   const DEFAULT_ANALYTICS_COL_WIDTHS: Record<string, number> = {
@@ -741,6 +759,30 @@ export default function AdminPortalPage() {
           setCrmStats(d.stats);
         }
       }
+
+      // 5. Load Homepage Modules & Custom PC Hero
+      try {
+        const resHp = await fetch("/api/admin/homepage-modules");
+        if (resHp.ok) {
+          const dHp = await resHp.json();
+          if (dHp.success) {
+            if (Array.isArray(dHp.modules) && dHp.modules.length > 0) {
+              setHomepageModules(dHp.modules);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("tethera_homepage_modules", JSON.stringify(dHp.modules));
+              }
+            }
+            if (dHp.customPcHero) {
+              setCustomPcHeroConfig(dHp.customPcHero);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("tethera_custom_pc_hero", JSON.stringify(dHp.customPcHero));
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load homepage modules:", err);
+      }
     } catch (err) {
       console.error("Failed to load admin data:", err);
     } finally {
@@ -788,7 +830,7 @@ export default function AdminPortalPage() {
   // --------------------------------------------------------------------------
   const handleUploadFileFromPC = async (
     file: File,
-    destination: "edit_product" | "new_product" | "banner"
+    destination: "edit_product" | "new_product" | "banner" | "custom_pc_hero"
   ) => {
     setUploadingImage(true);
     try {
@@ -825,11 +867,144 @@ export default function AdminPortalPage() {
       } else if (destination === "banner") {
         setNewBannerForm((prev) => ({ ...prev, image_url: finalUrl }));
         showToast("Banner image uploaded from PC.");
+      } else if (destination === "custom_pc_hero") {
+        setCustomPcHeroConfig((prev) => ({ ...prev, imageUrl: finalUrl }));
+        showToast("Custom Desktop PCs showcase rig image uploaded from PC.");
       }
     } catch (err: any) {
       alert("Error uploading image: " + err.message);
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // HOMEPAGE MODULES REORDERING & CUSTOM PC HERO BANNER HANDLERS
+  // --------------------------------------------------------------------------
+  const handleMoveModule = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === homepageModules.length - 1) return;
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    setHomepageModules((prev) => {
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[targetIdx];
+      next[targetIdx] = temp;
+      return next;
+    });
+  };
+
+  const handleToggleModule = (id: string) => {
+    setHomepageModules((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m))
+    );
+  };
+
+  const handleModuleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedModuleIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleModuleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverModuleIdx !== index) {
+      setDragOverModuleIdx(index);
+    }
+  };
+
+  const handleModuleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedModuleIdx === null || draggedModuleIdx === targetIndex) {
+      setDraggedModuleIdx(null);
+      setDragOverModuleIdx(null);
+      return;
+    }
+    setHomepageModules((prev) => {
+      const next = [...prev];
+      const [draggedItem] = next.splice(draggedModuleIdx, 1);
+      next.splice(targetIndex, 0, draggedItem);
+      return next;
+    });
+    setDraggedModuleIdx(null);
+    setDragOverModuleIdx(null);
+  };
+
+  const handleSaveHomepageModules = async () => {
+    setSavingModules(true);
+    try {
+      const res = await fetch("/api/admin/homepage-modules", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ modules: homepageModules }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("tethera_homepage_modules", JSON.stringify(homepageModules));
+          window.dispatchEvent(new Event("tethera_homepage_updated"));
+        }
+        showToast("Homepage layout module order saved successfully.");
+      } else {
+        alert(data.error || "Failed to save module order");
+      }
+    } catch (err: any) {
+      alert("Error saving layout: " + err.message);
+    } finally {
+      setSavingModules(false);
+    }
+  };
+
+  const handleResetHomepageModules = async () => {
+    if (!confirm("Reset homepage module order to standard factory default?")) return;
+    setHomepageModules(DEFAULT_HOMEPAGE_MODULES);
+    try {
+      await fetch("/api/admin/homepage-modules", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ modules: DEFAULT_HOMEPAGE_MODULES }),
+      });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("tethera_homepage_modules", JSON.stringify(DEFAULT_HOMEPAGE_MODULES));
+        window.dispatchEvent(new Event("tethera_homepage_updated"));
+      }
+      showToast("Homepage layout reset to default order.");
+    } catch (err: any) {
+      alert("Error resetting layout: " + err.message);
+    }
+  };
+
+  const handleSaveCustomPcHero = async () => {
+    setSavingCustomPcHero(true);
+    try {
+      const res = await fetch("/api/admin/homepage-modules", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ customPcHero: customPcHeroConfig }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("tethera_custom_pc_hero", JSON.stringify(customPcHeroConfig));
+          window.dispatchEvent(new Event("tethera_homepage_updated"));
+        }
+        showToast("Custom Desktop PCs showcase banner updated successfully.");
+      } else {
+        alert(data.error || "Failed to save Custom PC banner");
+      }
+    } catch (err: any) {
+      alert("Error saving banner: " + err.message);
+    } finally {
+      setSavingCustomPcHero(false);
     }
   };
 
@@ -2696,7 +2871,557 @@ export default function AdminPortalPage() {
         {/* ==================================================================== */}
         {activeTab === "promotions" && isSuperAdmin && (
           <div className="space-y-8">
-            {/* 1. Promotional Discount Codes */}
+            {/* ============================================================= */}
+            {/* 1. HOMEPAGE SECTION LAYOUT MODULES (DRAG & DROP REORDERING)   */}
+            {/* ============================================================= */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <Layers className="w-5 h-5 text-cyan-400" />
+                    <span>Homepage Section Layout (Draggable &amp; Reorderable Modules)</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Drag modules up and down or use the arrow buttons to arrange storefront sections. Toggle visibility to hide or show modules.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={handleResetHomepageModules}
+                    type="button"
+                    className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset Layout</span>
+                  </button>
+                  <button
+                    onClick={handleSaveHomepageModules}
+                    disabled={savingModules}
+                    type="button"
+                    className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+                  >
+                    {savingModules ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                    <span>{savingModules ? "Saving Layout..." : "Save Layout Order"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modules Draggable List */}
+              <div className="space-y-2.5">
+                {homepageModules.map((module, idx) => (
+                  <div
+                    key={module.id}
+                    draggable
+                    onDragStart={(e) => handleModuleDragStart(e, idx)}
+                    onDragOver={(e) => handleModuleDragOver(e, idx)}
+                    onDrop={(e) => handleModuleDrop(e, idx)}
+                    onDragEnd={() => {
+                      setDraggedModuleIdx(null);
+                      setDragOverModuleIdx(null);
+                    }}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-xl border transition-all gap-3 cursor-grab active:cursor-grabbing select-none ${
+                      draggedModuleIdx === idx
+                        ? "opacity-40 border-cyan-500 bg-slate-950/60"
+                        : dragOverModuleIdx === idx
+                        ? "border-cyan-400 bg-cyan-950/20"
+                        : module.enabled
+                        ? "bg-slate-950 border-slate-800 hover:border-slate-700"
+                        : "bg-slate-950/40 border-slate-800 opacity-60"
+                    }`}
+                  >
+                    {/* Left: Drag Handle, Position Index, Name & Details */}
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 text-slate-500 hover:text-slate-300 touch-none shrink-0" title="Drag to reorder">
+                        <GripVertical className="w-5 h-5" />
+                      </div>
+
+                      <span className="font-mono text-xs font-bold px-2 py-1 rounded-lg bg-slate-800 text-cyan-300 border border-slate-700 shrink-0">
+                        #{idx + 1}
+                      </span>
+
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-bold text-white">{module.name}</h4>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              module.enabled
+                                ? "bg-emerald-950/90 text-emerald-400 border border-emerald-800"
+                                : "bg-slate-800 text-slate-400 border border-slate-700"
+                            }`}
+                          >
+                            {module.enabled ? "Visible" : "Hidden"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{module.description}</p>
+                      </div>
+                    </div>
+
+                    {/* Right: Controls (Visibility Toggle + Move Up + Move Down) */}
+                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                      <button
+                        onClick={() => handleToggleModule(module.id)}
+                        type="button"
+                        className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border ${
+                          module.enabled
+                            ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                            : "bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-emerald-800"
+                        }`}
+                        title={module.enabled ? "Hide section from storefront" : "Show section on storefront"}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{module.enabled ? "Hide Section" : "Show Section"}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleMoveModule(idx, "up")}
+                        disabled={idx === 0}
+                        type="button"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 transition"
+                        title="Move Up"
+                        aria-label={`Move ${module.name} Up`}
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => handleMoveModule(idx, "down")}
+                        disabled={idx === homepageModules.length - 1}
+                        type="button"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 transition"
+                        title="Move Down"
+                        aria-label={`Move ${module.name} Down`}
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ============================================================= */}
+            {/* 2. CUSTOM DESKTOP PCS SHOWCASE BANNER EDITOR (TEXT & PICTURE) */}
+            {/* ============================================================= */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-emerald-400" />
+                    <span>Custom Desktop PCs Showcase Banner Editor</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Edit copy, CTAs, guarantees, and the custom rig showcase photograph displayed on the live storefront.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSaveCustomPcHero}
+                    disabled={savingCustomPcHero}
+                    type="button"
+                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+                  >
+                    {savingCustomPcHero ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                    <span>{savingCustomPcHero ? "Saving Banner..." : "Save Custom PC Banner"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Preview Container */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Live Banner Preview (Exact Storefront Appearance)
+                </span>
+                <div className="rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-8 overflow-hidden">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    {/* Left preview content */}
+                    <div className="lg:col-span-7 space-y-4">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        <span>{customPcHeroConfig.topBadge || "Jakarta Flagship Store"}</span>
+                        <span>•</span>
+                        <span className="text-emerald-400 font-bold">
+                          {customPcHeroConfig.badgeHighlight || "Same-Day Click & Collect"}
+                        </span>
+                      </div>
+
+                      <h3 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+                        {customPcHeroConfig.title} <br />
+                        <span className="text-slate-400 font-normal">{customPcHeroConfig.subtitle}</span>
+                      </h3>
+
+                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+                        {customPcHeroConfig.description}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-3 pt-2">
+                        <span className="px-5 py-3 bg-zinc-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 uppercase tracking-wide border border-zinc-700">
+                          <Cpu className="w-4 h-4 text-emerald-400" />
+                          <span>{customPcHeroConfig.primaryCtaText || "Open PC Builder"}</span>
+                        </span>
+
+                        <span className="px-4 py-3 bg-slate-900 text-zinc-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-emerald-400" />
+                          <span>{customPcHeroConfig.secondaryCtaText || "Chat with Technician"}</span>
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-4 border-t border-slate-800 text-xs text-slate-400">
+                        <div className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="truncate">{customPcHeroConfig.guarantee1}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="truncate">{customPcHeroConfig.guarantee2}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Store className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="truncate">{customPcHeroConfig.guarantee3}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right preview rig showcase */}
+                    <div className="lg:col-span-5">
+                      <div className="relative rounded-2xl bg-slate-900 p-2.5 border border-slate-800 overflow-hidden">
+                        <div className="relative h-64 sm:h-72 w-full rounded-xl overflow-hidden bg-slate-950">
+                          {customPcHeroConfig.imageUrl ? (
+                            <img
+                              src={customPcHeroConfig.imageUrl}
+                              alt={customPcHeroConfig.imageTitle || "Tethera Custom Architecture"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">
+                              No image selected
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-transparent to-transparent pointer-events-none" />
+                          <div className="absolute bottom-3 left-3 right-3 text-white">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-widest bg-emerald-500 text-zinc-950 px-2 py-0.5 rounded">
+                                {customPcHeroConfig.imageBadge || "Flagship Hub"}
+                              </span>
+                              <span className="text-xs text-slate-200 font-medium">
+                                {customPcHeroConfig.imageSubBadge || "Click & Collect Ready"}
+                              </span>
+                            </div>
+                            <h4 className="text-sm font-bold text-white mt-1">
+                              {customPcHeroConfig.imageTitle || "Tethera Custom Architecture"}
+                            </h4>
+                            <p className="text-[11px] text-slate-300 line-clamp-1">
+                              {customPcHeroConfig.imageDescription}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Input Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                {/* 1. Header Badges & Typography */}
+                <div className="space-y-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Headline &amp; Body Copy</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Top Location Badge</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.topBadge}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, topBadge: e.target.value }))
+                        }
+                        placeholder="Jakarta Flagship Store"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Badge Highlight</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.badgeHighlight}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, badgeHighlight: e.target.value }))
+                        }
+                        placeholder="Same-Day Click & Collect"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Main Heading Title</label>
+                    <input
+                      type="text"
+                      value={customPcHeroConfig.title}
+                      onChange={(e) =>
+                        setCustomPcHeroConfig((prev) => ({ ...prev, title: e.target.value }))
+                      }
+                      placeholder="Custom Desktop PCs."
+                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Subtitle / Second Line</label>
+                    <input
+                      type="text"
+                      value={customPcHeroConfig.subtitle}
+                      onChange={(e) =>
+                        setCustomPcHeroConfig((prev) => ({ ...prev, subtitle: e.target.value }))
+                      }
+                      placeholder="Built & Benchmarked in Jakarta."
+                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Description Paragraph</label>
+                    <textarea
+                      rows={4}
+                      value={customPcHeroConfig.description}
+                      onChange={(e) =>
+                        setCustomPcHeroConfig((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                      placeholder="Configure high-performance desktop computers..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 leading-relaxed"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. CTAs, Guarantees & Rig Photo */}
+                <div className="space-y-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Rig Picture &amp; Action Links</span>
+                  </h4>
+
+                  {/* Photo Uploader */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Showcase Rig Photograph
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={customPcHeroFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadFileFromPC(file, "custom_pc_hero");
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => customPcHeroFileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        className="min-h-[44px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-2 shrink-0"
+                      >
+                        <Upload className="w-4 h-4 text-cyan-400" />
+                        <span>{uploadingImage ? "Uploading..." : "Upload from PC"}</span>
+                      </button>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.imageUrl}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, imageUrl: e.target.value }))
+                        }
+                        placeholder="Or enter public image URL (https://...)"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Image Overlay Labels */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Tag Badge</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.imageBadge}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, imageBadge: e.target.value }))
+                        }
+                        placeholder="Flagship Hub"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Sub-Badge</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.imageSubBadge}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, imageSubBadge: e.target.value }))
+                        }
+                        placeholder="Click & Collect Ready"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Caption Title</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.imageTitle}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, imageTitle: e.target.value }))
+                        }
+                        placeholder="Tethera Custom Architecture"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Caption Subtitle</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.imageDescription}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, imageDescription: e.target.value }))
+                        }
+                        placeholder="Individually stress-tested rigs"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Primary & Secondary CTA */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Primary CTA Button</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.primaryCtaText}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, primaryCtaText: e.target.value }))
+                        }
+                        placeholder="Open PC Builder"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Primary CTA Link</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.primaryCtaLink}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, primaryCtaLink: e.target.value }))
+                        }
+                        placeholder="/builder"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Secondary CTA Button</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.secondaryCtaText}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, secondaryCtaText: e.target.value }))
+                        }
+                        placeholder="Chat with Technician"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Secondary CTA Link</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.secondaryCtaLink}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, secondaryCtaLink: e.target.value }))
+                        }
+                        placeholder="https://wa.me/..."
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3 Guarantees */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Guarantee 1</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.guarantee1}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, guarantee1: e.target.value }))
+                        }
+                        placeholder="2-Yr Return-to-Base Warranty"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Guarantee 2</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.guarantee2}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, guarantee2: e.target.value }))
+                        }
+                        placeholder="24h Prime95 Burn-In Test"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Guarantee 3</label>
+                      <input
+                        type="text"
+                        value={customPcHeroConfig.guarantee3}
+                        onChange={(e) =>
+                          setCustomPcHeroConfig((prev) => ({ ...prev, guarantee3: e.target.value }))
+                        }
+                        placeholder="Flagship Counter Pickup"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Save Action */}
+              <div className="flex justify-end pt-3 border-t border-slate-800">
+                <button
+                  onClick={handleSaveCustomPcHero}
+                  disabled={savingCustomPcHero}
+                  type="button"
+                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+                >
+                  {savingCustomPcHero ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>{savingCustomPcHero ? "Saving Banner..." : "Save Custom PC Banner"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ============================================================= */}
+            {/* 3. ACTIVE PROMOTIONAL DISCOUNT CODES                          */}
+            {/* ============================================================= */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>

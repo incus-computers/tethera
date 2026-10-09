@@ -86,10 +86,22 @@ export function ThemeToggle({ variant = "header", className = "", isCompact = fa
     );
   }
 
-  // Header variant: clean segmented control guaranteeing identical visual behavior on PC and mobile
+  // Header variant: borderless and invisible container, switches theme on click
   return (
-    <div className={`shrink-0 ${className}`}>
-      {renderSegmentedControls()}
-    </div>
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className={`bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer flex items-center justify-center shrink-0 group ${
+        isCompact ? "p-1.5 min-h-[38px] min-w-[38px] rounded-xl" : "p-2 min-h-[44px] min-w-[44px] rounded-xl"
+      } ${className}`}
+      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+      title={isDark ? "Switch to light theme" : "Switch to dark theme"}
+    >
+      {isDark ? (
+        <Sun className={`${isCompact ? "w-4 h-4" : "w-5 h-5"} text-amber-400 group-hover:rotate-45 transition-transform`} />
+      ) : (
+        <Moon className={`${isCompact ? "w-4 h-4" : "w-5 h-5"} text-zinc-700 dark:text-zinc-300 group-hover:-rotate-12 transition-transform`} />
+      )}
+    </button>
   );
 }
