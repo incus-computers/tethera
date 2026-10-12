@@ -241,6 +241,8 @@ export function PromotionalBanners() {
     setTouchStartX(null);
   };
 
+  const isImageSlide = slides[currentSlide]?.type === "image";
+
   return (
     <section className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 pb-2 overflow-x-hidden">
       {/* ========================================================================= */}
@@ -328,9 +330,9 @@ export function PromotionalBanners() {
                           )}
                           {slide.ctaText && (
                             <div className="pt-3">
-                              <span className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] bg-white hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-md group-hover:translate-x-0.5">
+                              <span className="min-h-[44px] inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-white group-hover:text-emerald-400 transition-colors uppercase tracking-wide">
                                 <span>{slide.ctaText}</span>
-                                <ArrowRight className="w-4 h-4" />
+                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                               </span>
                             </div>
                           )}
@@ -403,20 +405,20 @@ export function PromotionalBanners() {
                   </div>
 
                   {/* Bottom Action Row */}
-                  <div className="pt-6 mt-6 border-t border-slate-200/60 dark:border-zinc-800 flex items-center justify-between gap-3 pr-24 sm:pr-36">
-                    <div className="flex items-center gap-3">
+                  <div className="pt-6 mt-6 flex items-center justify-between gap-3 pr-24 sm:pr-36">
+                    <div className="flex items-center gap-4">
                       <Link
                         href={slide.ctaLink}
-                        className="px-6 py-3 min-h-[44px] bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-extrabold transition-all shadow-xs flex items-center gap-2 uppercase tracking-wide group"
+                        className="min-h-[44px] inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-zinc-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wide group"
                       >
                         <span>{slide.ctaText || "Explore Details"}</span>
-                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </Link>
 
                       {slide.secondaryCtaText && slide.secondaryCtaLink && (
                         <Link
                           href={slide.secondaryCtaLink}
-                          className="px-4 py-2.5 min-h-[44px] bg-white hover:bg-slate-50 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs hidden sm:inline-flex items-center"
+                          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors underline-offset-4 hover:underline hidden sm:inline-flex"
                         >
                           {slide.secondaryCtaText}
                         </Link>
@@ -430,17 +432,21 @@ export function PromotionalBanners() {
         </div>
 
         {/* Fixed Floating Navigation Controls (Persistent across all slides) */}
-        <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 flex items-center gap-1.5 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md px-2 py-1.5 rounded-2xl border border-slate-200/90 dark:border-zinc-800 shadow-md">
+        <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 flex items-center gap-1">
           <button
             onClick={prevSlide}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500"
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500 ${
+              isImageSlide
+                ? "text-white/80 hover:text-white"
+                : "text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white"
+            }`}
             aria-label="Previous promotion"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
 
           {/* Indicator Dots */}
-          <div className="flex items-center gap-1 px-1">
+          <div className="flex items-center gap-1.5 px-1">
             {slides.map((_, idx) => (
               <button
                 key={idx}
@@ -451,8 +457,12 @@ export function PromotionalBanners() {
                 <span
                   className={`h-2 rounded-full transition-all duration-300 ${
                     currentSlide === idx
-                      ? "w-6 bg-zinc-900 dark:bg-zinc-200"
-                      : "w-2 bg-slate-300 dark:bg-zinc-700 hover:bg-slate-400 dark:hover:bg-zinc-600"
+                      ? isImageSlide
+                        ? "w-6 bg-white"
+                        : "w-6 bg-zinc-900 dark:bg-white"
+                      : isImageSlide
+                      ? "w-2 bg-white/40 hover:bg-white/70"
+                      : "w-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-500"
                   }`}
                 />
               </button>
@@ -461,10 +471,14 @@ export function PromotionalBanners() {
 
           <button
             onClick={nextSlide}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500"
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500 ${
+              isImageSlide
+                ? "text-white/80 hover:text-white"
+                : "text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white"
+            }`}
             aria-label="Next promotion"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>

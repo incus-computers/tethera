@@ -109,7 +109,7 @@ export default function PrebuiltsPage() {
                     </Link>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-1.5 text-[10px] sm:text-xs text-slate-600 dark:text-zinc-300 bg-slate-50 dark:bg-zinc-950/60 p-2.5 sm:p-3.5 rounded-xl border border-slate-200 dark:border-zinc-800/80">
+                  <div className="space-y-1 sm:space-y-1.5 text-xs text-slate-600 dark:text-zinc-400">
                     <div className="flex justify-between">
                       <span className="text-slate-400 dark:text-zinc-400">CPU:</span>
                       <strong className="text-zinc-800 dark:text-zinc-100 truncate ml-1">{pb.cpu}</strong>
@@ -160,22 +160,26 @@ export default function PrebuiltsPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                  <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
                     <button
                       onClick={() => handleAddToCart(pb)}
-                      className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold transition-all shadow-2xs flex items-center gap-1 sm:gap-1.5 tactile-btn active:scale-95"
+                      className="min-h-[44px] inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider"
+                      title="Add to Cart"
+                      aria-label="Add to Cart"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add</span>
                     </button>
                     <Link
                       href={`/products/${pb.id}`}
-                      className="px-2 py-1.5 sm:px-3 sm:py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold transition-colors tactile-btn active:scale-95"
+                      className="min-h-[44px] inline-flex items-center text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors uppercase tracking-wider"
                     >
                       Specs
                     </Link>
                     <WhatsAppInquiryButton
                       mode="product"
+                      label="Inquire"
+                      className="min-h-[44px] inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors uppercase tracking-wider"
                       product={{
                         productName: pb.name,
                         sku: pb.sku,

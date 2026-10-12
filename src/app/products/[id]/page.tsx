@@ -799,33 +799,64 @@ export default function ProductDetailPage() {
             <Link
               key={item.id}
               href={`/products/${item.id}`}
-              className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden p-4 flex flex-col justify-between tethera-card-hover group"
+              className="flex flex-col justify-between group transition-colors"
             >
               <div>
-                <div className="relative h-36 bg-slate-50 dark:bg-zinc-800/80 rounded-xl overflow-hidden mb-3 border border-slate-100 dark:border-zinc-700/60 flex items-center justify-center p-2 item-frame">
+                <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-1.5 flex items-center justify-center">
                   <Image
                     src={item.image}
                     alt={item.name}
                     fill
                     sizes="(max-width: 640px) 100vw, 25vw"
-                    className="object-contain p-2 group-hover:scale-105 transition-transform"
+                    className="object-cover group-hover:scale-105 transition-transform"
                   />
-                  <span className="absolute top-2 left-2 z-10 text-[9px] font-bold uppercase tracking-wider bg-white/90 dark:bg-zinc-800 px-2 py-0.5 rounded shadow-2xs text-slate-700 dark:text-zinc-200 border border-transparent dark:border-zinc-700">
-                    {item.brand}
-                  </span>
                 </div>
-                <div className="text-[11px] font-mono text-slate-400 dark:text-zinc-500">SKU: {item.sku}</div>
-                <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 mt-0.5 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-tight group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                   {item.name}
                 </h4>
               </div>
 
-              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
-                <div className="text-base font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(item.price)}</div>
-                <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white flex items-center gap-1 transition-colors">
-                  <span>View Specs</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </span>
+              <div className="mt-1 flex items-start justify-between gap-2">
+                {/* Left Column: Price & Tax Note / Original Price */}
+                <div className="flex flex-col min-w-0">
+                  {item.sale_price && item.sale_price < item.price ? (
+                    <>
+                      <div className="flex items-baseline gap-1 sm:gap-1.5">
+                        <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                          {formatRupiah(item.sale_price)}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight">
+                          -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                        </span>
+                      </div>
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none mt-0.5">
+                        {formatRupiah(item.price)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                        {formatRupiah(item.price)}
+                      </span>
+                      <span className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-500 leading-none mt-0.5">
+                        incl. tax
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Right Column: Stock & View Details */}
+                <div className="flex flex-col items-end shrink-0">
+                  <div className="text-xs sm:text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+                    <span>Stock: {item.stockCount}</span>
+                  </div>
+
+                  <span className="min-h-[44px] -my-2.5 inline-flex items-center text-xs sm:text-sm font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors gap-1 leading-none">
+                    <span>View Details</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
               </div>
             </Link>
           ))}

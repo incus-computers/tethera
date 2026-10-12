@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -12,7 +12,19 @@ import {
   Clock,
   MessageSquare,
   Plus,
+  ArrowUpDown,
+  ChevronDown,
+  Check,
 } from "lucide-react";
+
+const SORT_OPTIONS = [
+  { id: "featured", label: "Featured" },
+  { id: "price-asc", label: "Price: Low to High" },
+  { id: "price-desc", label: "Price: High to Low" },
+  { id: "stock", label: "Stock Level" },
+] as const;
+
+type SortOptionId = (typeof SORT_OPTIONS)[number]["id"];
 import { MOCK_COMPONENTS, PREBUILT_SYSTEMS, ComponentItem } from "../lib/data/mockHardware";
 import { useCartStore } from "../lib/store/useCartStore";
 import { formatRupiah } from "../lib/utils/currency";
@@ -40,11 +52,15 @@ function getGridColumns(width: number): number {
 }
 
 export default function HomePage() {
-  const [activeCategory, setActiveCategory] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [columns, setColumns] = useState<number>(4);
   const [rowsPerPage, setRowsPerPage] = useState<number>(4);
   const { addStandardItem, addCustomPC, openCart } = useCartStore();
+
+  // Sort state for Item Catalog
+  const [sortBy, setSortBy] = useState<SortOptionId>("featured");
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
 
   // Homepage Dynamic Module Layout & Custom PC Hero Banner Config
   const [homepageModules, setHomepageModules] = useState<HomepageModuleItem[]>(DEFAULT_HOMEPAGE_MODULES);
@@ -128,22 +144,54 @@ export default function HomePage() {
   const rowMultipliers = columns >= 5 ? [3, 4, 6] : [4, 6, 8];
   const paginationOptions = rowMultipliers.map((r) => r * columns);
 
-  const categories = [
-    "All",
-    "Processors",
-    "Graphics Cards",
-    "Motherboards",
-    "Cooling",
-    "Chassis",
-    "Memory",
-    "Storage",
-  ];
+  // Click-outside and Escape key listener for sort dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsSortOpen(false);
+      }
+    };
 
-  const filteredComponents = MOCK_COMPONENTS.filter(
-    (item) => activeCategory === "All" || item.category === activeCategory
-  );
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsSortOpen(false);
+      }
+    };
 
-  const totalComponents = filteredComponents.length;
+    if (isSortOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSortOpen]);
+
+  const sortedComponents = useMemo(() => {
+    const result = [...MOCK_COMPONENTS];
+    if (sortBy === "price-asc") {
+      result.sort((a, b) => {
+        const priceA = a.sale_price ?? a.price;
+        const priceB = b.sale_price ?? b.price;
+        return priceA - priceB;
+      });
+    } else if (sortBy === "price-desc") {
+      result.sort((a, b) => {
+        const priceA = a.sale_price ?? a.price;
+        const priceB = b.sale_price ?? b.price;
+        return priceB - priceA;
+      });
+    } else if (sortBy === "stock") {
+      result.sort((a, b) => b.stockCount - a.stockCount);
+    }
+    return result;
+  }, [sortBy]);
+
+  const totalComponents = sortedComponents.length;
   const totalPages = Math.max(1, Math.ceil(totalComponents / itemsPerPage));
 
   useEffect(() => {
@@ -152,13 +200,13 @@ export default function HomePage() {
     }
   }, [totalPages, currentPage]);
 
-  const paginatedComponents = filteredComponents.slice(
+  const paginatedComponents = sortedComponents.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const handleCategoryChange = (cat: string) => {
-    setActiveCategory(cat);
+  const handleSortChange = (sort: SortOptionId) => {
+    setSortBy(sort);
     setCurrentPage(1);
   };
 
@@ -377,7 +425,7 @@ export default function HomePage() {
                   </h3>
                 </Link>
 
-                <div className="mt-2 sm:mt-3 space-y-1 sm:space-y-1.5 text-[10px] sm:text-xs text-slate-600 dark:text-zinc-300 bg-slate-50 dark:bg-zinc-950 p-2 sm:p-3 rounded-xl border border-slate-200 dark:border-zinc-800">
+                <div className="mt-2 sm:mt-3 space-y-1 sm:space-y-1.5 text-xs text-slate-600 dark:text-zinc-400">
                   <div className="flex justify-between">
                     <span className="text-slate-400 dark:text-zinc-500">CPU:</span>
                     <strong className="text-zinc-800 dark:text-zinc-200 truncate ml-1">{pb.cpu}</strong>
@@ -407,23 +455,26 @@ export default function HomePage() {
                   <span className="text-sm sm:text-xl font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(pb.price)}</span>
                   <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500 block -mt-0.5">incl. tax</span>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
                   <button
                     onClick={() => handleAddPrebuiltToCart(pb)}
-                    className="min-h-[44px] px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 tactile-btn active:scale-95 shadow-2xs"
+                    className="min-h-[44px] inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider"
                     title="Add to Cart"
+                    aria-label="Add to Cart"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Add</span>
                   </button>
                   <Link
                     href={`/products/${pb.id}`}
-                    className="min-h-[44px] px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg text-xs font-bold transition-colors tactile-btn active:scale-95 flex items-center"
+                    className="min-h-[44px] inline-flex items-center text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors uppercase tracking-wider"
                   >
                     Specs
                   </Link>
                   <WhatsAppInquiryButton
                     mode="product"
+                    label="Inquire"
+                    className="min-h-[44px] inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors uppercase tracking-wider"
                     product={{
                       productName: pb.name,
                       sku: pb.sku,
@@ -440,119 +491,141 @@ export default function HomePage() {
     </section>
   );
 
-  // 5. Certified Hardware Component Catalog
+  // 5. Item Catalog
   const renderComponentCatalog = () => (
     <section key="component_catalog" id="components" className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 pb-4 border-b border-slate-200 dark:border-zinc-800 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-zinc-800 gap-4">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
-            Flagship Inventory
-          </span>
           <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
-            PC Hardware &amp; Component Catalog
+            Item Catalog
           </h2>
         </div>
 
-        {/* Category Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => handleCategoryChange(cat)}
-              className={`min-h-[44px] px-3.5 py-2 rounded-xl font-bold transition-all whitespace-nowrap tactile-btn ${
-                activeCategory === cat
-                  ? "bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white border border-transparent dark:border-zinc-700 shadow-xs"
-                  : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800"
+        {/* Sort Selector (No container, single column) */}
+        <div className="relative" ref={sortDropdownRef}>
+          <button
+            onClick={() => setIsSortOpen((prev) => !prev)}
+            aria-expanded={isSortOpen}
+            aria-haspopup="true"
+            className="min-h-[44px] inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+            <span>Sort: {SORT_OPTIONS.find((o) => o.id === sortBy)?.label}</span>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+                isSortOpen ? "rotate-180" : ""
               }`}
-            >
-              {cat}
-            </button>
-          ))}
+            />
+          </button>
+
+          {/* Single Column Sort Dropdown */}
+          {isSortOpen && (
+            <div className="absolute right-0 top-full mt-2 z-40 w-48 sm:w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 flex flex-col space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+              {SORT_OPTIONS.map((option) => {
+                const isSelected = sortBy === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      handleSortChange(option.id);
+                      setIsSortOpen(false);
+                    }}
+                    className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-left flex items-center justify-between transition-colors ${
+                      isSelected
+                        ? "text-zinc-950 dark:text-white bg-slate-100 dark:bg-zinc-800"
+                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-zinc-800/50"
+                    }`}
+                  >
+                    <span>{option.label}</span>
+                    {isSelected && (
+                      <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Product Cards Grid */}
       {paginatedComponents.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800">
+        <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-6">
           <p className="text-sm font-semibold text-slate-600 dark:text-zinc-400">
-            No components available in this category.
+            No items available in the catalog.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
           {paginatedComponents.map((item) => (
             <div
-              key={`${activeCategory}-${item.id}`}
-              className="rounded-xl sm:rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden p-2.5 sm:p-4 flex flex-col justify-between tethera-card-hover group transition-colors"
+              key={item.id}
+              className="flex flex-col justify-between group transition-colors"
             >
               <div>
                 <Link
                   href={`/products/${item.id}`}
-                  className="relative h-28 xs:h-36 sm:h-40 bg-slate-50 dark:bg-zinc-800/80 rounded-lg sm:rounded-xl overflow-hidden mb-2 sm:mb-3 border border-slate-100 dark:border-zinc-700/60 flex items-center justify-center p-2 block item-frame"
+                  className="relative w-full aspect-square rounded-lg overflow-hidden mb-1.5 flex items-center justify-center block"
                 >
                   <Image
                     src={item.image}
                     alt={item.name}
                     fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-contain p-1.5 sm:p-2 group-hover:scale-105 transition-transform duration-200"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    className="object-cover group-hover:scale-105 transition-transform duration-200"
                   />
-                  <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-white/90 dark:bg-zinc-800 px-1.5 sm:px-2 py-0.5 rounded shadow-2xs text-slate-700 dark:text-zinc-200 border border-transparent dark:border-zinc-700">
-                    {item.brand}
-                  </span>
                 </Link>
 
-                <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 dark:text-zinc-500 truncate">SKU: {item.sku}</div>
-                <Link href={`/products/${item.id}`} className="block mt-0.5">
-                  <h4 className="text-[11px] xs:text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-snug group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                <Link href={`/products/${item.id}`} className="block">
+                  <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-tight group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                     {item.name}
                   </h4>
                 </Link>
-
-                <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 sm:gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
-                  <span className="truncate">Stock: {item.stockCount}</span>
-                </div>
               </div>
 
-              <div className="pt-2.5 sm:pt-4 mt-2 sm:mt-3 border-t border-slate-100 dark:border-zinc-800 flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 sm:gap-2">
-                <div>
+              <div className="mt-1 flex items-start justify-between gap-2">
+                {/* Left Column: Price & Tax Note / Original Price */}
+                <div className="flex flex-col min-w-0">
                   {item.sale_price && item.sale_price < item.price ? (
-                    <div>
-                      <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                        <span className="text-xs xs:text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">
+                    <>
+                      <div className="flex items-baseline gap-1 sm:gap-1.5">
+                        <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
                           {formatRupiah(item.sale_price)}
                         </span>
-                        <span className="text-[9px] sm:text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900/60">
+                        <span className="text-[10px] sm:text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight">
                           -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
                         </span>
                       </div>
-                      <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-zinc-500 line-through">
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none mt-0.5">
                         {formatRupiah(item.price)}
-                      </div>
-                    </div>
+                      </span>
+                    </>
                   ) : (
                     <>
-                      <div className="text-xs xs:text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(item.price)}</div>
-                      <div className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500">incl. tax</div>
+                      <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                        {formatRupiah(item.price)}
+                      </span>
+                      <span className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-500 leading-none mt-0.5">
+                        incl. tax
+                      </span>
                     </>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 sm:gap-1.5 justify-end">
-                  <Link
-                    href={`/products/${item.id}`}
-                    className="min-h-[36px] px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-bold rounded-lg transition-colors tactile-btn flex items-center"
-                  >
-                    Specs
-                  </Link>
+                {/* Right Column: Stock & Add to Cart */}
+                <div className="flex flex-col items-end shrink-0">
+                  <div className="text-xs sm:text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 leading-tight">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+                    <span>Stock: {item.stockCount}</span>
+                  </div>
+
                   <button
                     onClick={() => addStandardItem(item.sale_price ? { ...item, price: item.sale_price } : item)}
-                    className="min-h-[36px] min-w-[36px] p-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold transition-colors shadow-2xs tactile-btn flex items-center justify-center"
+                    className="min-h-[44px] -my-2.5 inline-flex items-center text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider leading-none"
                     title="Add to Cart"
                     aria-label="Add to Cart"
                   >
-                    <Plus className="w-4 h-4" />
+                    <span>Add to Cart</span>
                   </button>
                 </div>
               </div>
@@ -580,7 +653,7 @@ export default function HomePage() {
           href="/components"
           className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-slate-300 dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-2xs min-h-[44px]"
         >
-          <span>View All Components &amp; Hardware</span>
+          <span>View All Items &amp; Hardware</span>
         </Link>
       </div>
     </section>

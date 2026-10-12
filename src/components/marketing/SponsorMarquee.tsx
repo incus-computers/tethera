@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { ShieldCheck, Award, Sparkles } from "lucide-react";
 
 interface Sponsor {
   id: string;
@@ -196,19 +195,12 @@ export function SponsorMarquee() {
   return (
     <section className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
       <div className="w-full bg-slate-100/70 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden relative group shadow-2xs transition-colors">
-        <div className="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/50 dark:border-zinc-800/80">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-zinc-300">
-            <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="uppercase tracking-wider text-[11px] text-zinc-900 dark:text-zinc-100">
-              Official Brand Partners & Hardware Sponsors
+        <div className="px-4 py-2.5 flex items-center border-b border-slate-200/50 dark:border-zinc-800/80">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+            <span className="uppercase tracking-wider text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
+              Featured Brand Sponsors
             </span>
-            <span className="hidden md:inline-block text-slate-400 dark:text-zinc-500 font-normal">
-              • 100% Genuine Direct Factory Sealed Inventory
-            </span>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-            <span>Click logo to explore certified hardware</span>
           </div>
         </div>
 
@@ -225,54 +217,30 @@ export function SponsorMarquee() {
           {/* Moving Marquee Track: two identical blocks for seamless 50% loop */}
           <div className="animate-marquee flex items-center w-max hover:[animation-play-state:paused]">
             {/* Primary Track */}
-            <div className="flex items-center gap-6 sm:gap-8 pr-6 sm:pr-8 shrink-0">
+            <div className="flex items-center gap-8 sm:gap-12 pr-8 sm:pr-12 shrink-0">
               {SPONSORS.map((sponsor) => (
                 <Link
                   key={`track1-${sponsor.id}`}
                   href={sponsor.categoryLink}
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800 border border-slate-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-all shadow-2xs hover:shadow-sm shrink-0 group/item hover:scale-105 duration-200"
+                  aria-label={sponsor.name}
+                  className="flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-all opacity-80 hover:opacity-100 hover:scale-105 duration-200 shrink-0"
                 >
-                  {/* Logo / Emblem */}
-                  <div className="text-zinc-800 dark:text-zinc-200 group-hover/item:text-zinc-950 dark:group-hover/item:text-white transition-colors">
-                    {sponsor.logoSvg}
-                  </div>
-
-                  {/* Sponsor info pill */}
-                  <div className="border-l border-slate-200 dark:border-zinc-700 pl-3 hidden lg:block text-left">
-                    <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-400 dark:text-zinc-500 group-hover/item:text-slate-600 dark:group-hover/item:text-zinc-300">
-                      {sponsor.tier}
-                    </span>
-                    <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
-                      {sponsor.badge}
-                    </span>
-                  </div>
+                  {sponsor.logoSvg}
                 </Link>
               ))}
             </div>
 
             {/* Seamless Duplicate Track for continuous infinite scroll */}
-            <div className="flex items-center gap-6 sm:gap-8 pr-6 sm:pr-8 shrink-0" aria-hidden="true">
+            <div className="flex items-center gap-8 sm:gap-12 pr-8 sm:pr-12 shrink-0" aria-hidden="true">
               {SPONSORS.map((sponsor) => (
                 <Link
                   key={`track2-${sponsor.id}`}
                   href={sponsor.categoryLink}
                   tabIndex={-1}
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-800 border border-slate-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-600 text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-all shadow-2xs hover:shadow-sm shrink-0 group/item hover:scale-105 duration-200"
+                  aria-label={sponsor.name}
+                  className="flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-all opacity-80 hover:opacity-100 hover:scale-105 duration-200 shrink-0"
                 >
-                  {/* Logo / Emblem */}
-                  <div className="text-zinc-800 dark:text-zinc-200 group-hover/item:text-zinc-950 dark:group-hover/item:text-white transition-colors">
-                    {sponsor.logoSvg}
-                  </div>
-
-                  {/* Sponsor info pill */}
-                  <div className="border-l border-slate-200 dark:border-zinc-700 pl-3 hidden lg:block text-left">
-                    <span className="text-[9px] font-bold uppercase tracking-wider block text-slate-400 dark:text-zinc-500 group-hover/item:text-slate-600 dark:group-hover/item:text-zinc-300">
-                      {sponsor.tier}
-                    </span>
-                    <span className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">
-                      {sponsor.badge}
-                    </span>
-                  </div>
+                  {sponsor.logoSvg}
                 </Link>
               ))}
             </div>
