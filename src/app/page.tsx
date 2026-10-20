@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   ChevronDown,
   Check,
+  ArrowRight,
 } from "lucide-react";
 
 const SORT_OPTIONS = [
@@ -25,18 +26,22 @@ const SORT_OPTIONS = [
 ] as const;
 
 type SortOptionId = (typeof SORT_OPTIONS)[number]["id"];
-import { MOCK_COMPONENTS, PREBUILT_SYSTEMS, ComponentItem } from "../lib/data/mockHardware";
+import { MOCK_COMPONENTS, PREBUILT_SYSTEMS, ComponentItem, getExpandedCatalogItems } from "../lib/data/mockHardware";
 import { useCartStore } from "../lib/store/useCartStore";
 import { formatRupiah } from "../lib/utils/currency";
 import { WhatsAppInquiryButton } from "../components/whatsapp/WhatsAppInquiryButton";
 import { SponsorMarquee } from "../components/marketing/SponsorMarquee";
 import { PromotionalBanners } from "../components/marketing/PromotionalBanners";
 import { Pagination } from "../components/ui/Pagination";
+import { ProductItemTileImage } from "../components/products/ProductItemTileImage";
+import { PrebuiltSystemCard } from "../components/products/PrebuiltSystemCard";
 import {
   DEFAULT_HOMEPAGE_MODULES,
   DEFAULT_CUSTOM_PC_HERO,
+  DEFAULT_FEATURED_PREBUILT_IDS,
   HomepageModuleItem,
   CustomPcHeroConfig,
+  resolveActivePrebuilts,
 } from "../lib/data/homepageConfig";
 
 /**
@@ -65,6 +70,7 @@ export default function HomePage() {
   // Homepage Dynamic Module Layout & Custom PC Hero Banner Config
   const [homepageModules, setHomepageModules] = useState<HomepageModuleItem[]>(DEFAULT_HOMEPAGE_MODULES);
   const [customPcHero, setCustomPcHero] = useState<CustomPcHeroConfig>(DEFAULT_CUSTOM_PC_HERO);
+  const [featuredPrebuiltIds, setFeaturedPrebuiltIds] = useState<string[]>(DEFAULT_FEATURED_PREBUILT_IDS);
 
   useEffect(() => {
     // 1. Initial read from localStorage for instant zero-flicker render
@@ -80,6 +86,13 @@ export default function HomePage() {
         const cachedHero = localStorage.getItem("tethera_custom_pc_hero");
         if (cachedHero) {
           setCustomPcHero(JSON.parse(cachedHero));
+        }
+        const cachedFeatured = localStorage.getItem("tethera_featured_prebuilt_ids");
+        if (cachedFeatured) {
+          const parsed = JSON.parse(cachedFeatured);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFeaturedPrebuiltIds(parsed);
+          }
         }
       } catch (err) {
         console.error("Failed to read cached homepage config:", err);
@@ -105,6 +118,12 @@ export default function HomePage() {
                 localStorage.setItem("tethera_custom_pc_hero", JSON.stringify(data.customPcHero));
               }
             }
+            if (Array.isArray(data.featuredPrebuiltIds) && data.featuredPrebuiltIds.length > 0) {
+              setFeaturedPrebuiltIds(data.featuredPrebuiltIds);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("tethera_featured_prebuilt_ids", JSON.stringify(data.featuredPrebuiltIds));
+              }
+            }
           }
         }
       } catch (e) {
@@ -116,6 +135,17 @@ export default function HomePage() {
 
     // 3. Listen to update events from admin panel
     const handleUpdated = () => {
+      try {
+        const cachedFeatured = localStorage.getItem("tethera_featured_prebuilt_ids");
+        if (cachedFeatured) {
+          const parsed = JSON.parse(cachedFeatured);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFeaturedPrebuiltIds(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to read updated featured prebuilts from storage:", err);
+      }
       fetchLayoutConfig();
     };
     window.addEventListener("tethera_homepage_updated", handleUpdated);
@@ -172,7 +202,7 @@ export default function HomePage() {
   }, [isSortOpen]);
 
   const sortedComponents = useMemo(() => {
-    const result = [...MOCK_COMPONENTS];
+    const result = getExpandedCatalogItems(MOCK_COMPONENTS);
     if (sortBy === "price-asc") {
       result.sort((a, b) => {
         const priceA = a.sale_price ?? a.price;
@@ -216,34 +246,10 @@ export default function HomePage() {
     setCurrentPage(1);
   };
 
-  const prebuilts = PREBUILT_SYSTEMS.slice(0, 3);
-
-  const handleAddPrebuiltToCart = (pb: (typeof PREBUILT_SYSTEMS)[0]) => {
-    addCustomPC({
-      id: `pb-${pb.id}-${Date.now()}`,
-      name: pb.name,
-      parts: {
-        cpu: { name: pb.cpu } as any,
-        gpu: { name: pb.gpu } as any,
-        ram: { name: pb.ram } as any,
-        storage_primary: { name: pb.storage } as any,
-        cooler: { name: pb.cooling } as any,
-        case: { name: pb.chassis } as any,
-        psu: { name: pb.psu } as any,
-        os: { name: pb.os } as any,
-      },
-      serviceTier: {
-        name: "Standard 24h Burn-In Verification",
-        price: 0,
-        leadTime: "Ready in 60 Mins",
-      },
-      totalPrice: pb.price,
-      wattage: 750,
-      isPrebuilt: true,
-      image: pb.image,
-    });
-    openCart();
-  };
+  const activePrebuilts = useMemo(
+    () => resolveActivePrebuilts(featuredPrebuiltIds, PREBUILT_SYSTEMS),
+    [featuredPrebuiltIds]
+  );
 
   // =========================================================================
   // MODULAR HOMEPAGE SECTION RENDERERS (REORDERABLE VIA ADMIN)
@@ -267,7 +273,7 @@ export default function HomePage() {
   const renderCustomPcHero = () => (
     <section
       key="custom_pc_hero"
-      className="bg-gradient-to-b from-white to-slate-100/60 dark:from-zinc-950 dark:to-zinc-900/60 border-y border-slate-200 dark:border-zinc-800 py-12 sm:py-16 transition-colors"
+      className="bg-gradient-to-b from-white to-slate-100/60 dark:from-zinc-950 dark:to-zinc-900/60 border-y border-slate-300 dark:border-white/40 py-12 sm:py-16 transition-colors"
     >
       <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
@@ -312,7 +318,7 @@ export default function HomePage() {
             </div>
 
             {/* Guarantees Ribbon */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-slate-200 dark:border-zinc-800 text-xs text-slate-600 dark:text-zinc-400">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-slate-300 dark:border-white/40 text-xs text-slate-600 dark:text-zinc-400">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>{customPcHero.guarantee1 || "2-Yr Return-to-Base Warranty"}</span>
@@ -330,7 +336,7 @@ export default function HomePage() {
 
           {/* Hero Right Visual Showcase */}
           <div className="lg:col-span-5">
-            <div className="relative rounded-3xl bg-white dark:bg-zinc-900 p-3 shadow-xl border border-slate-200 dark:border-zinc-800 overflow-hidden group">
+            <div className="relative rounded-3xl bg-white dark:bg-zinc-900 p-3 shadow-xl border border-slate-300 dark:border-white/30 overflow-hidden group">
               <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-zinc-800 item-frame">
                 {customPcHero.imageUrl ? (
                   <img
@@ -377,7 +383,7 @@ export default function HomePage() {
   // 4. Pre-built Systems Showcase
   const renderPrebuiltSystems = () => (
     <section key="prebuilt_systems" id="prebuilt" className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 pb-4 border-b border-slate-200 dark:border-zinc-800 gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 pb-4 border-b border-slate-300 dark:border-white/40 gap-2">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
             Turnkey Gaming Workstations
@@ -390,103 +396,32 @@ export default function HomePage() {
           </p>
         </div>
         <Link
-          href="/builder"
-          className="min-h-[44px] inline-flex items-center text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:text-zinc-700 dark:hover:text-zinc-300 underline underline-offset-4"
+          href="/products?category=Pre-Built+Systems"
+          className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider group"
         >
-          Build Custom Spec
+          <span>View More</span>
+          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-        {prebuilts.map((pb) => (
-          <div
+        {activePrebuilts.map((pb, index) => (
+          <PrebuiltSystemCard
             key={pb.id}
-            className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-xs tethera-card-hover flex flex-col group transition-colors"
-          >
-            <Link href={`/products/${pb.id}`} className="relative h-32 xs:h-40 sm:h-48 bg-slate-100 dark:bg-zinc-800 overflow-hidden block item-frame">
-              <Image
-                src={pb.image}
-                alt={pb.name}
-                fill
-                sizes="(max-width: 768px) 50vw, 33vw"
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <span className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-zinc-900 dark:bg-zinc-800 text-white dark:text-zinc-200 border border-transparent dark:border-zinc-700 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full uppercase tracking-wider z-10">
-                Stress Tested
-              </span>
-            </Link>
-
-            <div className="p-3 sm:p-5 flex-1 flex flex-col justify-between space-y-2.5 sm:space-y-4">
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 dark:text-zinc-500 truncate block">{pb.sku}</span>
-                <Link href={`/products/${pb.id}`} className="block mt-0.5">
-                  <h3 className="text-xs xs:text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors line-clamp-2">
-                    {pb.name}
-                  </h3>
-                </Link>
-
-                <div className="mt-2 sm:mt-3 space-y-1 sm:space-y-1.5 text-xs text-slate-600 dark:text-zinc-400">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 dark:text-zinc-500">CPU:</span>
-                    <strong className="text-zinc-800 dark:text-zinc-200 truncate ml-1">{pb.cpu}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 dark:text-zinc-500">GPU:</span>
-                    <strong className="text-zinc-800 dark:text-zinc-200 truncate ml-1">{pb.gpu}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 dark:text-zinc-500">RAM:</span>
-                    <strong className="text-zinc-800 dark:text-zinc-200 truncate ml-1">{pb.ram}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400 dark:text-zinc-500">Storage:</span>
-                    <strong className="text-zinc-800 dark:text-zinc-200 truncate ml-1">{pb.storage}</strong>
-                  </div>
-                </div>
-
-                <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 sm:gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
-                  <span className="truncate">{pb.status}</span>
-                </div>
-              </div>
-
-              <div className="pt-2.5 sm:pt-3 border-t border-slate-100 dark:border-zinc-800 flex flex-col xs:flex-row xs:items-center justify-between gap-2">
-                <div>
-                  <span className="text-sm sm:text-xl font-black text-zinc-900 dark:text-zinc-100">{formatRupiah(pb.price)}</span>
-                  <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500 block -mt-0.5">incl. tax</span>
-                </div>
-                <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
-                  <button
-                    onClick={() => handleAddPrebuiltToCart(pb)}
-                    className="min-h-[44px] inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider"
-                    title="Add to Cart"
-                    aria-label="Add to Cart"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
-                  </button>
-                  <Link
-                    href={`/products/${pb.id}`}
-                    className="min-h-[44px] inline-flex items-center text-xs sm:text-sm font-bold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors uppercase tracking-wider"
-                  >
-                    Specs
-                  </Link>
-                  <WhatsAppInquiryButton
-                    mode="product"
-                    label="Inquire"
-                    className="min-h-[44px] inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors uppercase tracking-wider"
-                    product={{
-                      productName: pb.name,
-                      sku: pb.sku,
-                      price: formatRupiah(pb.price),
-                      productUrl: typeof window !== "undefined" ? window.location.href : "https://tethera.com",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+            rig={pb}
+            isThirdCard={index === 2}
+          />
         ))}
+      </div>
+
+      <div className="mt-8 sm:mt-10 flex justify-center">
+        <Link
+          href="/products?category=Pre-Built+Systems"
+          className="min-h-[44px] px-6 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 hover:border-slate-400 dark:hover:border-white/40 text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all inline-flex items-center gap-2"
+        >
+          <span>View More Prebuilts</span>
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
     </section>
   );
@@ -494,7 +429,7 @@ export default function HomePage() {
   // 5. Item Catalog
   const renderComponentCatalog = () => (
     <section key="component_catalog" id="components" className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-zinc-800 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-300 dark:border-white/40 gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
             Item Catalog
@@ -520,7 +455,7 @@ export default function HomePage() {
 
           {/* Single Column Sort Dropdown */}
           {isSortOpen && (
-            <div className="absolute right-0 top-full mt-2 z-40 w-48 sm:w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-xl p-1.5 flex flex-col space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 top-full mt-2 z-40 w-48 sm:w-56 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/30 rounded-2xl shadow-xl p-1.5 flex flex-col space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
               {SORT_OPTIONS.map((option) => {
                 const isSelected = sortBy === option.id;
                 return (
@@ -550,88 +485,113 @@ export default function HomePage() {
 
       {/* Product Cards Grid */}
       {paginatedComponents.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-6">
+        <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-300 dark:border-white/30 p-6">
           <p className="text-sm font-semibold text-slate-600 dark:text-zinc-400">
             No items available in the catalog.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
-          {paginatedComponents.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col justify-between group transition-colors"
-            >
-              <div>
-                <Link
-                  href={`/products/${item.id}`}
-                  className="relative w-full aspect-square rounded-lg overflow-hidden mb-1.5 flex items-center justify-center block"
-                >
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-200"
-                  />
-                </Link>
+          {paginatedComponents.map((item) => {
+            const itemHref =
+              item.parentProductId && item.variationId
+                ? `/products/${item.parentProductId}?variation=${item.variationId}`
+                : `/products/${item.id}`;
 
-                <Link href={`/products/${item.id}`} className="block">
-                  <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-tight group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
-                    {item.name}
-                  </h4>
-                </Link>
-              </div>
+            return (
+              <div
+                key={item.id}
+                className="flex flex-col justify-between group transition-colors"
+              >
+                <div>
+                  <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-1.5 flex items-center justify-center block bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+                    <Link href={itemHref} className="absolute inset-0 block">
+                      <ProductItemTileImage
+                        item={item}
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                      />
+                    </Link>
 
-              <div className="mt-1 flex items-start justify-between gap-2">
-                {/* Left Column: Price & Tax Note / Original Price */}
-                <div className="flex flex-col min-w-0">
-                  {item.sale_price && item.sale_price < item.price ? (
-                    <>
-                      <div className="flex items-baseline gap-1 sm:gap-1.5">
-                        <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
-                          {formatRupiah(item.sale_price)}
-                        </span>
-                        <span className="text-[10px] sm:text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight">
-                          -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                    {item.stockCount <= 0 && (
+                      <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-black tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
+                          Out of Stock
                         </span>
                       </div>
-                      <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none mt-0.5">
-                        {formatRupiah(item.price)}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
-                        {formatRupiah(item.price)}
-                      </span>
-                      <span className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-500 leading-none mt-0.5">
-                        incl. tax
-                      </span>
-                    </>
-                  )}
-                </div>
+                    )}
 
-                {/* Right Column: Stock & Add to Cart */}
-                <div className="flex flex-col items-end shrink-0">
-                  <div className="text-xs sm:text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1 leading-tight">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
-                    <span>Stock: {item.stockCount}</span>
+                    {/* Floating Green + Circle / Add to Cart on Bottom Right of Picture */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        addStandardItem(
+                          item.sale_price && item.sale_price < item.price
+                            ? { ...item, price: item.sale_price, originalPrice: item.price }
+                            : item
+                        );
+                        openCart();
+                      }}
+                      disabled={item.stockCount <= 0}
+                      className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                      title="Add to Cart"
+                      aria-label={`Add ${item.name} to Cart`}
+                    >
+                      <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-md hover:shadow-lg transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
+                        <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover/cart:rotate-90" />
+                        <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
+                          Add to Cart
+                        </span>
+                      </div>
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => addStandardItem(item.sale_price ? { ...item, price: item.sale_price } : item)}
-                    className="min-h-[44px] -my-2.5 inline-flex items-center text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider leading-none"
-                    title="Add to Cart"
-                    aria-label="Add to Cart"
-                  >
-                    <span>Add to Cart</span>
-                  </button>
+                  <Link href={itemHref} className="block">
+                    <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-tight group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                      {item.name}
+                    </h4>
+                  </Link>
+                </div>
+
+              <div className="mt-1 flex flex-col gap-1">
+                {/* Price & Tax Note / Original Price Row */}
+                <div className="flex items-baseline justify-between gap-2">
+                  {/* Left Column: Current Price & Discount Badge */}
+                  <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
+                    <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                      {formatRupiah(item.sale_price && item.sale_price < item.price ? item.sale_price : item.price)}
+                    </span>
+                    {item.sale_price && item.sale_price < item.price && (
+                      <span className="text-[10px] sm:text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight shrink-0">
+                        -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right Column: Original Price (if discounted) & Tax Note */}
+                  <div className="flex flex-col items-end text-right shrink-0">
+                    {item.sale_price && item.sale_price < item.price ? (
+                      <>
+                        <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none">
+                          {formatRupiah(item.price)}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500 leading-none mt-0.5">
+                          incl. tax
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-500 leading-none">
+                        incl. tax
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
       )}
 
       {/* Catalog Pagination dynamically aligned with column count */}
@@ -647,13 +607,14 @@ export default function HomePage() {
         itemLabel="components"
       />
 
-      {/* View All Components CTA */}
+      {/* View All Components CTA (Container invisible) */}
       <div className="text-center pt-2">
         <Link
           href="/components"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-slate-300 dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-2xs min-h-[44px]"
+          className="min-h-[44px] inline-flex items-center gap-2 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider group focus-visible:outline-2 focus-visible:outline-emerald-500"
         >
           <span>View All Items &amp; Hardware</span>
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
     </section>

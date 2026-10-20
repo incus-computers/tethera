@@ -1,0 +1,25 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export default {
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  oxc: {
+    jsx: {
+      runtime: "automatic",
+    },
+  },
+  test: {
+    include: ["tests/**/*.test.{ts,tsx}"],
+    exclude: [
+      "tests/*variations*.test.ts",
+      "tests/catalog-tiles.test.ts",
+      "tests/promotional-banners.test.ts",
+    ],
+  },
+};

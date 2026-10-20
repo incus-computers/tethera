@@ -1,3 +1,5 @@
+import { PREBUILT_SYSTEMS, PrebuiltSystem } from "./mockHardware";
+
 export interface HomepageModuleItem {
   id: "promotional_banners" | "brand_marquee" | "custom_pc_hero" | "prebuilt_systems" | "component_catalog";
   name: string;
@@ -93,3 +95,23 @@ export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayoutConfig = {
   customPcHero: DEFAULT_CUSTOM_PC_HERO,
   featuredPrebuiltIds: DEFAULT_FEATURED_PREBUILT_IDS,
 };
+
+export function resolveActivePrebuilts(
+  featuredIds: string[],
+  catalog: PrebuiltSystem[] = PREBUILT_SYSTEMS
+): PrebuiltSystem[] {
+  const resolved = featuredIds
+    .map((id) => catalog.find((p) => p.id === id))
+    .filter((p): p is PrebuiltSystem => Boolean(p));
+
+  if (resolved.length >= 3) return resolved.slice(0, 3);
+  const fallback = [...resolved];
+  for (const p of catalog) {
+    if (!fallback.some((item) => item.id === p.id)) {
+      fallback.push(p);
+    }
+    if (fallback.length >= 3) break;
+  }
+  return fallback.slice(0, 3);
+}
+
