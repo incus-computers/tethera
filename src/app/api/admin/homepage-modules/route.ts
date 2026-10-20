@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   DEFAULT_HOMEPAGE_MODULES,
   DEFAULT_CUSTOM_PC_HERO,
+  DEFAULT_FEATURED_PREBUILT_IDS,
   HomepageModuleItem,
   CustomPcHeroConfig,
-} from "@/lib/data/homepageConfig";
+} from "../../../../lib/data/homepageConfig";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 const globalForHomepage = globalThis as unknown as {
   homepageModules?: HomepageModuleItem[];
   customPcHeroConfig?: CustomPcHeroConfig;
+  featuredPrebuiltIds?: string[];
 };
 
 if (!globalForHomepage.homepageModules) {
@@ -22,12 +24,18 @@ if (!globalForHomepage.customPcHeroConfig) {
   globalForHomepage.customPcHeroConfig = { ...DEFAULT_CUSTOM_PC_HERO };
 }
 
+if (!globalForHomepage.featuredPrebuiltIds) {
+  globalForHomepage.featuredPrebuiltIds = [...DEFAULT_FEATURED_PREBUILT_IDS];
+}
+
 export async function GET() {
   try {
     return NextResponse.json({
       success: true,
       modules: globalForHomepage.homepageModules,
       customPcHero: globalForHomepage.customPcHeroConfig,
+      featuredPrebuiltIds:
+        globalForHomepage.featuredPrebuiltIds || DEFAULT_FEATURED_PREBUILT_IDS,
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -52,11 +60,17 @@ export async function PUT(req: NextRequest) {
       };
     }
 
+    if (Array.isArray(body.featuredPrebuiltIds)) {
+      globalForHomepage.featuredPrebuiltIds = body.featuredPrebuiltIds;
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Homepage layout and Custom PC banner updated successfully.",
+      message: "Homepage layout and featured rigs updated successfully.",
       modules: globalForHomepage.homepageModules,
       customPcHero: globalForHomepage.customPcHeroConfig,
+      featuredPrebuiltIds:
+        globalForHomepage.featuredPrebuiltIds || DEFAULT_FEATURED_PREBUILT_IDS,
     });
   } catch (err: any) {
     return NextResponse.json(

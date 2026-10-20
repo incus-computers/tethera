@@ -64,13 +64,16 @@ import { useAdminStore } from "@/lib/store/useAdminStore";
 import { formatRupiah } from "@/lib/utils/currency";
 import { Product, Order, Promotion, DynamicBannerSlide, CustomerProfileRow } from "@/lib/db/types";
 import { ProductGalleryManager } from "@/components/admin/ProductGalleryManager";
+import { ProductVariationsManager } from "@/components/admin/ProductVariationsManager";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import {
   HomepageModuleItem,
   CustomPcHeroConfig,
   DEFAULT_HOMEPAGE_MODULES,
   DEFAULT_CUSTOM_PC_HERO,
+  DEFAULT_FEATURED_PREBUILT_IDS,
 } from "@/lib/data/homepageConfig";
+import { PREBUILT_SYSTEMS } from "@/lib/data/mockHardware";
 
 const HARDWARE_CATEGORIES = [
   { slug: "cpu", name: "Processors (CPUs)", slot: "cpu" },
@@ -171,11 +174,13 @@ export default function AdminPortalPage() {
   const newProductFileInputRef = useRef<HTMLInputElement | null>(null);
   const customPcHeroFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Homepage Modules & Custom PC Hero Configuration State
+  // Homepage Modules, Custom PC Hero & Featured Prebuilts State
   const [homepageModules, setHomepageModules] = useState<HomepageModuleItem[]>(DEFAULT_HOMEPAGE_MODULES);
   const [customPcHeroConfig, setCustomPcHeroConfig] = useState<CustomPcHeroConfig>(DEFAULT_CUSTOM_PC_HERO);
+  const [featuredPrebuiltIds, setFeaturedPrebuiltIds] = useState<string[]>(DEFAULT_FEATURED_PREBUILT_IDS);
   const [savingModules, setSavingModules] = useState(false);
   const [savingCustomPcHero, setSavingCustomPcHero] = useState(false);
+  const [savingFeaturedPrebuilts, setSavingFeaturedPrebuilts] = useState(false);
   const [draggedModuleIdx, setDraggedModuleIdx] = useState<number | null>(null);
   const [dragOverModuleIdx, setDragOverModuleIdx] = useState<number | null>(null);
 
@@ -778,6 +783,24 @@ export default function AdminPortalPage() {
                 localStorage.setItem("tethera_custom_pc_hero", JSON.stringify(dHp.customPcHero));
               }
             }
+            if (Array.isArray(dHp.featuredPrebuiltIds) && dHp.featuredPrebuiltIds.length > 0) {
+              setFeaturedPrebuiltIds(dHp.featuredPrebuiltIds);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("tethera_featured_prebuilt_ids", JSON.stringify(dHp.featuredPrebuiltIds));
+              }
+            } else if (typeof window !== "undefined") {
+              const cachedPrebuilts = localStorage.getItem("tethera_featured_prebuilt_ids");
+              if (cachedPrebuilts) {
+                try {
+                  const parsed = JSON.parse(cachedPrebuilts);
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    setFeaturedPrebuiltIds(parsed);
+                  }
+                } catch {
+                  // Ignore parse error
+                }
+              }
+            }
           }
         }
       } catch (err) {
@@ -1005,6 +1028,97 @@ export default function AdminPortalPage() {
       alert("Error saving banner: " + err.message);
     } finally {
       setSavingCustomPcHero(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // FEATURED PREBUILT SYSTEMS HANDLERS
+  // --------------------------------------------------------------------------
+  const handleMoveFeaturedPrebuilt = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === featuredPrebuiltIds.length - 1) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const nextIds = [...featuredPrebuiltIds];
+    const temp = nextIds[index];
+    nextIds[index] = nextIds[targetIndex];
+    nextIds[targetIndex] = temp;
+    setFeaturedPrebuiltIds(nextIds);
+  };
+
+  const handleToggleFeaturedPrebuilt = (id: string) => {
+    const isSelected = featuredPrebuiltIds.includes(id);
+    if (isSelected) {
+      if (featuredPrebuiltIds.length <= 1) {
+        showToast("At least one prebuilt system must remain featured.");
+        return;
+      }
+      setFeaturedPrebuiltIds(featuredPrebuiltIds.filter((item) => item !== id));
+    } else {
+      if (featuredPrebuiltIds.length >= 3) {
+        showToast("Maximum of 3 featured systems allowed. Remove a system first to replace it.");
+        return;
+      }
+      setFeaturedPrebuiltIds([...featuredPrebuiltIds, id]);
+    }
+  };
+
+  const handleSaveFeaturedPrebuilts = async () => {
+    if (featuredPrebuiltIds.length !== 3) {
+      showToast("Please select exactly 3 featured prebuilt systems.");
+      return;
+    }
+    setSavingFeaturedPrebuilts(true);
+    try {
+      const res = await fetch("/api/admin/homepage-modules", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ featuredPrebuiltIds }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            "tethera_featured_prebuilt_ids",
+            JSON.stringify(featuredPrebuiltIds)
+          );
+          window.dispatchEvent(new Event("tethera_homepage_updated"));
+        }
+        showToast("Featured prebuilt systems saved successfully.");
+      } else {
+        alert(data.error || "Failed to save featured prebuilt systems");
+      }
+    } catch (err: any) {
+      alert("Error saving featured prebuilt systems: " + err.message);
+    } finally {
+      setSavingFeaturedPrebuilts(false);
+    }
+  };
+
+  const handleResetFeaturedPrebuilts = async () => {
+    if (!confirm("Reset featured prebuilt systems to standard factory defaults?")) return;
+    setFeaturedPrebuiltIds(DEFAULT_FEATURED_PREBUILT_IDS);
+    try {
+      await fetch("/api/admin/homepage-modules", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ featuredPrebuiltIds: DEFAULT_FEATURED_PREBUILT_IDS }),
+      });
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "tethera_featured_prebuilt_ids",
+          JSON.stringify(DEFAULT_FEATURED_PREBUILT_IDS)
+        );
+        window.dispatchEvent(new Event("tethera_homepage_updated"));
+      }
+      showToast("Featured prebuilt systems reset to default slots.");
+    } catch (err: any) {
+      alert("Error resetting featured systems: " + err.message);
     }
   };
 
@@ -1610,31 +1724,31 @@ export default function AdminPortalPage() {
 
           <div className="hidden sm:flex items-center gap-1.5 ml-3">
             {isSuperAdmin ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-950 border border-purple-700 text-purple-300">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-400">
                 <Crown className="w-3.5 h-3.5 text-purple-400" />
-                <span>SUPERADMIN • Level 2 (Full Access)</span>
+                <span>Superadmin (Full Access)</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-950 border border-cyan-700 text-cyan-300">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400">
                 <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                <span>STORE ADMIN • Level 1</span>
+                <span>Store Admin</span>
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => {
               setNotificationsDismissed((prev) => !prev);
               setNotificationsExpanded(true);
             }}
-            className="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="min-h-[44px] min-w-[44px] relative px-3 py-2 rounded-lg bg-transparent hover:bg-slate-900 text-slate-300 transition flex items-center justify-center gap-1.5"
             title="Toggle Actionable Operations Notifications"
           >
             <Bell className="w-4 h-4 text-amber-400" />
             {notificationsData.totalActionCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-bold text-[10px] flex items-center justify-center animate-pulse">
+              <span className="font-mono text-xs font-semibold text-amber-400">
                 {notificationsData.totalActionCount}
               </span>
             )}
@@ -1643,7 +1757,7 @@ export default function AdminPortalPage() {
           <button
             onClick={loadAllDashboardData}
             disabled={loadingData}
-            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="min-h-[44px] min-w-[44px] p-2 rounded-lg bg-transparent hover:bg-slate-900 text-slate-300 transition flex items-center justify-center"
             title="Refresh All Data"
           >
             <RefreshCw className={`w-4 h-4 ${loadingData ? "animate-spin text-cyan-400" : ""}`} />
@@ -1656,7 +1770,7 @@ export default function AdminPortalPage() {
 
           <button
             onClick={logout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 border border-red-800 text-red-300 text-xs font-medium transition"
+            className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-lg bg-transparent hover:bg-red-950/40 text-red-400 hover:text-red-300 text-xs font-medium transition"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -1670,18 +1784,15 @@ export default function AdminPortalPage() {
         {/* ACTIONABLE NOTIFICATIONS BAR (ORDERS NEEDING FULFILLMENT & LOW STOCK) */}
         {/* ==================================================================== */}
         {notificationsData.totalActionCount > 0 && !notificationsDismissed && (
-          <div className="mb-6 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-amber-500/40 rounded-2xl shadow-xl overflow-hidden transition-all duration-300">
+          <div className="mb-6 border-b border-amber-500/30 pb-4 transition-all duration-300">
             {/* Main Bar */}
-            <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 bg-amber-500/5">
+            <div className="py-2 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shadow-sm animate-pulse">
-                    <Bell className="w-4 h-4" />
-                  </div>
+                  <Bell className="w-4 h-4 text-amber-400" />
                   <div>
-                    <div className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                      <span>Action Required</span>
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    <div className="text-xs font-bold text-white uppercase tracking-wider">
+                      Action Required
                     </div>
                     <div className="text-[11px] text-slate-400">
                       Live store operations need administrative action
@@ -1689,7 +1800,7 @@ export default function AdminPortalPage() {
                   </div>
                 </div>
 
-                <div className="h-6 w-[1px] bg-slate-800 hidden sm:block" />
+                <div className="h-4 w-[1px] bg-slate-800 hidden sm:block" />
 
                 {/* Orders needing fulfillment badge & action */}
                 {notificationsData.unfulfilledOrders.length > 0 && (
@@ -1699,10 +1810,10 @@ export default function AdminPortalPage() {
                       setActiveTab("orders");
                       setOrderStatusFilter("all");
                     }}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900/80 border border-amber-700/60 text-amber-200 text-xs font-medium transition group"
-                    title="Jump to Orders &amp; Fulfillment Pipeline"
+                    className="min-h-[44px] inline-flex items-center gap-1.5 text-amber-300 hover:text-amber-200 text-xs font-medium transition group"
+                    title="Jump to Orders & Fulfillment Pipeline"
                   >
-                    <Truck className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+                    <Truck className="w-3.5 h-3.5 text-amber-400" />
                     <span>
                       <strong className="text-white font-bold">{notificationsData.unfulfilledOrders.length}</strong> Order(s) Awaiting Fulfillment
                     </span>
@@ -1719,10 +1830,10 @@ export default function AdminPortalPage() {
                       setProductLowStockFilter(true);
                       setProductCategoryFilter("all");
                     }}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 text-rose-200 text-xs font-medium transition group"
+                    className="min-h-[44px] inline-flex items-center gap-1.5 text-rose-300 hover:text-rose-200 text-xs font-medium transition group"
                     title="Filter Product Catalog to Low-Stock items"
                   >
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
                     <span>
                       <strong className="text-white font-bold">
                         {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length}
@@ -1738,7 +1849,7 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setNotificationsExpanded(!notificationsExpanded)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition flex items-center gap-1.5 border border-slate-700"
+                  className="min-h-[44px] px-3 py-1.5 rounded-lg text-slate-300 hover:text-white text-xs font-medium transition flex items-center gap-1.5"
                 >
                   <span>{notificationsExpanded ? "Hide Details" : `Inspect Details (${notificationsData.totalActionCount})`}</span>
                   <ChevronDown
@@ -1751,7 +1862,7 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setNotificationsDismissed(true)}
-                  className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-slate-900 text-slate-500 hover:text-slate-300 transition flex items-center justify-center"
                   title="Minimize notification bar (Can be reopened from the bell icon in header)"
                 >
                   <X className="w-4 h-4" />
@@ -1761,10 +1872,10 @@ export default function AdminPortalPage() {
 
             {/* Expandable Action Drawer */}
             {notificationsExpanded && (
-              <div className="border-t border-slate-800/80 p-5 bg-slate-950/90 grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Column 1: Fulfillment Action Queue */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                     <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
                       <Truck className="w-3.5 h-3.5 text-amber-400" />
                       <span>Fulfillment Queue ({notificationsData.unfulfilledOrders.length})</span>
@@ -1783,23 +1894,23 @@ export default function AdminPortalPage() {
                   </div>
 
                   {notificationsData.unfulfilledOrders.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
-                      All orders have been fulfilled or collected!
+                    <div className="py-4 text-slate-400 text-xs">
+                      All orders have been fulfilled or collected.
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 divide-y divide-slate-800/60">
                       {notificationsData.unfulfilledOrders.slice(0, 6).map((ord) => {
                         return (
                           <div
                             key={ord.id}
-                            className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 text-xs transition"
+                            className="pt-2.5 pb-2.5 flex items-center justify-between gap-3 text-xs"
                           >
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="font-mono font-bold text-white">
                                   #{ord.order_number || ord.id.slice(0, 8)}
                                 </span>
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase bg-slate-800 text-amber-300 border border-amber-800/60">
+                                <span className="text-xs font-semibold text-amber-400 uppercase">
                                   {ord.status.replace(/_/g, " ")}
                                 </span>
                               </div>
@@ -1813,7 +1924,7 @@ export default function AdminPortalPage() {
                                 <button
                                   type="button"
                                   onClick={() => advanceOrderStage(ord.id, "order_accepted")}
-                                  className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition"
+                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition"
                                 >
                                   Accept
                                 </button>
@@ -1822,7 +1933,7 @@ export default function AdminPortalPage() {
                                 <button
                                   type="button"
                                   onClick={() => setDispatchModalOrder(ord)}
-                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
+                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
                                 >
                                   Dispatch
                                 </button>
@@ -1831,7 +1942,7 @@ export default function AdminPortalPage() {
                                 <button
                                   type="button"
                                   onClick={() => advanceOrderStage(ord.id, "collected")}
-                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
+                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
                                 >
                                   Handover
                                 </button>
@@ -1842,7 +1953,7 @@ export default function AdminPortalPage() {
                                   setActiveTab("orders");
                                   setOrderStatusFilter(ord.status);
                                 }}
-                                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                                className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-slate-900 text-slate-400 hover:text-white transition flex items-center justify-center"
                                 title="View in Orders"
                               >
                                 <Eye className="w-3.5 h-3.5" />
@@ -1857,7 +1968,7 @@ export default function AdminPortalPage() {
 
                 {/* Column 2: Low-Stock Inventory Alerts */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                     <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
                       <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
                       <span>
@@ -1878,11 +1989,11 @@ export default function AdminPortalPage() {
                   </div>
 
                   {notificationsData.outOfStockProducts.length === 0 && notificationsData.lowStockProducts.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs text-center">
-                      Warehouse stock levels are healthy across all categories!
+                    <div className="py-4 text-slate-400 text-xs">
+                      Warehouse stock levels are healthy across all categories.
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 divide-y divide-slate-800/60">
                       {[...notificationsData.outOfStockProducts, ...notificationsData.lowStockProducts].slice(0, 6).map((prod) => {
                         const avail = prod.stock_available !== undefined ? prod.stock_available : prod.stock_on_hand;
                         const isOut = avail <= 0;
@@ -1890,10 +2001,10 @@ export default function AdminPortalPage() {
                         return (
                           <div
                             key={prod.id}
-                            className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 text-xs transition"
+                            className="pt-2.5 pb-2.5 flex items-center justify-between gap-3 text-xs"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                              <div className="w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center">
                                 {prod.images?.[0] ? (
                                   <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
                                 ) : (
@@ -1907,13 +2018,11 @@ export default function AdminPortalPage() {
                                 <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
                                   <span className="font-mono text-cyan-400">{prod.sku}</span>
                                   <span
-                                    className={`px-1.5 py-0.2 rounded font-bold uppercase ${
-                                      isOut
-                                        ? "bg-rose-950 text-rose-300 border border-rose-800"
-                                        : "bg-amber-950 text-amber-300 border border-amber-800"
+                                    className={`font-semibold ${
+                                      isOut ? "text-rose-400" : "text-amber-400"
                                     }`}
                                   >
-                                    {isOut ? "Out of Stock" : `${avail} left in store`}
+                                    {isOut ? "Out of Stock" : `${avail} left`}
                                   </span>
                                 </div>
                               </div>
@@ -1923,7 +2032,7 @@ export default function AdminPortalPage() {
                               <button
                                 type="button"
                                 onClick={() => openEditProductModal(prod)}
-                                className="px-2.5 py-1 rounded-lg bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 text-xs font-medium transition flex items-center gap-1"
+                                className="min-h-[44px] px-3 py-1.5 rounded-lg text-cyan-300 hover:text-white text-xs font-medium transition flex items-center gap-1"
                                 title="Adjust inventory stock level"
                               >
                                 <Edit3 className="w-3 h-3" />
@@ -1937,7 +2046,7 @@ export default function AdminPortalPage() {
                                     analyticsData.enrichedProducts.find((p: any) => p.id === prod.id) || prod;
                                   setSelectedItemAnalytics(itemStats);
                                 }}
-                                className="p-1 rounded-lg hover:bg-slate-800 text-purple-400 transition"
+                                className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-slate-900 text-purple-400 transition flex items-center justify-center"
                                 title="View Sales Stats"
                               >
                                 <BarChart3 className="w-3.5 h-3.5" />
@@ -1954,34 +2063,34 @@ export default function AdminPortalPage() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-4 mb-6">
+        <div className="flex flex-wrap items-center gap-1 border-b border-slate-800 mb-6">
           <button
             onClick={() => setActiveTab("orders")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
               activeTab === "orders"
-                ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold"
-                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                ? "border-cyan-400 text-white font-semibold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
             <Truck className="w-4 h-4" />
-            <span>Orders & Fulfillment Pipeline</span>
-            <span className={`ml-1 px-1.5 py-0.2 rounded-full text-xs ${activeTab === "orders" ? "bg-slate-950 text-cyan-300" : "bg-slate-800 text-slate-400"}`}>
-              {orders.length}
+            <span>Orders & Fulfillment</span>
+            <span className="ml-0.5 text-xs text-slate-400">
+              ({orders.length})
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("products")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
               activeTab === "products"
-                ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold"
-                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                ? "border-cyan-400 text-white font-semibold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Product Catalog & Images</span>
-            <span className={`ml-1 px-1.5 py-0.2 rounded-full text-xs ${activeTab === "products" ? "bg-slate-950 text-cyan-300" : "bg-slate-800 text-slate-400"}`}>
-              {products.length}
+            <span>Product Catalog</span>
+            <span className="ml-0.5 text-xs text-slate-400">
+              ({products.length})
             </span>
           </button>
 
@@ -1993,12 +2102,12 @@ export default function AdminPortalPage() {
               }
               setActiveTab("promotions");
             }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
               activeTab === "promotions"
-                ? "bg-purple-600 text-white shadow-md shadow-purple-600/25 font-semibold"
+                ? "border-purple-400 text-white font-semibold"
                 : isSuperAdmin
-                ? "bg-slate-900 hover:bg-slate-800 text-purple-300 border border-purple-900/50"
-                : "bg-slate-900/40 text-slate-600 border border-slate-800/40 cursor-not-allowed"
+                ? "border-transparent text-slate-400 hover:text-purple-300"
+                : "border-transparent text-slate-600 cursor-not-allowed"
             }`}
           >
             <Tag className="w-4 h-4" />
@@ -2008,38 +2117,30 @@ export default function AdminPortalPage() {
 
           <button
             onClick={() => setActiveTab("crm")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
               activeTab === "crm"
-                ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold"
-                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                ? "border-cyan-400 text-white font-semibold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Customers &amp; Profiles</span>
-            <span
-              className={`ml-1 px-1.5 py-0.2 rounded-full text-xs ${
-                activeTab === "crm" ? "bg-slate-950 text-cyan-300" : "bg-slate-800 text-slate-400"
-              }`}
-            >
-              {customers.length}
+            <span>Customers & Profiles</span>
+            <span className="ml-0.5 text-xs text-slate-400">
+              ({customers.length})
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab("analytics")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
               activeTab === "analytics"
-                ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold"
-                : "bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                ? "border-cyan-400 text-white font-semibold"
+                : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
             <TrendingUp className="w-4 h-4" />
-            <span>Sales &amp; Profit Analytics</span>
-            <span
-              className={`ml-1 px-1.5 py-0.2 rounded-full text-xs ${
-                activeTab === "analytics" ? "bg-slate-950 text-cyan-300" : "bg-slate-800 text-slate-400"
-              }`}
-            >
+            <span>Sales & Profit Analytics</span>
+            <span className="ml-0.5 text-xs text-emerald-400 font-medium">
               Live
             </span>
           </button>
@@ -2050,17 +2151,17 @@ export default function AdminPortalPage() {
         {/* ==================================================================== */}
         {activeTab === "orders" && (
           <div className="space-y-6">
-            {/* Filter Pills */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800">
+            {/* Filter Stage Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs text-slate-400 font-medium px-2">Filter Stage:</span>
+                <span className="text-xs text-slate-400 font-medium mr-1">Filter Stage:</span>
                 {[
                   { id: "all", label: "All Orders" },
                   { id: "order_received", label: "1. Order Received" },
                   { id: "order_accepted", label: "2. Order Accepted" },
                   { id: "finding_stock", label: "3. Finding Stock" },
                   { id: "finding_courier", label: "4. Finding Courier" },
-                  { id: "on_delivery", label: "5. On Delivery (Gojek/Grab)" },
+                  { id: "on_delivery", label: "5. On Delivery" },
                   { id: "delivery_arrived", label: "6. Delivery Arrived" },
                   { id: "cancelled", label: "Cancelled / Rejected" },
                   { id: "ready_for_pickup", label: "Click & Collect" },
@@ -2068,10 +2169,10 @@ export default function AdminPortalPage() {
                   <button
                     key={st.id}
                     onClick={() => setOrderStatusFilter(st.id)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                    className={`min-h-[44px] px-3 py-1.5 text-xs font-medium transition ${
                       orderStatusFilter === st.id
-                        ? "bg-cyan-500 text-slate-950 font-semibold"
-                        : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+                        ? "text-cyan-400 font-semibold border-b-2 border-cyan-400"
+                        : "text-slate-400 hover:text-slate-200 border-b-2 border-transparent"
                     }`}
                   >
                     {st.label}
@@ -2084,8 +2185,8 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* Orders List Cards */}
-            <div className="space-y-4">
+            {/* Orders List Rows */}
+            <div className="divide-y divide-slate-800/80">
               {orders
                 .filter((o) => orderStatusFilter === "all" || o.status === orderStatusFilter)
                 .map((order) => {
@@ -2097,34 +2198,30 @@ export default function AdminPortalPage() {
                   return (
                     <div
                       key={order.id}
-                      className={`bg-slate-900 border rounded-2xl p-5 space-y-4 transition ${
-                        isCancelled
-                          ? "border-red-900/60 bg-red-950/10"
-                          : "border-slate-800 hover:border-slate-700"
-                      }`}
+                      className="py-6 space-y-4"
                     >
                       {/* Order Header */}
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-3">
                             <span className="font-mono text-base font-bold text-white">
                               #{order.order_number}
                             </span>
                             {isCancelled ? (
-                              <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-red-950 border border-red-700 text-red-300 flex items-center gap-1">
-                                <Ban className="w-3 h-3 text-red-400" />
-                                <span>ORDER REJECTED / CANCELLED</span>
+                              <span className="text-xs font-semibold text-rose-400 flex items-center gap-1">
+                                <Ban className="w-3.5 h-3.5" />
+                                <span>Order Rejected / Cancelled</span>
                               </span>
                             ) : isCnC ? (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-950 border border-amber-700 text-amber-300">
+                              <span className="text-xs font-semibold text-amber-400">
                                 Click & Collect (Flagship Counter)
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-950 border border-emerald-700 text-emerald-300">
+                              <span className="text-xs font-semibold text-emerald-400">
                                 Doorstep Delivery
                               </span>
                             )}
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-slate-500 font-mono">
                               {new Date(order.created_at).toLocaleString("en-US", {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -2153,10 +2250,10 @@ export default function AdminPortalPage() {
                         {/* Order Total */}
                         <div className="text-right">
                           <div className="text-xs text-slate-400">Total Order Amount</div>
-                          <div className="text-lg font-bold text-cyan-400">
+                          <div className="text-lg font-bold text-cyan-400 font-mono">
                             {formatRupiah(order.total)}
                           </div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-[11px] text-slate-500 font-mono">
                             {order.payment_method} • {order.payment_reference || "PAID"}
                           </div>
                         </div>
@@ -2164,11 +2261,11 @@ export default function AdminPortalPage() {
 
                       {/* STAGES PROGRESS STEPPER (Only for non-cancelled orders) */}
                       {!isCancelled && (
-                        <div className="pt-3 pb-1 border-t border-slate-800/80">
+                        <div className="pt-2 pb-1">
                           <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                             Fulfillment Pipeline Stage:
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs">
                             {[
                               { key: "order_received", num: 1, label: "Order Received" },
                               { key: "order_accepted", num: 2, label: "Order Accepted" },
@@ -2176,7 +2273,7 @@ export default function AdminPortalPage() {
                               { key: "finding_courier", num: 4, label: "Finding Courier" },
                               { key: "on_delivery", num: 5, label: "On Delivery" },
                               { key: "delivery_arrived", num: 6, label: "Arrived" },
-                            ].map((step) => {
+                            ].map((step, idx) => {
                               const stagesList = [
                                 "order_received",
                                 "order_accepted",
@@ -2191,27 +2288,29 @@ export default function AdminPortalPage() {
                               const isCurrent = order.status === step.key;
 
                               return (
-                                <div
-                                  key={step.key}
-                                  className={`p-2 rounded-xl border text-xs flex flex-col items-center justify-center gap-1 transition ${
-                                    isCurrent
-                                      ? "bg-cyan-950/80 border-cyan-500 text-cyan-300 font-bold shadow-md shadow-cyan-500/10"
-                                      : isPassed
-                                      ? "bg-slate-800/60 border-slate-700 text-slate-300"
-                                      : "bg-slate-950/40 border-slate-800/40 text-slate-600"
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-1">
+                                <React.Fragment key={step.key}>
+                                  <div
+                                    className={`flex items-center gap-1.5 transition ${
+                                      isCurrent
+                                        ? "text-cyan-300 font-bold"
+                                        : isPassed
+                                        ? "text-slate-300"
+                                        : "text-slate-600"
+                                    }`}
+                                  >
                                     {isPassed ? (
-                                      <Check className="w-3 h-3 text-cyan-400" />
+                                      <Check className="w-3.5 h-3.5 text-cyan-400" />
                                     ) : (
-                                      <span className="w-3 h-3 rounded-full border border-slate-600 flex items-center justify-center text-[9px]">
+                                      <span className="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px] font-mono">
                                         {step.num}
                                       </span>
                                     )}
-                                    <span className="text-[11px] font-medium">{step.label}</span>
+                                    <span className="text-xs">{step.label}</span>
                                   </div>
-                                </div>
+                                  {idx < 5 && (
+                                    <span className="text-slate-700 text-xs hidden sm:inline">→</span>
+                                  )}
+                                </React.Fragment>
                               );
                             })}
                           </div>
@@ -2220,26 +2319,25 @@ export default function AdminPortalPage() {
 
                       {/* Rejection Note if Cancelled */}
                       {isCancelled && order.notes && (
-                        <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-300 flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                        <div className="py-2 text-xs text-rose-300 flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-bold">Rejection Note: </span>
+                            <span className="font-semibold">Rejection Note: </span>
                             <span>{order.notes}</span>
-                            <div className="text-[11px] text-red-400 mt-1 font-mono">
+                            <div className="text-[11px] text-rose-400 mt-1 font-mono">
                               Reserved stock has been automatically released back to warehouse inventory.
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {/* Courier Live Telemetry Banner */}
+                      {/* Courier Live Telemetry */}
                       {order.courier_info && !isCancelled && (
-                        <div className="p-3.5 rounded-xl border bg-slate-950/80 border-slate-800 space-y-3">
+                        <div className="pt-2 space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                              {/* Courier Emblem */}
                               <div
-                                className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs text-white shadow-md ${
+                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs text-white ${
                                   (order.courier_info.courier_company || order.courier_info.provider) === "jne"
                                     ? "bg-[#003399]"
                                     : (order.courier_info.courier_company || order.courier_info.provider) === "jnt"
@@ -2261,7 +2359,7 @@ export default function AdminPortalPage() {
                               <div>
                                 <div className="text-xs font-semibold text-white flex flex-wrap items-center gap-2">
                                   <span>{order.courier_info.service_name || "Biteship Multi-Courier"}</span>
-                                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">
+                                  <span className="text-xs font-mono font-semibold text-cyan-400 uppercase">
                                     {order.courier_info.status || "dispatched"}
                                   </span>
                                 </div>
@@ -2275,7 +2373,7 @@ export default function AdminPortalPage() {
                               </div>
                             </div>
 
-                            {/* Waybill / Resi (AWB) Pill with Click-to-Copy */}
+                            {/* Waybill / Resi (AWB) */}
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -2284,32 +2382,31 @@ export default function AdminPortalPage() {
                                   navigator.clipboard.writeText(waybill);
                                   showToast(`Waybill (Resi) copied: ${waybill}`);
                                 }}
-                                className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-800/60 font-mono text-xs flex items-center gap-1.5 transition shadow-xs group"
+                                className="min-h-[44px] px-3 py-1.5 text-cyan-300 hover:text-white font-mono text-xs flex items-center gap-1.5 transition group"
                                 title="Click to copy Air Waybill / Resi"
                               >
                                 <span className="text-[10px] uppercase tracking-wider text-slate-400">AWB:</span>
                                 <span className="font-bold">{order.courier_info.waybill_id || order.courier_info.tracking_id}</span>
-                                <FileText className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                                <FileText className="w-3.5 h-3.5 text-cyan-400" />
                               </button>
                             </div>
                           </div>
 
-                          {/* Pickup & Webhook Status Telemetry Bar */}
-                          <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                          {/* Pickup & Webhook Status Telemetry */}
+                          <div className="pt-1 flex flex-wrap items-center justify-between gap-3 text-xs">
                             <div className="text-slate-400 flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                               <span>Pickup: <strong>Mangga Dua Mall Lt. 3 No. 36</strong></span>
                               {order.courier_info.pickup_scheduled_time && (
-                                <span className="text-[10px] text-amber-300 bg-amber-950/60 border border-amber-800/60 px-1.5 py-0.2 rounded font-mono">
-                                  Scheduled: {new Date(order.courier_info.pickup_scheduled_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                <span className="text-xs text-amber-300 font-mono">
+                                  (Scheduled: {new Date(order.courier_info.pickup_scheduled_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})
                                 </span>
                               )}
                             </div>
 
                             {/* Biteship Webhook Simulator Buttons */}
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[10px] uppercase font-bold text-slate-500">
-                                Simulate Biteship Webhook:
+                              <span className="text-[10px] uppercase font-semibold text-slate-500">
+                                Simulate Webhook:
                               </span>
                               {[
                                 { st: "allocated", label: "Allocated" },
@@ -2323,10 +2420,10 @@ export default function AdminPortalPage() {
                                   type="button"
                                   disabled={simulatingWebhookOrderId === order.id}
                                   onClick={() => handleSimulateBiteshipWebhook(order.id, step.st)}
-                                  className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition ${
+                                  className={`min-h-[44px] px-2.5 py-1 text-xs transition ${
                                     order.courier_info.status === step.st
-                                      ? "bg-emerald-900/60 border-emerald-500 text-emerald-300"
-                                      : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600 hover:text-white"
+                                      ? "text-emerald-400 font-semibold"
+                                      : "text-slate-400 hover:text-white"
                                   }`}
                                 >
                                   {step.label}
@@ -2338,7 +2435,7 @@ export default function AdminPortalPage() {
                       )}
 
                       {/* Items Preview & Address */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 pt-2">
                         <div>
                           <div className="font-semibold text-slate-400 mb-1">Ordered Items ({order.items?.length || 0}):</div>
                           <ul className="space-y-1">
@@ -2379,12 +2476,12 @@ export default function AdminPortalPage() {
 
                       {/* STAGE ACTION CONTROLS & REJECT BUTTON */}
                       {!isCancelled && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
                           <div className="text-xs text-slate-400">
                             Current Status: <strong className="text-cyan-300 uppercase font-mono">{order.status.replace(/_/g, " ")}</strong>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {/* REJECT ORDER BUTTON (Available to Admin and Superadmin) */}
                             {!isDelivered && (
                               <button
@@ -2393,10 +2490,10 @@ export default function AdminPortalPage() {
                                   setRejectReason("Out of stock in warehouse");
                                   setCustomRejectReason("");
                                 }}
-                                className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800 text-xs font-semibold transition flex items-center gap-1.5"
+                                className="min-h-[44px] px-3.5 py-1.5 text-rose-400 hover:text-rose-300 text-xs font-semibold transition flex items-center gap-1.5"
                                 title="Reject order due to zero stock or other reasons"
                               >
-                                <Ban className="w-3.5 h-3.5 text-red-400" />
+                                <Ban className="w-3.5 h-3.5" />
                                 <span>Reject Order</span>
                               </button>
                             )}
@@ -2405,7 +2502,7 @@ export default function AdminPortalPage() {
                             {order.status === "order_received" && (
                               <button
                                 onClick={() => advanceOrderStage(order.id, "order_accepted")}
-                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-1.5"
+                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-1.5"
                               >
                                 <Check className="w-3.5 h-3.5" />
                                 <span>Accept Order</span>
@@ -2416,10 +2513,10 @@ export default function AdminPortalPage() {
                             {order.status === "order_accepted" && (
                               <button
                                 onClick={() => advanceOrderStage(order.id, "finding_stock")}
-                                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5"
+                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5"
                               >
                                 <Layers className="w-3.5 h-3.5" />
-                                <span>Find & Pick Stock in Warehouse</span>
+                                <span>Find & Pick Stock</span>
                               </button>
                             )}
 
@@ -2427,7 +2524,7 @@ export default function AdminPortalPage() {
                             {order.status === "finding_stock" && (
                               <button
                                 onClick={() => advanceOrderStage(order.id, "finding_courier")}
-                                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition flex items-center gap-1.5"
+                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition flex items-center gap-1.5"
                               >
                                 <Truck className="w-3.5 h-3.5" />
                                 <span>Stock Ready • Request Courier</span>
@@ -2438,7 +2535,7 @@ export default function AdminPortalPage() {
                             {order.status === "finding_courier" && (
                               <button
                                 onClick={() => setDispatchModalOrder(order)}
-                                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-semibold text-xs shadow-md transition flex items-center gap-1.5"
+                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5"
                               >
                                 <Truck className="w-3.5 h-3.5" />
                                 <span>Dispatch Courier (Biteship API)</span>
@@ -2449,15 +2546,15 @@ export default function AdminPortalPage() {
                             {isCnC && order.status === "order_accepted" && (
                               <button
                                 onClick={() => advanceOrderStage(order.id, "ready_for_pickup")}
-                                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition"
+                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition"
                               >
-                                Mark Ready for Counter Pickup
+                                Mark Ready for Pickup
                               </button>
                             )}
                             {isCnC && order.status === "ready_for_pickup" && (
                               <button
                                 onClick={() => advanceOrderStage(order.id, "collected")}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
+                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
                               >
                                 Complete Counter Handover
                               </button>
@@ -2494,7 +2591,7 @@ export default function AdminPortalPage() {
           return (
             <div className="space-y-6">
               {/* Product Toolbar */}
-              <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
+              <div className="space-y-3 pb-4 border-b border-slate-800">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 flex-1 min-w-[280px] flex-wrap">
                     {/* Search */}
@@ -2505,7 +2602,7 @@ export default function AdminPortalPage() {
                         placeholder="Search by hardware name, brand, or SKU..."
                         value={productSearch}
                         onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                       />
                     </div>
 
@@ -2513,7 +2610,7 @@ export default function AdminPortalPage() {
                     <select
                       value={productCategoryFilter}
                       onChange={(e) => setProductCategoryFilter(e.target.value)}
-                      className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
+                      className="min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
                     >
                       <option value="all">All Categories ({products.length})</option>
                       {HARDWARE_CATEGORIES.map((c) => (
@@ -2527,18 +2624,18 @@ export default function AdminPortalPage() {
                     <button
                       type="button"
                       onClick={() => setProductLowStockFilter(!productLowStockFilter)}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
+                      className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
                         productLowStockFilter
-                          ? "bg-rose-950 text-rose-300 border border-rose-700 shadow-md shadow-rose-950/40"
-                          : "bg-slate-950/80 hover:bg-slate-800 text-slate-300 border border-slate-700"
+                          ? "text-rose-300 font-semibold border-b-2 border-rose-500"
+                          : "text-slate-400 hover:text-slate-200 border-b-2 border-transparent"
                       }`}
                       title="Filter table to only show low stock and out-of-stock hardware"
                     >
                       <AlertTriangle className={`w-3.5 h-3.5 ${productLowStockFilter ? "text-rose-400" : "text-slate-400"}`} />
                       <span>{productLowStockFilter ? "Low Stock Active" : "Filter Low Stock"}</span>
                       {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500 text-white">
-                          {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length}
+                        <span className="text-xs text-rose-400 font-mono">
+                          ({notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length})
                         </span>
                       )}
                     </button>
@@ -2549,7 +2646,7 @@ export default function AdminPortalPage() {
                     <button
                       type="button"
                       onClick={resetProductTableLayout}
-                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+                      className="min-h-[44px] px-3.5 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-medium transition flex items-center gap-1.5"
                       title="Reset table column widths and order to default layout"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
@@ -2560,7 +2657,7 @@ export default function AdminPortalPage() {
                     {isSuperAdmin && (
                       <button
                         onClick={() => setNewProductModalOpen(true)}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium text-xs shadow-lg shadow-purple-600/20 flex items-center gap-1.5 transition"
+                        className="min-h-[44px] px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
                       >
                         <Plus className="w-4 h-4" />
                         <span>Add New Hardware Product</span>
@@ -2570,9 +2667,9 @@ export default function AdminPortalPage() {
                 </div>
 
                 {/* Sub-bar with count and arrangeable/resizable guidance */}
-                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-1">
                   <div className="flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-cyan-400" />
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400" />
                     <span>
                       Showing <strong className="text-white">{filteredProducts.length}</strong> of{" "}
                       <strong className="text-white">{products.length}</strong> products
@@ -2590,7 +2687,7 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Resizable & Arrangeable Table Container */}
-              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+              <div className="overflow-x-auto">
                 <table
                   style={{
                     width: `${productColOrder.reduce((acc, colKey) => acc + (productColWidths[colKey] || 120), 0)}px`,
@@ -2598,7 +2695,7 @@ export default function AdminPortalPage() {
                   }}
                   className="table-fixed border-collapse divide-y divide-slate-800 text-left text-xs"
                 >
-                  <thead className="bg-slate-950 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800 select-none">
+                  <thead className="bg-transparent text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800 select-none">
                     <tr>
                       {productColOrder.map((colKey, index) => {
                         const isDragging = draggedProductCol === colKey;
@@ -2644,7 +2741,7 @@ export default function AdminPortalPage() {
                                         e.stopPropagation();
                                         moveProductCol(index, index - 1);
                                       }}
-                                      className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
+                                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
                                       title="Move column left"
                                     >
                                       <ChevronLeft className="w-3 h-3" />
@@ -2657,7 +2754,7 @@ export default function AdminPortalPage() {
                                         e.stopPropagation();
                                         moveProductCol(index, index + 1);
                                       }}
-                                      className="p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
+                                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
                                       title="Move column right"
                                     >
                                       <ChevronRight className="w-3 h-3" />
@@ -2710,14 +2807,14 @@ export default function AdminPortalPage() {
                         );
 
                         return (
-                          <tr key={prod.id} className="hover:bg-slate-800/40 transition">
+                          <tr key={prod.id} className="hover:bg-slate-900/40 transition">
                             {productColOrder.map((colKey) => {
                               switch (colKey) {
                                 case "product":
                                   return (
                                     <td key={colKey} className="py-3.5 px-3">
                                       <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-lg bg-slate-950 border border-slate-800 overflow-hidden flex-shrink-0 relative">
+                                        <div className="w-12 h-12 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden flex-shrink-0 relative">
                                           {prod.images?.[0] ? (
                                             <img
                                               src={prod.images[0]}
@@ -2741,7 +2838,7 @@ export default function AdminPortalPage() {
                                 case "category":
                                   return (
                                     <td key={colKey} className="py-3.5 px-3">
-                                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-cyan-300 border border-slate-700 truncate inline-block">
+                                      <span className="text-xs text-slate-300 truncate inline-block">
                                         {catObj?.name || prod.category_slug || "Hardware"}
                                       </span>
                                     </td>
@@ -2762,7 +2859,7 @@ export default function AdminPortalPage() {
                                         <div className="space-y-0.5">
                                           <div className="flex items-center gap-1.5">
                                             <span className="text-emerald-400 font-bold">{formatRupiah(prod.sale_price)}</span>
-                                            <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-600 text-white">
+                                            <span className="text-xs font-semibold text-rose-400">
                                               -{Math.round(((prod.retail_price - prod.sale_price) / prod.retail_price) * 100)}%
                                             </span>
                                           </div>
@@ -2790,12 +2887,12 @@ export default function AdminPortalPage() {
                                   return (
                                     <td key={colKey} className="py-3.5 px-3">
                                       <span
-                                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                        className={`text-xs font-medium ${
                                           prod.stock_available > 3
-                                            ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                                            ? "text-emerald-400"
                                             : prod.stock_available > 0
-                                            ? "bg-amber-950 text-amber-300 border border-amber-800"
-                                            : "bg-red-950 text-red-300 border border-red-800"
+                                            ? "text-amber-400"
+                                            : "text-rose-400"
                                         }`}
                                       >
                                         {prod.stock_available} available
@@ -2822,7 +2919,7 @@ export default function AdminPortalPage() {
                                               analyticsData.enrichedProducts.find((p: any) => p.id === prod.id) || prod;
                                             setSelectedItemAnalytics(itemStats);
                                           }}
-                                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 hover:text-purple-200 border border-slate-700 transition flex items-center gap-1"
+                                          className="min-h-[44px] px-3 py-1.5 text-purple-300 hover:text-purple-200 transition flex items-center gap-1 text-xs font-medium"
                                           title="View detailed sales statistics and profit dashboard"
                                         >
                                           <BarChart3 className="w-3.5 h-3.5" />
@@ -2831,7 +2928,7 @@ export default function AdminPortalPage() {
 
                                         <button
                                           onClick={() => openEditProductModal(prod)}
-                                          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 transition flex items-center gap-1"
+                                          className="min-h-[44px] px-3 py-1.5 text-cyan-300 hover:text-cyan-200 transition flex items-center gap-1 text-xs font-medium"
                                           title="Edit category, price, stock &amp; pictures"
                                         >
                                           <Edit3 className="w-3.5 h-3.5" />
@@ -2841,7 +2938,7 @@ export default function AdminPortalPage() {
                                         {isSuperAdmin && (
                                           <button
                                             onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                                            className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-800 transition"
+                                            className="min-h-[44px] min-w-[44px] p-2 text-rose-400 hover:text-rose-300 transition flex items-center justify-center"
                                             title="Delete Product (Superadmin)"
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
@@ -2874,8 +2971,11 @@ export default function AdminPortalPage() {
             {/* ============================================================= */}
             {/* 1. HOMEPAGE SECTION LAYOUT MODULES (DRAG & DROP REORDERING)   */}
             {/* ============================================================= */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+            {/* ============================================================= */}
+            {/* 1. HOMEPAGE SECTION LAYOUT MODULES (DRAG & DROP REORDERING)   */}
+            {/* ============================================================= */}
+            <div className="space-y-4 pb-6 border-b border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <Layers className="w-5 h-5 text-cyan-400" />
@@ -2890,7 +2990,7 @@ export default function AdminPortalPage() {
                   <button
                     onClick={handleResetHomepageModules}
                     type="button"
-                    className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs flex items-center gap-1.5 border border-slate-700 transition"
+                    className="min-h-[44px] px-3.5 py-2 text-slate-400 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Reset Layout</span>
@@ -2899,7 +2999,7 @@ export default function AdminPortalPage() {
                     onClick={handleSaveHomepageModules}
                     disabled={savingModules}
                     type="button"
-                    className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+                    className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
                   >
                     {savingModules ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -2912,7 +3012,7 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Modules Draggable List */}
-              <div className="space-y-2.5">
+              <div className="divide-y divide-slate-800/60">
                 {homepageModules.map((module, idx) => (
                   <div
                     key={module.id}
@@ -2924,14 +3024,14 @@ export default function AdminPortalPage() {
                       setDraggedModuleIdx(null);
                       setDragOverModuleIdx(null);
                     }}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-xl border transition-all gap-3 cursor-grab active:cursor-grabbing select-none ${
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between py-3.5 transition-colors gap-3 cursor-grab active:cursor-grabbing select-none ${
                       draggedModuleIdx === idx
-                        ? "opacity-40 border-cyan-500 bg-slate-950/60"
+                        ? "opacity-40 bg-slate-900/50"
                         : dragOverModuleIdx === idx
-                        ? "border-cyan-400 bg-cyan-950/20"
+                        ? "border-l-2 border-cyan-400 pl-2 bg-slate-900/30"
                         : module.enabled
-                        ? "bg-slate-950 border-slate-800 hover:border-slate-700"
-                        : "bg-slate-950/40 border-slate-800 opacity-60"
+                        ? "hover:bg-slate-900/30"
+                        : "opacity-60"
                     }`}
                   >
                     {/* Left: Drag Handle, Position Index, Name & Details */}
@@ -2940,7 +3040,7 @@ export default function AdminPortalPage() {
                         <GripVertical className="w-5 h-5" />
                       </div>
 
-                      <span className="font-mono text-xs font-bold px-2 py-1 rounded-lg bg-slate-800 text-cyan-300 border border-slate-700 shrink-0">
+                      <span className="font-mono text-xs font-bold text-cyan-400 shrink-0">
                         #{idx + 1}
                       </span>
 
@@ -2948,10 +3048,8 @@ export default function AdminPortalPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="text-sm font-bold text-white">{module.name}</h4>
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              module.enabled
-                                ? "bg-emerald-950/90 text-emerald-400 border border-emerald-800"
-                                : "bg-slate-800 text-slate-400 border border-slate-700"
+                            className={`text-xs font-semibold uppercase ${
+                              module.enabled ? "text-emerald-400" : "text-slate-500"
                             }`}
                           >
                             {module.enabled ? "Visible" : "Hidden"}
@@ -2966,10 +3064,10 @@ export default function AdminPortalPage() {
                       <button
                         onClick={() => handleToggleModule(module.id)}
                         type="button"
-                        className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border ${
+                        className={`min-h-[44px] px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 transition ${
                           module.enabled
-                            ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
-                            : "bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-emerald-800"
+                            ? "text-slate-400 hover:text-white"
+                            : "text-emerald-400 hover:text-emerald-300"
                         }`}
                         title={module.enabled ? "Hide section from storefront" : "Show section on storefront"}
                       >
@@ -2981,7 +3079,7 @@ export default function AdminPortalPage() {
                         onClick={() => handleMoveModule(idx, "up")}
                         disabled={idx === 0}
                         type="button"
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 transition"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
                         title="Move Up"
                         aria-label={`Move ${module.name} Up`}
                       >
@@ -2992,7 +3090,7 @@ export default function AdminPortalPage() {
                         onClick={() => handleMoveModule(idx, "down")}
                         disabled={idx === homepageModules.length - 1}
                         type="button"
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-700 transition"
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
                         title="Move Down"
                         aria-label={`Move ${module.name} Down`}
                       >
@@ -3007,8 +3105,8 @@ export default function AdminPortalPage() {
             {/* ============================================================= */}
             {/* 2. CUSTOM DESKTOP PCS SHOWCASE BANNER EDITOR (TEXT & PICTURE) */}
             {/* ============================================================= */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+            <div className="space-y-6 pb-6 border-b border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-emerald-400" />
@@ -3024,7 +3122,7 @@ export default function AdminPortalPage() {
                     onClick={handleSaveCustomPcHero}
                     disabled={savingCustomPcHero}
                     type="button"
-                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
                   >
                     {savingCustomPcHero ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -3037,11 +3135,11 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Live Preview Container */}
-              <div className="space-y-2">
+              <div className="space-y-2 pb-4 border-b border-slate-800">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Live Banner Preview (Exact Storefront Appearance)
                 </span>
-                <div className="rounded-2xl border border-slate-800 bg-slate-950 p-6 sm:p-8 overflow-hidden">
+                <div className="p-4 sm:p-6 overflow-hidden">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                     {/* Left preview content */}
                     <div className="lg:col-span-7 space-y-4">
@@ -3063,12 +3161,12 @@ export default function AdminPortalPage() {
                       </p>
 
                       <div className="flex flex-wrap items-center gap-3 pt-2">
-                        <span className="px-5 py-3 bg-zinc-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 uppercase tracking-wide border border-zinc-700">
+                        <span className="min-h-[44px] px-5 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 uppercase tracking-wide border border-zinc-700">
                           <Cpu className="w-4 h-4 text-emerald-400" />
                           <span>{customPcHeroConfig.primaryCtaText || "Open PC Builder"}</span>
                         </span>
 
-                        <span className="px-4 py-3 bg-slate-900 text-zinc-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2">
+                        <span className="min-h-[44px] px-4 py-2.5 bg-slate-900 text-zinc-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2">
                           <MessageSquare className="w-4 h-4 text-emerald-400" />
                           <span>{customPcHeroConfig.secondaryCtaText || "Chat with Technician"}</span>
                         </span>
@@ -3092,8 +3190,8 @@ export default function AdminPortalPage() {
 
                     {/* Right preview rig showcase */}
                     <div className="lg:col-span-5">
-                      <div className="relative rounded-2xl bg-slate-900 p-2.5 border border-slate-800 overflow-hidden">
-                        <div className="relative h-64 sm:h-72 w-full rounded-xl overflow-hidden bg-slate-950">
+                      <div className="relative overflow-hidden">
+                        <div className="relative h-64 sm:h-72 w-full rounded-xl overflow-hidden bg-slate-900">
                           {customPcHeroConfig.imageUrl ? (
                             <img
                               src={customPcHeroConfig.imageUrl}
@@ -3108,7 +3206,7 @@ export default function AdminPortalPage() {
                           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-transparent to-transparent pointer-events-none" />
                           <div className="absolute bottom-3 left-3 right-3 text-white">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold uppercase tracking-widest bg-emerald-500 text-zinc-950 px-2 py-0.5 rounded">
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
                                 {customPcHeroConfig.imageBadge || "Flagship Hub"}
                               </span>
                               <span className="text-xs text-slate-200 font-medium">
@@ -3130,9 +3228,9 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Form Input Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                 {/* 1. Header Badges & Typography */}
-                <div className="space-y-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div className="space-y-4">
                   <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" />
                     <span>Headline &amp; Body Copy</span>
@@ -3140,7 +3238,7 @@ export default function AdminPortalPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Top Location Badge</label>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Top Location Label</label>
                       <input
                         type="text"
                         value={customPcHeroConfig.topBadge}
@@ -3152,7 +3250,7 @@ export default function AdminPortalPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Badge Highlight</label>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Label Highlight</label>
                       <input
                         type="text"
                         value={customPcHeroConfig.badgeHighlight}
@@ -3206,7 +3304,7 @@ export default function AdminPortalPage() {
                 </div>
 
                 {/* 2. CTAs, Guarantees & Rig Photo */}
-                <div className="space-y-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div className="space-y-4">
                   <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                     <ImageIcon className="w-3.5 h-3.5" />
                     <span>Rig Picture &amp; Action Links</span>
@@ -3252,7 +3350,7 @@ export default function AdminPortalPage() {
                   {/* Image Overlay Labels */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Tag Badge</label>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Tag Label</label>
                       <input
                         type="text"
                         value={customPcHeroConfig.imageBadge}
@@ -3264,7 +3362,7 @@ export default function AdminPortalPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Sub-Badge</label>
+                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Sub-Label</label>
                       <input
                         type="text"
                         value={customPcHeroConfig.imageSubBadge}
@@ -3407,7 +3505,7 @@ export default function AdminPortalPage() {
                   onClick={handleSaveCustomPcHero}
                   disabled={savingCustomPcHero}
                   type="button"
-                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm transition disabled:opacity-50"
+                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
                 >
                   {savingCustomPcHero ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -3420,10 +3518,303 @@ export default function AdminPortalPage() {
             </div>
 
             {/* ============================================================= */}
-            {/* 3. ACTIVE PROMOTIONAL DISCOUNT CODES                          */}
+            {/* 3. FEATURED PREBUILT SYSTEMS (HOMEPAGE SHOWCASE SLOTS)        */}
             {/* ============================================================= */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-6 pb-6 border-b border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    <Cpu className="w-5 h-5 text-emerald-400" />
+                    <span>Featured Prebuilt Systems (Homepage Showcase)</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Select and rank exactly 3 prebuilt PCs to feature on the storefront. Rigs 1 and 2 appear across all devices. Rig 3 appears exclusively on Desktop and Ultrawide displays.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={handleResetFeaturedPrebuilts}
+                    type="button"
+                    className="min-h-[44px] px-3.5 py-2 text-slate-400 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset to Defaults</span>
+                  </button>
+                  <button
+                    onClick={handleSaveFeaturedPrebuilts}
+                    disabled={savingFeaturedPrebuilts}
+                    type="button"
+                    className="min-h-[44px] px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
+                  >
+                    {savingFeaturedPrebuilts ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                    <span>
+                      {savingFeaturedPrebuilts
+                        ? "Saving Featured Systems..."
+                        : "Save Featured Systems"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Active Slots Ranking List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Active Showcase Slots ({featuredPrebuiltIds.length} of 3 Selected)
+                  </h3>
+                  <span className="text-[11px] text-slate-400">
+                    Use Up and Down controls to change storefront priority order
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[0, 1, 2].map((slotIndex) => {
+                    const rigId = featuredPrebuiltIds[slotIndex];
+                    const rig = PREBUILT_SYSTEMS.find((p) => p.id === rigId);
+
+                    const slotLabels = [
+                      "1st Rig: All Devices (Mobile, Tablet, Desktop, Ultrawide)",
+                      "2nd Rig: All Devices (Mobile, Tablet, Desktop, Ultrawide)",
+                      "3rd Rig: Desktop and Ultrawide Only",
+                    ];
+
+                    const slotBadgeStyles = [
+                      "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+                      "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+                      "bg-amber-500/10 text-amber-400 border-amber-500/30",
+                    ];
+
+                    if (!rig) {
+                      return (
+                        <div
+                          key={`empty-slot-${slotIndex}`}
+                          className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-5 flex flex-col items-center justify-center text-center min-h-[220px]"
+                        >
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border mb-3 ${slotBadgeStyles[slotIndex]}`}
+                          >
+                            {slotLabels[slotIndex]}
+                          </span>
+                          <p className="text-xs text-slate-500">Empty Slot</p>
+                          <p className="text-[11px] text-slate-600 mt-1">
+                            Select a system from the catalog below to assign to this position
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    const rigThumb = rig.image || rig.images?.[0] || "";
+
+                    return (
+                      <div
+                        key={rig.id}
+                        className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 flex flex-col justify-between space-y-4 hover:border-slate-700 transition"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${slotBadgeStyles[slotIndex]}`}
+                            >
+                              {slotLabels[slotIndex]}
+                            </span>
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-950 shrink-0 border border-slate-800">
+                              {rigThumb ? (
+                                <img
+                                  src={rigThumb}
+                                  alt={rig.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                  <Cpu className="w-6 h-6" />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-xs font-bold text-white truncate" title={rig.name}>
+                                {rig.name}
+                              </h4>
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {rig.cpu}
+                              </p>
+                              <p className="text-[11px] text-slate-400 truncate">
+                                {rig.gpu}
+                              </p>
+                              <div className="mt-1 text-xs font-bold text-cyan-400 font-mono">
+                                {formatRupiah(rig.price)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Order & Remove Controls */}
+                        <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 gap-2">
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveFeaturedPrebuilt(slotIndex, "up")}
+                              disabled={slotIndex === 0}
+                              className="min-h-[44px] min-w-[44px] px-2.5 py-2 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                              title="Move Rig Up in Homepage Rank"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveFeaturedPrebuilt(slotIndex, "down")}
+                              disabled={slotIndex === featuredPrebuiltIds.length - 1}
+                              className="min-h-[44px] min-w-[44px] px-2.5 py-2 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                              title="Move Rig Down in Homepage Rank"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFeaturedPrebuilt(rig.id)}
+                            className="min-h-[44px] px-3 py-2 text-rose-400 hover:text-rose-300 text-xs font-medium rounded-lg hover:bg-rose-500/10 transition flex items-center gap-1.5"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* All Prebuilts Selection Grid */}
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Available Prebuilt Systems Catalog
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Toggle systems to add or replace featured storefront placements. Exactly 3 rigs should be selected.
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-400">
+                    {PREBUILT_SYSTEMS.length} Systems Available
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {PREBUILT_SYSTEMS.map((system) => {
+                    const isSelected = featuredPrebuiltIds.includes(system.id);
+                    const slotIndex = featuredPrebuiltIds.indexOf(system.id);
+                    const thumb = system.image || system.images?.[0] || "";
+
+                    return (
+                      <div
+                        key={system.id}
+                        className={`rounded-2xl border p-4 flex flex-col justify-between space-y-3 transition ${
+                          isSelected
+                            ? "border-emerald-500/40 bg-emerald-950/10"
+                            : "border-slate-800 bg-slate-900/40 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
+                              {system.sku}
+                            </span>
+                            {isSelected ? (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                Slot #{slotIndex + 1}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium text-slate-500 px-2 py-0.5 rounded-full bg-slate-800/50">
+                                Not Featured
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-start gap-3">
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-950 shrink-0 border border-slate-800">
+                              {thumb ? (
+                                <img
+                                  src={thumb}
+                                  alt={system.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                  <Cpu className="w-6 h-6" />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-xs font-bold text-white truncate" title={system.name}>
+                                {system.name}
+                              </h4>
+                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                                {system.cpu}
+                              </p>
+                              <p className="text-[11px] text-slate-400 truncate">
+                                {system.gpu}
+                              </p>
+                              <div className="mt-1 text-xs font-bold text-emerald-400 font-mono">
+                                {formatRupiah(system.price)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Toggle Button */}
+                        <div className="pt-2 border-t border-slate-800/60">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleFeaturedPrebuilt(system.id)}
+                            className={`w-full min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition ${
+                              isSelected
+                                ? "bg-rose-900/30 text-rose-300 hover:bg-rose-900/50 border border-rose-700/40"
+                                : featuredPrebuiltIds.length >= 3
+                                ? "bg-slate-800/50 text-slate-400 hover:bg-slate-800 border border-slate-700/50"
+                                : "bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/40"
+                            }`}
+                          >
+                            {isSelected ? (
+                              <>
+                                <X className="w-3.5 h-3.5" />
+                                <span>Remove from Showcase</span>
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>
+                                  {featuredPrebuiltIds.length >= 3
+                                    ? "Replace / Add (Max 3 Selected)"
+                                    : "Add to Featured Showcase"}
+                                </span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* ============================================================= */}
+            {/* 4. ACTIVE PROMOTIONAL DISCOUNT CODES                          */}
+            {/* ============================================================= */}
+            <div className="space-y-4 pb-6 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <Tag className="w-5 h-5 text-purple-400" />
@@ -3436,41 +3827,41 @@ export default function AdminPortalPage() {
 
                 <button
                   onClick={() => setNewPromoModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Create Promo Code</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {promotions.map((promo) => (
                   <div
                     key={promo.id}
-                    className={`bg-slate-900 border rounded-2xl p-4 space-y-3 transition ${
-                      promo.is_active ? "border-purple-800/80 shadow-lg shadow-purple-950/30" : "border-slate-800 opacity-60"
+                    className={`p-4 space-y-3 transition border-b border-slate-800/80 ${
+                      promo.is_active ? "text-white" : "opacity-60"
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div>
-                        <span className="font-mono text-base font-bold tracking-wider text-purple-300 bg-purple-950/80 border border-purple-800 px-2 py-0.5 rounded">
+                        <span className="font-mono text-base font-bold tracking-wider text-purple-300">
                           {promo.code}
                         </span>
-                        <div className="font-semibold text-white text-sm mt-1.5">{promo.title}</div>
+                        <div className="font-semibold text-white text-sm mt-1">{promo.title}</div>
                       </div>
                       <button
                         onClick={() => handleTogglePromo(promo)}
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          promo.is_active ? "bg-emerald-950 text-emerald-300 border border-emerald-800" : "bg-slate-800 text-slate-400"
+                        className={`min-h-[44px] px-2 py-1 text-xs font-semibold ${
+                          promo.is_active ? "text-emerald-400" : "text-slate-500"
                         }`}
                       >
-                        {promo.is_active ? "ACTIVE" : "PAUSED"}
+                        {promo.is_active ? "Active" : "Paused"}
                       </button>
                     </div>
 
-                    <p className="text-xs text-slate-300">{promo.description}</p>
+                    <p className="text-xs text-slate-400">{promo.description}</p>
 
-                    <div className="text-xs text-slate-400 border-t border-slate-800 pt-2 flex justify-between items-center">
+                    <div className="text-xs text-slate-400 border-t border-slate-800/60 pt-2 flex justify-between items-center">
                       <div>
                         Discount:{" "}
                         <strong className="text-white font-mono">
@@ -3487,7 +3878,7 @@ export default function AdminPortalPage() {
                     <div className="flex justify-end pt-1">
                       <button
                         onClick={() => handleDeletePromo(promo.id)}
-                        className="text-red-400 hover:text-red-300 text-xs flex items-center gap-1"
+                        className="min-h-[44px] text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Delete</span>
@@ -3498,9 +3889,11 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* 2. Dynamic Promotional Banners (With PC Upload, Overlay Writing & Reordering) */}
-            <div className="space-y-4 pt-4 border-t border-slate-800">
-              <div className="flex items-center justify-between">
+            {/* ============================================================= */}
+            {/* 4. HOMEPAGE ROTATING BANNERS                                  */}
+            {/* ============================================================= */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div>
                   <h2 className="text-base font-bold text-white flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-cyan-400" />
@@ -3513,42 +3906,42 @@ export default function AdminPortalPage() {
 
                 <button
                   onClick={() => setNewBannerModalOpen(true)}
-                  className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add Banner Slide with Overlay</span>
+                  <span>Add Banner Slide</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {banners
                   .sort((a, b) => a.display_order - b.display_order)
                   .map((slide, idx) => (
                     <div
                       key={slide.id}
-                      className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between group hover:border-slate-700 transition"
+                      className="border-b border-slate-800/80 pb-4 flex flex-col justify-between"
                     >
                       <div>
                         {/* Picture with Writing on Top */}
-                        <div className="h-44 w-full bg-slate-950 relative overflow-hidden">
+                        <div className="h-44 w-full bg-slate-900 rounded-xl relative overflow-hidden">
                           {slide.image_url ? (
                             <img
                               src={slide.image_url}
                               alt={slide.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-r from-slate-900 via-slate-800 to-slate-950" />
+                            <div className="w-full h-full bg-slate-900" />
                           )}
 
                           {/* Writing Overlaid on top of picture */}
                           {!slide.hide_overlay && (
                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/30 p-3.5 flex flex-col justify-between">
                               <div className="flex items-center justify-between">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500 text-slate-950 uppercase font-mono">
+                                <span className="text-xs font-mono font-bold text-cyan-400 uppercase">
                                   {slide.badge || "FEATURED"}
                                 </span>
-                                <span className="px-2 py-0.5 rounded bg-black/60 text-[10px] text-white font-mono font-bold">
+                                <span className="text-xs text-white font-mono font-bold">
                                   Position #{idx + 1}
                                 </span>
                               </div>
@@ -3562,7 +3955,7 @@ export default function AdminPortalPage() {
                         </div>
 
                         {/* Banner Description & Details */}
-                        <div className="p-4 space-y-2 text-xs">
+                        <div className="pt-3 space-y-1.5 text-xs">
                           <div className="font-semibold text-white text-sm">{slide.title}</div>
                           <p className="text-slate-400 line-clamp-2 text-[11px]">{slide.description}</p>
                           {slide.perk && (
@@ -3576,22 +3969,22 @@ export default function AdminPortalPage() {
                       </div>
 
                       {/* Reorder Buttons (Move Up / Down) & Remove */}
-                      <div className="p-3 bg-slate-950/80 border-t border-slate-800 flex items-center justify-between">
+                      <div className="pt-3 flex items-center justify-between border-t border-slate-800/60 mt-3">
                         <div className="flex items-center gap-1">
                           <span className="text-[11px] text-slate-500 mr-1 font-mono">Order:</span>
                           <button
                             onClick={() => handleMoveBannerOrder(slide.id, "up")}
                             disabled={idx === 0}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="Move Earlier in Rotation (Main Screen)"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move Earlier in Rotation"
                           >
                             <ArrowUp className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleMoveBannerOrder(slide.id, "down")}
                             disabled={idx === banners.length - 1}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="Move Later in Rotation (Main Screen)"
+                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Move Later in Rotation"
                           >
                             <ArrowDown className="w-3.5 h-3.5" />
                           </button>
@@ -3607,7 +4000,7 @@ export default function AdminPortalPage() {
                             setBanners((prev) => prev.filter((b) => b.id !== slide.id));
                             showToast("Banner deleted.");
                           }}
-                          className="text-red-400 hover:text-red-300 text-xs flex items-center gap-1"
+                          className="min-h-[44px] text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           <span>Remove</span>
@@ -3626,16 +4019,16 @@ export default function AdminPortalPage() {
         {activeTab === "crm" && (
           <div className="space-y-6">
             {crmStats && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pb-6 border-b border-slate-800/80">
+                <div>
                   <div className="text-xs text-slate-400">Total Registered Customers</div>
                   <div className="text-2xl font-bold text-white mt-1">{crmStats.totalLeads}</div>
                 </div>
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                <div>
                   <div className="text-xs text-slate-400">Marketing Opt-In Rate</div>
                   <div className="text-2xl font-bold text-emerald-400 mt-1">{crmStats.optInRate}%</div>
                 </div>
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                <div>
                   <div className="text-xs text-slate-400">Cumulative GMV Spent</div>
                   <div className="text-xl font-bold text-cyan-400 mt-1 font-mono">
                     {formatRupiah(crmStats.totalRevenueGenerated)}
@@ -3644,8 +4037,8 @@ export default function AdminPortalPage() {
               </div>
             )}
 
-            {/* Filter and Search Bar */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            {/* Filter and Search Bar (Invisible Container) */}
+            <div className="space-y-3 pb-4 border-b border-slate-800/80">
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <div className="relative w-full sm:w-80">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -3654,7 +4047,7 @@ export default function AdminPortalPage() {
                     value={customerSearchTerm}
                     onChange={(e) => setCustomerSearchTerm(e.target.value)}
                     placeholder="Search name, email, phone, city, or source..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
 
@@ -3662,7 +4055,7 @@ export default function AdminPortalPage() {
                   <select
                     value={customerSegmentFilter}
                     onChange={(e) => setCustomerSegmentFilter(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
+                    className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
                   >
                     <option value="all">All Segments</option>
                     <option value="gamer">Gamer</option>
@@ -3675,7 +4068,7 @@ export default function AdminPortalPage() {
                   <button
                     type="button"
                     onClick={() => setCustomerOptInOnly(!customerOptInOnly)}
-                    className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                    className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
                       customerOptInOnly
                         ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300 font-semibold"
                         : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
@@ -3687,9 +4080,9 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* Customers Table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+            {/* Customers Table (Invisible Container) */}
+            <div className="space-y-4">
+              <div className="pb-4 border-b border-slate-800/80 flex items-center justify-between">
                 <div>
                   <h3 className="font-bold text-white text-sm">Registered Customer Directory</h3>
                   <p className="text-xs text-slate-400">
@@ -3764,12 +4157,12 @@ export default function AdminPortalPage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-cyan-950/70 border border-cyan-800/50 text-cyan-300 capitalize">
+                            <span className="text-xs text-cyan-400 capitalize">
                               {c.lead_source ? c.lead_source.replace(/_/g, " ") : "Direct"}
                             </span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-200 uppercase">
+                            <span className="text-xs text-slate-300 uppercase font-mono">
                               {c.customer_segment || "general"}
                             </span>
                           </td>
@@ -3791,7 +4184,7 @@ export default function AdminPortalPage() {
                                 e.stopPropagation();
                                 setSelectedCustomer(c);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
+                              className="min-h-[44px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
                             >
                               <Eye className="w-3.5 h-3.5" />
                               <span>Details</span>
@@ -3811,17 +4204,13 @@ export default function AdminPortalPage() {
         {/* ==================================================================== */}
         {activeTab === "analytics" && (
           <div className="space-y-6">
-            {/* Top Overview & Action Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 backdrop-blur-md">
+            {/* Top Overview & Action Bar (Invisible Container) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-800/80">
               <div>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center text-slate-950 font-bold shadow-md shadow-cyan-500/20">
-                    <TrendingUp className="w-4 h-4 text-slate-950" />
-                  </div>
+                  <TrendingUp className="w-5 h-5 text-cyan-400" />
                   <h2 className="text-lg font-bold text-white tracking-tight">Sales &amp; Profit Intelligence</h2>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                    Live Telemetry
-                  </span>
+                  <span className="text-xs font-semibold text-emerald-400">Live Telemetry</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
                   Storewide sales velocity, unit economics, gross margins, and draggable resizable data grid.
@@ -3832,14 +4221,14 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={resetColWidths}
-                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
+                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
                   title="Reset table column widths to default layout"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Reset Column Widths</span>
                 </button>
 
-                <div className="px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 flex items-center gap-1.5">
+                <div className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 flex items-center gap-1.5">
                   <Package className="w-3.5 h-3.5 text-cyan-400" />
                   <span>
                     <strong className="text-white font-medium">{products.length}</strong> items tracked
@@ -3848,23 +4237,20 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* Overall Sales Statistics Headline Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Overall Sales Statistics Headline Metrics (Flat Borderless Row) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-6 border-b border-slate-800/80">
               {/* Card 1: Weekly Gross Profit */}
-              <div className="bg-slate-900/80 border border-emerald-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-emerald-500/60 transition">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Weekly Gross Profit (7D)
                   </span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-700/50 flex items-center justify-center text-emerald-400">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="text-2xl font-black text-emerald-400 tracking-tight font-mono">
                   {formatRupiah(analyticsData.weeklyGrossProfit)}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
                   <span className="text-slate-400">
                     Gross Margin: <strong className="text-emerald-300 font-semibold">{analyticsData.weeklyMarginPct}%</strong>
                   </span>
@@ -3882,20 +4268,17 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Card 2: Sales in a Week (Revenue) */}
-              <div className="bg-slate-900/80 border border-cyan-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-cyan-500/60 transition">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Sales in a Week (7D)
                   </span>
-                  <div className="w-8 h-8 rounded-lg bg-cyan-950/60 border border-cyan-700/50 flex items-center justify-center text-cyan-400">
-                    <DollarSign className="w-4 h-4" />
-                  </div>
+                  <DollarSign className="w-4 h-4 text-cyan-400" />
                 </div>
                 <div className="text-2xl font-black text-cyan-400 tracking-tight font-mono">
                   {formatRupiah(analyticsData.weeklySales)}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
                   <span className="text-slate-400">
                     Orders: <strong className="text-white font-medium">{analyticsData.weeklyOrdersCount}</strong>
                   </span>
@@ -3906,21 +4289,18 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Card 3: Weekly Units & Run-Rate */}
-              <div className="bg-slate-900/80 border border-purple-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-purple-500/60 transition">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Weekly Volume Sold
                   </span>
-                  <div className="w-8 h-8 rounded-lg bg-purple-950/60 border border-purple-700/50 flex items-center justify-center text-purple-400">
-                    <ShoppingBag className="w-4 h-4" />
-                  </div>
+                  <ShoppingBag className="w-4 h-4 text-purple-400" />
                 </div>
                 <div className="text-2xl font-black text-purple-300 tracking-tight font-mono">
                   {analyticsData.weeklyUnits.toLocaleString()}{" "}
                   <span className="text-sm font-normal text-slate-400">units</span>
                 </div>
-                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
                   <span className="text-slate-400">Daily Velocity:</span>
                   <span className="text-purple-300 font-medium font-mono">
                     {(analyticsData.weeklyUnits / 7).toFixed(1)} units / day
@@ -3929,20 +4309,17 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Card 4: Store Lifetime Totals */}
-              <div className="bg-slate-900/80 border border-blue-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-blue-500/60 transition">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Store Lifetime Profit
                   </span>
-                  <div className="w-8 h-8 rounded-lg bg-blue-950/60 border border-blue-700/50 flex items-center justify-center text-blue-400">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
+                  <Sparkles className="w-4 h-4 text-blue-400" />
                 </div>
                 <div className="text-2xl font-black text-blue-300 tracking-tight font-mono">
                   {formatRupiah(analyticsData.lifetimeGrossProfit)}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-xs pt-2.5 border-t border-slate-800/80">
+                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
                   <span className="text-slate-400">
                     Revenue: <strong className="text-slate-300 font-mono">{formatRupiah(analyticsData.lifetimeSales)}</strong>
                   </span>
@@ -3953,9 +4330,9 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* 7-Day Daily Breakdown Bar & Flow */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            {/* 7-Day Daily Breakdown Bar & Flow (Invisible Container) */}
+            <div className="space-y-4 pb-6 border-b border-slate-800/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-cyan-400" />
@@ -4037,8 +4414,8 @@ export default function AdminPortalPage() {
               })()}
             </div>
 
-            {/* Draggable Table Toolbar & Filter Controls */}
-            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-800 space-y-3">
+            {/* Draggable Table Toolbar & Filter Controls (Invisible Container) */}
+            <div className="space-y-3 pb-4 border-b border-slate-800/80">
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
                 {/* Search Bar */}
                 <div className="relative flex-1 min-w-[240px]">
@@ -4048,12 +4425,12 @@ export default function AdminPortalPage() {
                     placeholder="Search by product title, brand, or SKU code..."
                     value={analyticsSearch}
                     onChange={(e) => setAnalyticsSearch(e.target.value)}
-                    className="w-full bg-slate-950/80 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                    className="w-full min-h-[44px] bg-slate-950/80 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
                   />
                   {analyticsSearch && (
                     <button
                       onClick={() => setAnalyticsSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -4065,7 +4442,7 @@ export default function AdminPortalPage() {
                   <select
                     value={analyticsCategoryFilter}
                     onChange={(e) => setAnalyticsCategoryFilter(e.target.value)}
-                    className="bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="min-h-[44px] bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
                   >
                     <option value="all">All Categories ({products.length})</option>
                     {HARDWARE_CATEGORIES.map((c) => (
@@ -4079,7 +4456,7 @@ export default function AdminPortalPage() {
                   <select
                     value={analyticsSortBy}
                     onChange={(e) => setAnalyticsSortBy(e.target.value)}
-                    className="bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
+                    className="min-h-[44px] bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
                   >
                     <option value="weeklyGrossProfit">Sort by 7D Gross Profit</option>
                     <option value="weeklyRevenue">Sort by 7D Revenue</option>
@@ -4096,7 +4473,7 @@ export default function AdminPortalPage() {
                   <button
                     type="button"
                     onClick={() => setAnalyticsSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-                    className="p-2 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition"
+                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition"
                     title={`Sort Direction: ${analyticsSortOrder === "asc" ? "Ascending" : "Descending"}`}
                   >
                     {analyticsSortOrder === "asc" ? (
@@ -4111,7 +4488,7 @@ export default function AdminPortalPage() {
               {/* Helper Bar & Tip */}
               <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
                 <div className="flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="inline-block w-2 h-2 rounded-full bg-cyan-400" />
                   <span>
                     Showing <strong className="text-white">{sortedAndFilteredProducts.length}</strong> of{" "}
                     <strong className="text-white">{products.length}</strong> items
@@ -4126,8 +4503,8 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
-            {/* Draggable Resizable Table */}
-            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60 shadow-2xl">
+            {/* Draggable Resizable Table (Invisible Container) */}
+            <div className="overflow-x-auto">
               <table
                 style={{
                   width: `${Object.values(colWidths).reduce((acc, w) => acc + w, 0)}px`,
@@ -4437,14 +4814,14 @@ export default function AdminPortalPage() {
 
                           {/* SKU */}
                           <td className="py-3 px-3">
-                            <span className="font-mono text-[11px] text-slate-300 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800 truncate block">
+                            <span className="font-mono text-xs text-cyan-400 truncate block">
                               {p.sku}
                             </span>
                           </td>
 
                           {/* Category */}
                           <td className="py-3 px-3">
-                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700 truncate">
+                            <span className="text-xs text-slate-300 uppercase truncate block">
                               {p.category_slug}
                             </span>
                           </td>
@@ -4488,12 +4865,12 @@ export default function AdminPortalPage() {
                           {/* Margin % */}
                           <td className="py-3 px-3">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                              className={`font-mono text-xs font-bold ${
                                 p.marginPct >= 20
-                                  ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                                  ? "text-emerald-400"
                                   : p.marginPct >= 12
-                                  ? "bg-cyan-950 text-cyan-300 border border-cyan-800"
-                                  : "bg-amber-950 text-amber-300 border border-amber-800"
+                                  ? "text-cyan-400"
+                                  : "text-amber-400"
                               }`}
                             >
                               {p.marginPct}%
@@ -4516,7 +4893,7 @@ export default function AdminPortalPage() {
                             <button
                               type="button"
                               onClick={() => setSelectedItemAnalytics(p)}
-                              className="px-2.5 py-1.5 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 hover:text-cyan-200 border border-cyan-800 transition flex items-center gap-1 text-xs font-medium ml-auto"
+                              className="min-h-[44px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-medium inline-flex items-center gap-1.5 transition ml-auto"
                               title="Open full item sales dashboard"
                             >
                               <BarChart3 className="w-3.5 h-3.5" />
@@ -4539,7 +4916,7 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {editingProduct && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full p-6 space-y-5 my-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
                 <h3 className="font-bold text-white text-base">Edit Product Elements</h3>
@@ -4549,7 +4926,7 @@ export default function AdminPortalPage() {
               </div>
               <button
                 onClick={() => setEditingProduct(null)}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -4564,7 +4941,7 @@ export default function AdminPortalPage() {
                     type="text"
                     value={editingProduct.name}
                     onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
                 <div>
@@ -4573,12 +4950,12 @@ export default function AdminPortalPage() {
                     type="text"
                     value={editingProduct.brand}
                     onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
               </div>
 
-              {/* CATEGORY SELECTOR (NOW EDITABLE AS REQUESTED) & SKU */}
+              {/* CATEGORY SELECTOR & SKU */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-cyan-400 mb-1">
@@ -4595,7 +4972,7 @@ export default function AdminPortalPage() {
                         pc_builder_slot: matched?.slot || editingProduct.pc_builder_slot,
                       });
                     }}
-                    className="w-full bg-slate-950 border border-cyan-600/70 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    className="w-full min-h-[44px] bg-slate-950 border border-cyan-600/70 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500"
                   >
                     {HARDWARE_CATEGORIES.map((c) => (
                       <option key={c.slug} value={c.slug}>
@@ -4614,13 +4991,13 @@ export default function AdminPortalPage() {
                     type="text"
                     value={editingProduct.sku}
                     onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
                   />
                 </div>
               </div>
 
               {/* Pricing & Stock on Hand + Promotional Discount Controls */}
-              <div className="space-y-3 p-3.5 bg-slate-950/70 rounded-xl border border-slate-800">
+              <div className="space-y-3 pt-3 border-t border-slate-800/80">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -4636,7 +5013,7 @@ export default function AdminPortalPage() {
                           retail_price: newRetail,
                         });
                       }}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
                     />
                   </div>
                   <div>
@@ -4649,7 +5026,7 @@ export default function AdminPortalPage() {
                       onChange={(e) =>
                         setEditingProduct({ ...editingProduct, stock_on_hand: Number(e.target.value) })
                       }
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
                     />
                   </div>
                 </div>
@@ -4665,7 +5042,7 @@ export default function AdminPortalPage() {
                       <button
                         type="button"
                         onClick={() => setEditingProduct({ ...editingProduct, sale_price: null })}
-                        className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold"
+                        className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold min-h-[44px] inline-flex items-center"
                       >
                         Remove Discount
                       </button>
@@ -4688,7 +5065,7 @@ export default function AdminPortalPage() {
                             sale_price: val,
                           });
                         }}
-                        className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
+                        className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
                       />
                     </div>
                     <div>
@@ -4720,14 +5097,14 @@ export default function AdminPortalPage() {
                             });
                           }
                         }}
-                        className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
+                        className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
                       />
                     </div>
                   </div>
 
-                  {/* Live Discount Preview Badge */}
+                  {/* Live Discount Preview Text */}
                   {editingProduct.sale_price && editingProduct.retail_price && editingProduct.sale_price < editingProduct.retail_price && (
-                    <div className="flex items-center justify-between p-2 rounded-lg bg-amber-950/40 border border-amber-800/60 text-xs">
+                    <div className="flex items-center justify-between py-2 text-xs border-t border-slate-800/60">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white font-mono">
                           {formatRupiah(editingProduct.sale_price)}
@@ -4735,7 +5112,7 @@ export default function AdminPortalPage() {
                         <span className="text-slate-400 line-through font-mono text-[11px]">
                           {formatRupiah(editingProduct.retail_price)}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[10px]">
+                        <span className="text-rose-400 font-bold text-xs font-mono">
                           -{Math.round(((editingProduct.retail_price - editingProduct.sale_price) / editingProduct.retail_price) * 100)}% OFF
                         </span>
                       </div>
@@ -4768,20 +5145,28 @@ export default function AdminPortalPage() {
                 token={token}
                 onUploadSuccess={(msg) => showToast(msg)}
               />
+
+              {/* Product Variations Manager (Two-dimensional attributes, custom pricing & stock) */}
+              <ProductVariationsManager
+                productId={editingProduct.id}
+                variations={editingProduct.variations || []}
+                parentImages={editingProduct.images || (editingProduct.image ? [editingProduct.image] : [])}
+                onChange={(newVars) => setEditingProduct({ ...editingProduct, variations: newVars })}
+              />
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-3">
               <button
                 type="button"
                 onClick={() => setEditingProduct(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveProductEdit}
-                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-md shadow-cyan-500/20"
+                className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold"
               >
                 Save All Elements
               </button>
@@ -4795,13 +5180,16 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {rejectModalOrder && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-red-800/80 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-slate-900 border border-red-800/80 rounded-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2 text-red-400">
                 <Ban className="w-5 h-5" />
                 <h3 className="font-bold text-white text-base">Reject / Cancel Order</h3>
               </div>
-              <button onClick={() => setRejectModalOrder(null)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setRejectModalOrder(null)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -4823,7 +5211,7 @@ export default function AdminPortalPage() {
               ].map((reason) => (
                 <label
                   key={reason}
-                  className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                  className={`min-h-[44px] flex items-center gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition ${
                     rejectReason === reason
                       ? "bg-red-950/40 border-red-700 text-white font-medium"
                       : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
@@ -4860,7 +5248,7 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => setRejectModalOrder(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium"
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium"
               >
                 Back
               </button>
@@ -4868,7 +5256,7 @@ export default function AdminPortalPage() {
                 type="button"
                 disabled={rejectingSubmitting}
                 onClick={handleConfirmRejectOrder}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 flex items-center gap-1.5"
+                className="min-h-[44px] px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5"
               >
                 {rejectingSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Ban className="w-3.5 h-3.5" />}
                 <span>Confirm Rejection</span>
@@ -4886,18 +5274,19 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {dispatchModalOrder && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 my-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 my-8">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-950 text-cyan-400 border border-blue-800">
-                  <Truck className="w-5 h-5" />
-                </div>
+                <Truck className="w-5 h-5 text-cyan-400" />
                 <div>
                   <h3 className="font-bold text-white text-base">Biteship Multi-Courier Dispatch</h3>
                   <p className="text-[11px] text-slate-400">Waybill Generation & Automated Shop Pickup</p>
                 </div>
               </div>
-              <button onClick={() => setDispatchModalOrder(null)} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400">
+              <button
+                onClick={() => setDispatchModalOrder(null)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -4969,9 +5358,9 @@ export default function AdminPortalPage() {
                         setSelectedCourierProvider(c.id as any);
                         setSelectedServiceCode(c.defaultCode);
                       }}
-                      className={`p-3 rounded-xl border text-left flex flex-col justify-between transition ${
+                      className={`min-h-[44px] p-3 rounded-xl border text-left flex flex-col justify-between transition ${
                         isSelected
-                          ? "bg-slate-800 border-cyan-400 shadow-md ring-1 ring-cyan-400"
+                          ? "bg-slate-800 border-cyan-400 ring-1 ring-cyan-400"
                           : "bg-slate-950 border-slate-800 hover:border-slate-700"
                       }`}
                     >
@@ -5000,7 +5389,7 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setPickupMode("now")}
-                  className={`p-2.5 rounded-lg border text-xs font-semibold text-left transition flex items-center gap-2 ${
+                  className={`min-h-[44px] p-2.5 rounded-lg border text-xs font-semibold text-left transition flex items-center gap-2 ${
                     pickupMode === "now"
                       ? "bg-cyan-950/60 border-cyan-500 text-cyan-300"
                       : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
@@ -5016,7 +5405,7 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setPickupMode("scheduled")}
-                  className={`p-2.5 rounded-lg border text-xs font-semibold text-left transition flex items-center gap-2 ${
+                  className={`min-h-[44px] p-2.5 rounded-lg border text-xs font-semibold text-left transition flex items-center gap-2 ${
                     pickupMode === "scheduled"
                       ? "bg-cyan-950/60 border-cyan-500 text-cyan-300"
                       : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
@@ -5038,7 +5427,7 @@ export default function AdminPortalPage() {
                       type="date"
                       value={pickupDate}
                       onChange={(e) => setPickupDate(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
                     />
                   </div>
                   <div>
@@ -5047,7 +5436,7 @@ export default function AdminPortalPage() {
                       type="time"
                       value={pickupTime}
                       onChange={(e) => setPickupTime(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
                     />
                   </div>
                 </div>
@@ -5068,7 +5457,7 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => setDispatchModalOrder(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium"
+                className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-medium"
               >
                 Cancel
               </button>
@@ -5076,7 +5465,7 @@ export default function AdminPortalPage() {
                 type="button"
                 disabled={dispatchingLoading}
                 onClick={dispatchCourier}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-2"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2"
               >
                 {dispatchingLoading ? (
                   <>
@@ -5100,13 +5489,16 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {newProductModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full p-6 space-y-4 my-8 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 space-y-4 my-8">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Crown className="w-5 h-5 text-purple-400" />
                 <h3 className="font-bold text-white text-base">Add New Hardware Item (Superadmin)</h3>
               </div>
-              <button onClick={() => setNewProductModalOpen(false)} className="p-1 rounded-lg hover:bg-slate-800 text-slate-400">
+              <button
+                onClick={() => setNewProductModalOpen(false)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -5119,7 +5511,7 @@ export default function AdminPortalPage() {
                     name="name"
                     required
                     placeholder="e.g. AMD Ryzen 9 9950X"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
@@ -5128,7 +5520,7 @@ export default function AdminPortalPage() {
                     name="brand"
                     required
                     placeholder="e.g. AMD / ASUS / Corsair"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
               </div>
@@ -5140,14 +5532,14 @@ export default function AdminPortalPage() {
                     name="sku"
                     required
                     placeholder="e.g. AMD-100-9950X"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                   />
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-300 mb-1">Category & Builder Slot</label>
                   <select
                     name="category_slug"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   >
                     {HARDWARE_CATEGORIES.map((c) => (
                       <option key={c.slug} value={c.slug}>
@@ -5159,7 +5551,7 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Pricing & Promotional Discount */}
-              <div className="space-y-3 p-3.5 bg-slate-950/70 rounded-xl border border-slate-800">
+              <div className="space-y-3 pt-3 border-t border-slate-800/80">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-300 mb-1">Retail Price (IDR)</label>
@@ -5170,7 +5562,7 @@ export default function AdminPortalPage() {
                       placeholder="e.g. 10999000"
                       value={newProductRetailPrice}
                       onChange={(e) => setNewProductRetailPrice(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                     />
                   </div>
                   <div>
@@ -5179,13 +5571,13 @@ export default function AdminPortalPage() {
                       name="initial_stock"
                       type="number"
                       defaultValue={10}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                     />
                   </div>
                 </div>
 
                 {/* Promotional Discount Inputs */}
-                <div className="pt-2 border-t border-slate-800 space-y-2">
+                <div className="pt-2 border-t border-slate-800/80 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -5220,7 +5612,7 @@ export default function AdminPortalPage() {
                               );
                             }
                           }}
-                          className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
+                          className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
                         />
                       </div>
                       <div>
@@ -5242,7 +5634,7 @@ export default function AdminPortalPage() {
                               );
                             }
                           }}
-                          className="w-full bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
+                          className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
                         />
                       </div>
                     </div>
@@ -5253,7 +5645,7 @@ export default function AdminPortalPage() {
                     typeof newProductRetailPrice === "number" &&
                     newProductSalePrice > 0 &&
                     newProductSalePrice < newProductRetailPrice && (
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-amber-950/40 border border-amber-800/60 text-xs">
+                      <div className="flex items-center justify-between py-2 text-xs border-t border-slate-800/60">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-white font-mono">
                             {formatRupiah(newProductSalePrice)}
@@ -5261,7 +5653,7 @@ export default function AdminPortalPage() {
                           <span className="text-slate-400 line-through font-mono text-[11px]">
                             {formatRupiah(newProductRetailPrice)}
                           </span>
-                          <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-black text-[10px]">
+                          <span className="text-rose-400 font-bold text-xs font-mono">
                             -{Math.round(((newProductRetailPrice - newProductSalePrice) / newProductRetailPrice) * 100)}% OFF
                           </span>
                         </div>
@@ -5298,13 +5690,13 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setNewProductModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold"
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
                 >
                   Create Product in Database
                 </button>
@@ -5319,7 +5711,7 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {newBannerModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-purple-800/80 rounded-2xl max-w-2xl w-full p-6 space-y-5 my-8">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-5 my-8">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-cyan-400" />
@@ -5328,7 +5720,10 @@ export default function AdminPortalPage() {
                   <p className="text-xs text-slate-400">Upload background picture & configure writing on top.</p>
                 </div>
               </div>
-              <button onClick={() => setNewBannerModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button
+                onClick={() => setNewBannerModalOpen(false)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -5349,10 +5744,10 @@ export default function AdminPortalPage() {
                   {!newBannerForm.hide_overlay && (
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 p-4 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-cyan-500 text-slate-950 uppercase font-mono">
+                        <span className="text-xs font-bold text-cyan-400 uppercase font-mono">
                           {newBannerForm.badge || "FEATURED"}
                         </span>
-                        <span className="px-2 py-0.5 rounded bg-black/60 text-[10px] text-white font-mono">
+                        <span className="text-xs text-slate-400 font-mono">
                           Order #{newBannerForm.display_order}
                         </span>
                       </div>
@@ -5365,7 +5760,7 @@ export default function AdminPortalPage() {
 
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] text-emerald-400 font-semibold">{newBannerForm.perk}</span>
-                        <span className="px-3 py-1 bg-white text-zinc-900 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                        <span className="text-xs text-white font-bold uppercase tracking-wider">
                           {newBannerForm.cta_text} →
                         </span>
                       </div>
@@ -5395,10 +5790,10 @@ export default function AdminPortalPage() {
                     type="button"
                     disabled={uploadingImage}
                     onClick={() => bannerFileInputRef.current?.click()}
-                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 whitespace-nowrap shadow-sm"
+                    className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 font-semibold text-xs flex items-center gap-1.5 whitespace-nowrap border border-slate-700"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    <span>📁 Upload Picture from Computer</span>
+                    <span>Upload Picture from Computer</span>
                   </button>
 
                   <input
@@ -5406,7 +5801,7 @@ export default function AdminPortalPage() {
                     placeholder="Or paste background image URL..."
                     value={newBannerForm.image_url}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, image_url: e.target.value })}
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                    className="flex-1 min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
                   />
                 </div>
               </div>
@@ -5420,7 +5815,7 @@ export default function AdminPortalPage() {
                     value={newBannerForm.title}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, title: e.target.value })}
                     placeholder="e.g. Tethera Apex White Edition Rig"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
                   />
                 </div>
                 <div>
@@ -5429,7 +5824,7 @@ export default function AdminPortalPage() {
                     value={newBannerForm.highlight}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, highlight: e.target.value })}
                     placeholder="e.g. Free 72-Hour Rig Stress Test Included"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
               </div>
@@ -5441,7 +5836,7 @@ export default function AdminPortalPage() {
                     value={newBannerForm.badge}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, badge: e.target.value })}
                     placeholder="e.g. Limited Time Event / Official Partner"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
@@ -5450,7 +5845,7 @@ export default function AdminPortalPage() {
                     type="number"
                     value={newBannerForm.display_order}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, display_order: Number(e.target.value) })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                   />
                 </div>
               </div>
@@ -5462,7 +5857,7 @@ export default function AdminPortalPage() {
                   value={newBannerForm.description}
                   onChange={(e) => setNewBannerForm({ ...newBannerForm, description: e.target.value })}
                   placeholder="Design your custom rig with complimentary calibration..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white"
                 />
               </div>
 
@@ -5473,7 +5868,7 @@ export default function AdminPortalPage() {
                     value={newBannerForm.perk}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, perk: e.target.value })}
                     placeholder="e.g. Full 3-Year Official Manufacturer Warranty"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   />
                 </div>
                 <div>
@@ -5483,13 +5878,13 @@ export default function AdminPortalPage() {
                       value={newBannerForm.cta_text}
                       onChange={(e) => setNewBannerForm({ ...newBannerForm, cta_text: e.target.value })}
                       placeholder="Shop Now"
-                      className="w-1/2 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      className="w-1/2 min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                     />
                     <input
                       value={newBannerForm.cta_link}
                       onChange={(e) => setNewBannerForm({ ...newBannerForm, cta_link: e.target.value })}
                       placeholder="/components/gpu"
-                      className="w-1/2 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      className="w-1/2 min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                     />
                   </div>
                 </div>
@@ -5512,13 +5907,13 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setNewBannerModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold"
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
                 >
                   Publish Banner to Main Screen
                 </button>
@@ -5533,10 +5928,13 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {newPromoModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="font-bold text-white text-base">Create Promotional Voucher</h3>
-              <button onClick={() => setNewPromoModalOpen(false)} className="text-slate-400">
+              <button
+                onClick={() => setNewPromoModalOpen(false)}
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -5548,7 +5946,7 @@ export default function AdminPortalPage() {
                   name="code"
                   required
                   placeholder="e.g. FLASHDEAL20"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono uppercase"
+                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono uppercase"
                 />
               </div>
 
@@ -5558,7 +5956,7 @@ export default function AdminPortalPage() {
                   name="title"
                   required
                   placeholder="e.g. 20% Off RTX 4070 Ti Drop"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                 />
               </div>
 
@@ -5567,7 +5965,7 @@ export default function AdminPortalPage() {
                   <label className="block font-semibold text-slate-300 mb-1">Discount Type</label>
                   <select
                     name="discount_type"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="fixed_amount">Fixed Amount (IDR)</option>
@@ -5580,7 +5978,7 @@ export default function AdminPortalPage() {
                     type="number"
                     required
                     placeholder="e.g. 15 or 500000"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
                   />
                 </div>
               </div>
@@ -5589,13 +5987,13 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setNewPromoModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-300"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold"
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
                 >
                   Activate Voucher
                 </button>
@@ -5614,7 +6012,7 @@ export default function AdminPortalPage() {
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-800 pb-4">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg">
+                <div className="w-11 h-11 rounded-lg bg-slate-800 flex items-center justify-center text-cyan-400 font-bold text-base flex-shrink-0">
                   {selectedCustomer.full_name
                     ? selectedCustomer.full_name
                         .split(" ")
@@ -5627,8 +6025,8 @@ export default function AdminPortalPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-white text-lg">{selectedCustomer.full_name}</h3>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 uppercase">
-                      {selectedCustomer.customer_segment || "general"}
+                    <span className="text-xs text-slate-400 uppercase font-mono">
+                      ({selectedCustomer.customer_segment || "general"})
                     </span>
                   </div>
                   <div className="text-xs text-slate-400 font-mono mt-0.5">
@@ -5640,7 +6038,8 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => setSelectedCustomer(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                aria-label="Close customer profile"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -5649,10 +6048,10 @@ export default function AdminPortalPage() {
             {/* Modal Body */}
             <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1 text-xs">
               {/* Section 1 & 2 Grid: Contact Info & Delivery Address */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-800/80">
                 {/* Contact Information */}
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs border-b border-slate-800 pb-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs pb-1">
                     <Mail className="w-4 h-4 text-cyan-400" />
                     <span>Contact &amp; Account Details</span>
                   </div>
@@ -5677,7 +6076,7 @@ export default function AdminPortalPage() {
                             href={`https://wa.me/${selectedCustomer.phone.replace(/[^0-9]/g, "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[10px] font-semibold transition-colors"
+                            className="min-h-[44px] px-2.5 inline-flex items-center text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
                           >
                             WhatsApp Chat
                           </a>
@@ -5700,15 +6099,15 @@ export default function AdminPortalPage() {
                 </div>
 
                 {/* Delivery Address */}
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1">
                     <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs">
                       <MapPin className="w-4 h-4 text-emerald-400" />
                       <span>Primary Delivery Address</span>
                     </div>
                     {selectedCustomer.address_label && (
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-medium">
-                        {selectedCustomer.address_label}
+                      <span className="text-xs text-slate-400 font-mono">
+                        ({selectedCustomer.address_label})
                       </span>
                     )}
                   </div>
@@ -5735,7 +6134,7 @@ export default function AdminPortalPage() {
                     </div>
 
                     {selectedCustomer.delivery_notes && (
-                      <div className="mt-2 p-2 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
+                      <div className="mt-2 text-xs text-slate-400">
                         <span className="font-semibold text-slate-300">Delivery Notes:</span>{" "}
                         {selectedCustomer.delivery_notes}
                       </div>
@@ -5745,10 +6144,10 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Section 3 & 4 Grid: Attribution & Preferences */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-800/80">
                 {/* Discovery & Acquisition Attribution */}
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs border-b border-slate-800 pb-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs pb-1">
                     <Compass className="w-4 h-4 text-purple-400" />
                     <span>Discovery &amp; Attribution</span>
                   </div>
@@ -5756,7 +6155,7 @@ export default function AdminPortalPage() {
                   <div className="space-y-2">
                     <div>
                       <span className="text-slate-400 block text-[11px]">How they got to know us</span>
-                      <span className="px-2.5 py-1 rounded-md bg-purple-950/60 border border-purple-800/60 text-purple-200 text-xs font-medium inline-block mt-1 capitalize">
+                      <span className="text-xs text-purple-300 capitalize font-medium block mt-0.5">
                         {selectedCustomer.lead_source
                           ? selectedCustomer.lead_source.replace(/_/g, " ")
                           : "Direct / Unknown"}
@@ -5773,12 +6172,9 @@ export default function AdminPortalPage() {
                     {selectedCustomer.tags && selectedCustomer.tags.length > 0 && (
                       <div>
                         <span className="text-slate-400 block text-[11px] mb-1">Customer Tags</span>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-2 text-xs text-slate-400 font-mono">
                           {selectedCustomer.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300 text-[10px]"
-                            >
+                            <span key={tag}>
                               #{tag}
                             </span>
                           ))}
@@ -5789,8 +6185,8 @@ export default function AdminPortalPage() {
                 </div>
 
                 {/* Marketing & Newsletter Preferences */}
-                <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs border-b border-slate-800 pb-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs pb-1">
                     <Share2 className="w-4 h-4 text-emerald-400" />
                     <span>Marketing &amp; Subscriptions</span>
                   </div>
@@ -5798,13 +6194,13 @@ export default function AdminPortalPage() {
                   <div className="space-y-2">
                     <div>
                       <span className="text-slate-400 block text-[11px]">Promotional Opt-In</span>
-                      <div className="mt-1">
+                      <div className="mt-0.5">
                         {selectedCustomer.marketing_opt_in ? (
-                          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-[11px] font-semibold">
+                          <span className="text-xs text-emerald-400 font-semibold">
                             Opted In (Email &amp; WhatsApp Announcements)
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[11px]">
+                          <span className="text-xs text-slate-400">
                             Opted Out
                           </span>
                         )}
@@ -5822,13 +6218,13 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Section 5: Order History & Lifetime Financials */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-1">
                   <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs">
                     <ShoppingBag className="w-4 h-4 text-cyan-400" />
                     <span>Purchase History &amp; Orders</span>
                   </div>
-                  <div className="flex items-center gap-3 font-mono">
+                  <div className="flex items-center gap-3 font-mono text-xs">
                     <span className="text-slate-400">Total: {selectedCustomer.total_orders || 0} orders</span>
                     <span className="text-cyan-400 font-bold">
                       {formatRupiah(selectedCustomer.total_spent || 0)}
@@ -5865,20 +6261,20 @@ export default function AdminPortalPage() {
                   return (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-900 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
+                        <thead className="text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
                           <tr>
-                            <th className="py-2 px-3">Order ID</th>
-                            <th className="py-2 px-3">Date</th>
-                            <th className="py-2 px-3">Status</th>
-                            <th className="py-2 px-3">Total</th>
-                            <th className="py-2 px-3 text-right">Action</th>
+                            <th className="py-2.5 px-3">Order ID</th>
+                            <th className="py-2.5 px-3">Date</th>
+                            <th className="py-2.5 px-3">Status</th>
+                            <th className="py-2.5 px-3">Total</th>
+                            <th className="py-2.5 px-3 text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800 text-slate-300">
                           {customerOrders.map((ord) => (
-                            <tr key={ord.id} className="hover:bg-slate-900/60">
-                              <td className="py-2 px-3 font-mono text-white font-semibold">{ord.id}</td>
-                              <td className="py-2 px-3 text-slate-400">
+                            <tr key={ord.id} className="hover:bg-slate-800/30">
+                              <td className="py-2.5 px-3 font-mono text-white font-semibold">{ord.id}</td>
+                              <td className="py-2.5 px-3 text-slate-400">
                                 {ord.created_at
                                   ? new Date(ord.created_at).toLocaleDateString("en-US", {
                                       month: "short",
@@ -5887,22 +6283,22 @@ export default function AdminPortalPage() {
                                     })
                                   : "N/A"}
                               </td>
-                              <td className="py-2 px-3">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-800 text-slate-300">
+                              <td className="py-2.5 px-3">
+                                <span className="text-xs uppercase font-mono text-slate-300">
                                   {ord.status}
                                 </span>
                               </td>
-                              <td className="py-2 px-3 font-mono text-cyan-400 font-bold">
+                              <td className="py-2.5 px-3 font-mono text-cyan-400 font-bold">
                                 {formatRupiah(ord.total || 0)}
                               </td>
-                              <td className="py-2 px-3 text-right">
+                              <td className="py-2.5 px-3 text-right">
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setSelectedCustomer(null);
                                     setActiveTab("orders");
                                   }}
-                                  className="text-cyan-400 hover:text-cyan-300 text-xs font-medium inline-flex items-center gap-1"
+                                  className="min-h-[44px] px-2 text-cyan-400 hover:text-cyan-300 text-xs font-medium inline-flex items-center gap-1"
                                 >
                                   <span>View in Orders</span>
                                   <ArrowRight className="w-3 h-3" />
@@ -5923,7 +6319,7 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => setSelectedCustomer(null)}
-                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
               >
                 Close Profile
               </button>
@@ -5941,14 +6337,14 @@ export default function AdminPortalPage() {
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-800 pb-4 flex-shrink-0">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex-shrink-0 relative overflow-hidden flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-slate-800 flex-shrink-0 relative overflow-hidden flex items-center justify-center">
                   {selectedItemAnalytics.images && selectedItemAnalytics.images.length > 0 ? (
                     <Image
                       src={selectedItemAnalytics.images[0]}
                       alt={selectedItemAnalytics.name}
                       fill
                       className="object-cover"
-                      sizes="56px"
+                      sizes="48px"
                     />
                   ) : (
                     <Package className="w-6 h-6 text-slate-500" />
@@ -5960,10 +6356,11 @@ export default function AdminPortalPage() {
                       {selectedItemAnalytics.brand}
                     </span>
                     <span className="text-slate-600">•</span>
-                    <span className="font-mono text-xs text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                    <span className="font-mono text-xs text-slate-400">
                       SKU: {selectedItemAnalytics.sku}
                     </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                    <span className="text-slate-600">•</span>
+                    <span className="text-xs text-slate-400 uppercase font-mono">
                       {selectedItemAnalytics.category_slug}
                     </span>
                   </div>
@@ -5971,7 +6368,7 @@ export default function AdminPortalPage() {
                     {selectedItemAnalytics.name}
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Item Performance Dossier • Weekly &amp; Lifetime Sales Telemetry
+                    Item Performance Dossier, Weekly &amp; Lifetime Sales Telemetry
                   </p>
                 </div>
               </div>
@@ -5979,7 +6376,8 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => setSelectedItemAnalytics(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                aria-label="Close dashboard"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -5988,149 +6386,143 @@ export default function AdminPortalPage() {
             {/* Scrollable Modal Content */}
             <div className="overflow-y-auto pr-1 space-y-6 flex-1 text-xs">
               {/* Top Highlights Banner: Stock Health & Run Rate */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950/70 p-4 rounded-xl border border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-cyan-950/70 border border-cyan-800/60 flex items-center justify-center text-cyan-400">
-                    <Package className="w-4 h-4" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pb-6 border-b border-slate-800/80">
+                <div className="space-y-1">
+                  <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Current Warehouse Stock</span>
                   </div>
-                  <div>
-                    <div className="text-[11px] text-slate-400">Current Warehouse Stock</div>
-                    <div className="text-sm font-bold text-white font-mono">
-                      {selectedItemAnalytics.stock_on_hand} units available
-                    </div>
+                  <div className="text-base font-bold text-white font-mono">
+                    {selectedItemAnalytics.stock_on_hand} units available
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-purple-950/70 border border-purple-800/60 flex items-center justify-center text-purple-400">
-                    <TrendingUp className="w-4 h-4" />
+                <div className="space-y-1">
+                  <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Weekly Run Rate</span>
                   </div>
-                  <div>
-                    <div className="text-[11px] text-slate-400">Weekly Run Rate</div>
-                    <div className="text-sm font-bold text-purple-300 font-mono">
-                      {selectedItemAnalytics.weeklyUnits} units/wk ({(selectedItemAnalytics.weeklyUnits / 7).toFixed(2)}/day)
-                    </div>
+                  <div className="text-base font-bold text-purple-300 font-mono">
+                    {selectedItemAnalytics.weeklyUnits} units/wk ({(selectedItemAnalytics.weeklyUnits / 7).toFixed(2)}/day)
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-950/70 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
-                    <Clock className="w-4 h-4" />
+                <div className="space-y-1">
+                  <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Estimated Days of Supply</span>
                   </div>
-                  <div>
-                    <div className="text-[11px] text-slate-400">Estimated Days of Supply</div>
-                    <div className="text-sm font-bold text-emerald-400 font-mono">
-                      {selectedItemAnalytics.daysOfSupply === 999
-                        ? "Ample Supply"
-                        : `${selectedItemAnalytics.daysOfSupply} days remaining`}
-                    </div>
+                  <div className="text-base font-bold text-emerald-400 font-mono">
+                    {selectedItemAnalytics.daysOfSupply === 999
+                      ? "Ample Supply"
+                      : `${selectedItemAnalytics.daysOfSupply} days remaining`}
                   </div>
                 </div>
               </div>
 
               {/* Financials & Unit Economics Grid */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <div className="space-y-3 pb-6 border-b border-slate-800/80">
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                   <DollarSign className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Unit Economics &amp; Gross Margins</span>
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {/* Retail Price */}
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">Retail Selling Price</span>
+                  <div>
+                    <span className="text-xs text-slate-400">Retail Selling Price</span>
                     <div className="text-base font-bold text-white font-mono mt-1">
                       {formatRupiah(selectedItemAnalytics.retail_price)}
                     </div>
-                    <span className="text-[10px] text-slate-500 mt-1 block">Active SRP</span>
+                    <span className="text-[11px] text-slate-500 mt-0.5 block">Active SRP</span>
                   </div>
 
                   {/* Estimated Cost (COGS) */}
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">Wholesale Cost (COGS)</span>
+                  <div>
+                    <span className="text-xs text-slate-400">Wholesale Cost (COGS)</span>
                     <div className="text-base font-bold text-slate-300 font-mono mt-1">
                       {formatRupiah(selectedItemAnalytics.cost_price)}
                     </div>
-                    <span className="text-[10px] text-slate-500 mt-1 block">Distributor base</span>
+                    <span className="text-[11px] text-slate-500 mt-0.5 block">Distributor base</span>
                   </div>
 
                   {/* Gross Profit per Unit */}
-                  <div className="bg-slate-950/80 border border-emerald-900/40 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">Profit Per Unit</span>
+                  <div>
+                    <span className="text-xs text-slate-400">Profit Per Unit</span>
                     <div className="text-base font-bold text-emerald-400 font-mono mt-1">
                       {formatRupiah(selectedItemAnalytics.unitGrossProfit)}
                     </div>
-                    <span className="text-[10px] text-emerald-500/80 mt-1 block">Per-sale margin</span>
+                    <span className="text-[11px] text-emerald-500/80 mt-0.5 block">Per-sale margin</span>
                   </div>
 
                   {/* Gross Margin % */}
-                  <div className="bg-slate-950/80 border border-cyan-900/40 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">Gross Margin %</span>
+                  <div>
+                    <span className="text-xs text-slate-400">Gross Margin %</span>
                     <div className="text-base font-bold text-cyan-400 font-mono mt-1">
                       {selectedItemAnalytics.marginPct}%
                     </div>
-                    <span className="text-[10px] text-cyan-500/80 mt-1 block">Return on sales</span>
+                    <span className="text-[11px] text-cyan-500/80 mt-0.5 block">Return on sales</span>
                   </div>
                 </div>
               </div>
 
               {/* Trailing Performance & Volume Aggregates */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <div className="space-y-3 pb-6 border-b border-slate-800/80">
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                   <BarChart3 className="w-3.5 h-3.5 text-purple-400" />
                   <span>Sales Volume &amp; Profit Comparison</span>
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {/* 7D Revenue */}
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">7D Gross Revenue</span>
+                  <div>
+                    <span className="text-xs text-slate-400">7D Gross Revenue</span>
                     <div className="text-base font-bold text-cyan-400 font-mono mt-1">
                       {formatRupiah(selectedItemAnalytics.weeklyRevenue)}
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block">
+                    <span className="text-[11px] text-slate-400 mt-0.5 block">
                       {selectedItemAnalytics.weeklyUnits} unit(s) in last 7 days
                     </span>
                   </div>
 
                   {/* 7D Gross Profit */}
-                  <div className="bg-slate-950/80 border border-emerald-900/40 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">7D Gross Profit</span>
+                  <div>
+                    <span className="text-xs text-slate-400">7D Gross Profit</span>
                     <div className="text-base font-bold text-emerald-400 font-mono mt-1">
                       {formatRupiah(selectedItemAnalytics.weeklyGrossProfit)}
                     </div>
-                    <span className="text-[10px] text-emerald-500/80 mt-1 block">Weekly net profit contribution</span>
+                    <span className="text-[11px] text-emerald-500/80 mt-0.5 block">Weekly net profit contribution</span>
                   </div>
 
                   {/* Lifetime Revenue */}
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">Lifetime Revenue</span>
+                  <div>
+                    <span className="text-xs text-slate-400">Lifetime Revenue</span>
                     <div className="text-base font-bold text-slate-200 font-mono mt-1">
                       {formatRupiah(selectedItemAnalytics.lifetimeRevenue)}
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block">
+                    <span className="text-[11px] text-slate-400 mt-0.5 block">
                       {selectedItemAnalytics.lifetimeUnits} unit(s) all-time
                     </span>
                   </div>
 
                   {/* Lifetime Gross Profit */}
-                  <div className="bg-slate-950/80 border border-emerald-900/40 rounded-xl p-3.5">
-                    <span className="text-[11px] text-slate-400">Lifetime Gross Profit</span>
+                  <div>
+                    <span className="text-xs text-slate-400">Lifetime Gross Profit</span>
                     <div className="text-base font-bold text-emerald-400 font-mono mt-1">
                       {formatRupiah(selectedItemAnalytics.lifetimeGrossProfit)}
                     </div>
-                    <span className="text-[10px] text-emerald-500/80 mt-1 block">Total historical profit</span>
+                    <span className="text-[11px] text-emerald-500/80 mt-0.5 block">Total historical profit</span>
                   </div>
                 </div>
               </div>
 
               {/* 7-Day Day-by-Day Performance Table for this Item */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <div className="space-y-3 pb-6 border-b border-slate-800/80">
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Trailing 7-Day Pacing</span>
                 </h4>
-                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+                <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs divide-y divide-slate-800">
-                    <thead className="bg-slate-950 text-slate-400 font-medium">
+                    <thead className="text-slate-400 font-medium">
                       <tr>
                         <th className="py-2.5 px-3">Date</th>
                         <th className="py-2.5 px-3">Units Sold</th>
@@ -6171,7 +6563,7 @@ export default function AdminPortalPage() {
                             <td className="py-2 px-3 font-sans w-36">
                               <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                                 <div
-                                  className="bg-gradient-to-r from-cyan-500 to-emerald-500 h-full rounded-full"
+                                  className="bg-cyan-500 h-full rounded-full"
                                   style={{
                                     width: `${Math.min(
                                       100,
@@ -6192,8 +6584,8 @@ export default function AdminPortalPage() {
               </div>
 
               {/* Customer Orders Breakdown Table */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                     <ShoppingBag className="w-3.5 h-3.5 text-cyan-400" />
                     <span>Customer Orders Featuring This SKU ({selectedItemAnalytics.orders.length})</span>
@@ -6206,7 +6598,7 @@ export default function AdminPortalPage() {
                 </div>
 
                 {selectedItemAnalytics.orders.length === 0 ? (
-                  <div className="p-6 rounded-xl border border-slate-800 bg-slate-950/60 text-center text-slate-400">
+                  <div className="py-8 text-center text-slate-400">
                     <Package className="w-6 h-6 mx-auto mb-1.5 text-slate-600" />
                     <p className="font-medium text-slate-300 text-xs">No orders recorded for this item yet</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
@@ -6214,7 +6606,7 @@ export default function AdminPortalPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60 max-h-56">
+                  <div className="overflow-x-auto max-h-56">
                     <table className="w-full text-left text-xs divide-y divide-slate-800">
                       <thead className="bg-slate-950 text-slate-400 font-medium sticky top-0">
                         <tr>
@@ -6261,19 +6653,19 @@ export default function AdminPortalPage() {
                               <td className="py-2 px-3 text-slate-300">{formatRupiah(it.unit_price || 0)}</td>
                               <td className="py-2 px-3 text-cyan-300 font-medium">{formatRupiah(lineRev)}</td>
                               <td className="py-2 px-3 text-emerald-400 font-bold">{formatRupiah(lineProfit)}</td>
-                              <td className="py-2 px-3 font-sans">
-                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-800 text-slate-300">
+                              <td className="py-2.5 px-3 font-sans">
+                                <span className="text-xs uppercase font-mono text-slate-300">
                                   {ord.status}
                                 </span>
                               </td>
-                              <td className="py-2 px-3 text-right font-sans">
+                              <td className="py-2.5 px-3 text-right font-sans">
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setSelectedItemAnalytics(null);
                                     setActiveTab("orders");
                                   }}
-                                  className="text-cyan-400 hover:text-cyan-300 text-xs font-medium inline-flex items-center gap-1"
+                                  className="min-h-[44px] px-2 text-cyan-400 hover:text-cyan-300 text-xs font-medium inline-flex items-center gap-1"
                                 >
                                   <span>View</span>
                                   <ArrowRight className="w-3 h-3" />
@@ -6298,7 +6690,7 @@ export default function AdminPortalPage() {
                   setSelectedItemAnalytics(null);
                   openEditProductModal(prodToEdit);
                 }}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 text-xs font-semibold transition flex items-center gap-1.5"
+                className="min-h-[44px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-cyan-200 border border-slate-700 text-xs font-semibold transition flex items-center gap-1.5"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>Edit Product Elements</span>
@@ -6307,7 +6699,7 @@ export default function AdminPortalPage() {
               <button
                 type="button"
                 onClick={() => setSelectedItemAnalytics(null)}
-                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
               >
                 Close Dashboard
               </button>

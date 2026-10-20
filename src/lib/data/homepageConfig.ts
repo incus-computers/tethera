@@ -25,9 +25,12 @@ export interface CustomPcHeroConfig {
   imageDescription: string;
 }
 
+export const DEFAULT_FEATURED_PREBUILT_IDS: string[] = ["pb-1", "pb-2", "pb-3"];
+
 export interface HomepageLayoutConfig {
   modules: HomepageModuleItem[];
   customPcHero: CustomPcHeroConfig;
+  featuredPrebuiltIds: string[];
 }
 
 export const DEFAULT_CUSTOM_PC_HERO: CustomPcHeroConfig = {
@@ -84,3 +87,9 @@ export const DEFAULT_HOMEPAGE_MODULES: HomepageModuleItem[] = [
     enabled: true,
   },
 ];
+
+export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayoutConfig = {
+  modules: DEFAULT_HOMEPAGE_MODULES,
+  customPcHero: DEFAULT_CUSTOM_PC_HERO,
+  featuredPrebuiltIds: DEFAULT_FEATURED_PREBUILT_IDS,
+};
