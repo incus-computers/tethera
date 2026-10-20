@@ -197,7 +197,7 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       const sectionHtml = sectionMatch![1];
 
       const headerViewMoreMatch = sectionHtml.match(
-        /<a[^>]*href="\/products\?category=Pre-Built\+Systems"[^>]*>([\s\S]*?)<\/a>/
+        /<a[^>]*href="\/prebuilts"[^>]*>([\s\S]*?)<\/a>/
       );
       expect(headerViewMoreMatch).not.toBeNull();
       expect(headerViewMoreMatch![0]).toContain("min-h-[44px]");
@@ -211,7 +211,7 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
 
       expect(sectionHtml).toContain("View More Prebuilts");
       const bottomCtaMatches = sectionHtml.match(
-        /<a[^>]*href="\/products\?category=Pre-Built\+Systems"[^>]*>[\s\S]*?View More Prebuilts[\s\S]*?<\/a>/
+        /<a[^>]*href="\/prebuilts"[^>]*>[\s\S]*?View More Prebuilts[\s\S]*?<\/a>/
       );
       expect(bottomCtaMatches).not.toBeNull();
       expect(bottomCtaMatches![0]).toContain("min-h-[44px]");

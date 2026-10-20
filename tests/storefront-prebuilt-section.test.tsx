@@ -45,14 +45,14 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     expect(html).toContain("max-w-[1920px]");
   });
 
-  it("renders section header with category label, title, subtitle, and View More navigation", () => {
+  it("renders section header with title, subtitle, and View More navigation without turnkey label", () => {
     const html = renderToStaticMarkup(React.createElement(HomePage));
-    expect(html).toContain("Turnkey Gaming Workstations");
+    expect(html).not.toContain("Turnkey Gaming Workstations");
     expect(html).toContain("Pre-Configured Performance Rigs");
     expect(html).toContain("Assembled, stress-tested, and ready for same-day Click &amp; Collect pickup.");
 
-    // Header action link must point to /products?category=Pre-Built+Systems
-    expect(html).toMatch(/href="\/products\?category=Pre-Built\+Systems"[\s\S]*?>[\s\S]*?View More/);
+    // Header action link must point to /prebuilts
+    expect(html).toMatch(/href="\/prebuilts"[\s\S]*?>[\s\S]*?View More/);
   });
 
   it("renders View More header action meeting 44px tap target height", () => {
@@ -64,7 +64,7 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     const links = extractLinksFromHtml(sectionHtml);
     const headerLink = links.find(
       (l) =>
-        l.attrs.includes('href="/products?category=Pre-Built+Systems"') &&
+        l.attrs.includes('href="/prebuilts"') &&
         l.content.includes("View More") &&
         !l.content.includes("Prebuilts")
     );
@@ -72,7 +72,7 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     expect(headerLink!.attrs).toContain("min-h-[44px]");
   });
 
-  it("renders bottom View More CTA button linking to /products?category=Pre-Built+Systems with min-h-[44px]", () => {
+  it("renders bottom View More CTA button linking to /prebuilts with min-h-[44px]", () => {
     const html = renderToStaticMarkup(React.createElement(HomePage));
     const prebuiltSectionMatch = html.match(/<section[^>]*id="prebuilt"[^>]*>([\s\S]*?)<\/section>/);
     expect(prebuiltSectionMatch).not.toBeNull();
@@ -81,7 +81,7 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     const links = extractLinksFromHtml(sectionHtml);
     const bottomCta = links.find(
       (l) =>
-        l.attrs.includes('href="/products?category=Pre-Built+Systems"') &&
+        l.attrs.includes('href="/prebuilts"') &&
         l.content.includes("View More Prebuilts")
     );
     expect(bottomCta).toBeDefined();

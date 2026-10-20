@@ -385,9 +385,6 @@ export default function HomePage() {
     <section key="prebuilt_systems" id="prebuilt" className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 pb-4 border-b border-slate-300 dark:border-white/40 gap-2">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
-            Turnkey Gaming Workstations
-          </span>
           <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">
             Pre-Configured Performance Rigs
           </h2>
@@ -396,7 +393,7 @@ export default function HomePage() {
           </p>
         </div>
         <Link
-          href="/products?category=Pre-Built+Systems"
+          href="/prebuilts"
           className="min-h-[44px] inline-flex items-center gap-1.5 text-xs font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider group"
         >
           <span>View More</span>
@@ -416,11 +413,11 @@ export default function HomePage() {
 
       <div className="mt-8 sm:mt-10 flex justify-center">
         <Link
-          href="/products?category=Pre-Built+Systems"
-          className="min-h-[44px] px-6 py-2.5 rounded-xl border border-slate-300 dark:border-white/20 hover:border-slate-400 dark:hover:border-white/40 text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all inline-flex items-center gap-2"
+          href="/prebuilts"
+          className="min-h-[44px] px-4 py-2 text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-2 group"
         >
           <span>View More Prebuilts</span>
-          <ArrowRight className="w-4 h-4" />
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
         </Link>
       </div>
     </section>
