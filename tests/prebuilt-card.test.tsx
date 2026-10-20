@@ -132,7 +132,7 @@ describe("PrebuiltSystemCard Component", () => {
     );
 
     // Scaled down frame aspect ratio and link
-    expect(html).toContain("aspect-[16/10]");
+    expect(html).toContain("aspect-[4/3.2]");
     expect(html).toContain(`href="/products/${mockRig.id}"`);
 
     // Primary and secondary images

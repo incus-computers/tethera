@@ -305,10 +305,10 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       });
     });
 
-    it("implements picture frame aspect ratio aspect-[16/10] with smooth hover crossfade", () => {
+    it("implements picture frame aspect ratio aspect-[4/3.2] with smooth hover crossfade", () => {
       const testRig = PREBUILT_SYSTEMS[0];
       const html = renderToStaticMarkup(React.createElement(PrebuiltSystemCard, { rig: testRig }));
-      expect(html).toContain("aspect-[16/10]");
+      expect(html).toContain("aspect-[4/3.2]");
       expect(html).toContain("group-hover:opacity-0");
       expect(html).toContain("group-hover:opacity-100");
     });

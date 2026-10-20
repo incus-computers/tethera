@@ -86,29 +86,29 @@ export function PrebuiltSystemCard({
         isHiddenBelowDesktop ? "hidden lg:flex" : "flex"
       }`,
     },
-    // 1. Scaled down picture frame (height does not exceed spec lines) with smooth hover crossfade
+    // 1. Full-sized uncropped PC tower showcase balanced in height with the spec sheet
     React.createElement(
       Link,
       {
         href: `/products/${rig.id}`,
         className:
-          "w-full aspect-[16/10] max-h-40 sm:max-h-44 relative overflow-hidden bg-slate-100 dark:bg-zinc-900 border-b border-slate-200/80 dark:border-white/10 block group/frame",
+          "w-full aspect-[4/3.2] max-h-64 sm:max-h-72 relative overflow-hidden bg-slate-50 dark:bg-zinc-900/60 border-b border-slate-200/80 dark:border-white/10 block group/frame",
       },
       React.createElement(Image, {
         src: primaryImage,
         alt: rig.name,
         fill: true,
-        sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
+        sizes: "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw",
         className:
-          "object-cover transition-opacity duration-500 group-hover:opacity-0",
+          "object-contain p-2 sm:p-2.5 transition-opacity duration-500 group-hover:opacity-0",
       }),
       React.createElement(Image, {
         src: secondaryImage,
         alt: `${rig.name} alternate view`,
         fill: true,
-        sizes: "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
+        sizes: "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw",
         className:
-          "object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100",
+          "object-contain p-2 sm:p-2.5 opacity-0 transition-opacity duration-500 group-hover:opacity-100",
       })
     ),
     // Card Body Container
