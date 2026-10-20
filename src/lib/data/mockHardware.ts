@@ -1,3 +1,6 @@
+import { ProductVariation } from "../db/types";
+export type { ProductVariation };
+
 export interface ComponentItem {
   id: string;
   sku: string;
@@ -6,14 +9,21 @@ export interface ComponentItem {
   category: string;
   slot: string;
   price: number;
+  originalPrice?: number | null;
   sale_price?: number | null;
   salePrice?: number | null;
+  retail_price?: number | null;
   image: string;
   images?: string[];
   inStock: boolean;
   stockCount: number;
   description?: string;
   highlights?: string[];
+  variations?: ProductVariation[];
+  variationId?: string;
+  variationName?: string;
+  parentProductId?: string;
+  selectedAttributes?: Record<string, string>;
   specs: {
     socket?: string;
     ramType?: "DDR4" | "DDR5";
@@ -43,7 +53,9 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60",
     images: [
       "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60",
-      "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60"
+      "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60",
+      "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60"
     ],
     inStock: true,
     stockCount: 14,
@@ -160,7 +172,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
   {
     id: "ram-1",
     sku: "COR-CMH32GX5M2B6000C30",
-    name: "Corsair Vengeance RGB 32GB (2x16GB) DDR5 6000MHz CL30",
+    name: "Corsair Vengeance RGB DDR5",
     brand: "Corsair",
     category: "Memory",
     slot: "ram",
@@ -168,7 +180,55 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 22,
-    specs: { ramType: "DDR5", capacity: "32GB", speed: "6000MHz" }
+    specs: { ramType: "DDR5", capacity: "32GB", speed: "6000MHz" },
+    variations: [
+      {
+        id: "ram-1-black-32",
+        productId: "ram-1",
+        name: "32GB (2x16GB) Black",
+        sku: "COR-CMH32GX5M2B6000C30",
+        price: 2299000,
+        originalPrice: 2499000,
+        stockCount: 14,
+        attributes: { Capacity: "32GB (2x16GB)", Colour: "Black" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=black",
+      },
+      {
+        id: "ram-1-white-32",
+        productId: "ram-1",
+        name: "32GB (2x16GB) White",
+        sku: "COR-CMH32GX5M2B6000C30-W",
+        price: 2349000,
+        originalPrice: 2549000,
+        stockCount: 8,
+        attributes: { Capacity: "32GB (2x16GB)", Colour: "White" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=white",
+      },
+      {
+        id: "ram-1-black-64",
+        productId: "ram-1",
+        name: "64GB (2x32GB) Black",
+        sku: "COR-CMH64GX5M2B6000C30",
+        price: 4399000,
+        stockCount: 5,
+        attributes: { Capacity: "64GB (2x32GB)", Colour: "Black" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=black",
+      },
+      {
+        id: "ram-1-white-64",
+        productId: "ram-1",
+        name: "64GB (2x32GB) White",
+        sku: "COR-CMH64GX5M2B6000C30-W",
+        price: 4449000,
+        stockCount: 0,
+        attributes: { Capacity: "64GB (2x32GB)", Colour: "White" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=white",
+      },
+    ],
   },
   {
     id: "ram-2",
@@ -186,7 +246,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
   {
     id: "ram-3",
     sku: "COR-CMK32GX4M2D3600C18",
-    name: "Corsair Vengeance LPX 32GB (2x16GB) DDR4 3600MHz CL18",
+    name: "Corsair Vengeance LPX DDR4",
     brand: "Corsair",
     category: "Memory",
     slot: "ram",
@@ -194,7 +254,56 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 15,
-    specs: { ramType: "DDR4", capacity: "32GB", speed: "3600MHz" }
+    specs: { ramType: "DDR4", capacity: "32GB", speed: "3600MHz" },
+    variations: [
+      {
+        id: "ram-3-black-16",
+        productId: "ram-3",
+        name: "16GB (2x8GB) Black",
+        sku: "COR-CMK16GX4M2D3600C18",
+        price: 850000,
+        originalPrice: 950000,
+        stockCount: 25,
+        attributes: { Capacity: "16GB (2x8GB)", Colour: "Black" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=black",
+      },
+      {
+        id: "ram-3-black-32",
+        productId: "ram-3",
+        name: "32GB (2x16GB) Black",
+        sku: "COR-CMK32GX4M2D3600C18-B",
+        price: 1399000,
+        originalPrice: 1599000,
+        stockCount: 15,
+        attributes: { Capacity: "32GB (2x16GB)", Colour: "Black" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=black",
+      },
+      {
+        id: "ram-3-white-32",
+        productId: "ram-3",
+        name: "32GB (2x16GB) White",
+        sku: "COR-CMK32GX4M2D3600C18-W",
+        price: 1449000,
+        originalPrice: 1649000,
+        stockCount: 10,
+        attributes: { Capacity: "32GB (2x16GB)", Colour: "White" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=white",
+      },
+      {
+        id: "ram-3-black-64",
+        productId: "ram-3",
+        name: "64GB (2x32GB) Black",
+        sku: "COR-CMK64GX4M2D3600C18-B",
+        price: 2799000,
+        stockCount: 0,
+        attributes: { Capacity: "64GB (2x32GB)", Colour: "Black" },
+        isActive: true,
+        image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60&variant=black",
+      },
+    ],
   },
 
   // --- Graphics Cards (GPU) ---
@@ -210,7 +319,9 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
     images: [
       "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
-      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=60"
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=60",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&auto=format&fit=crop&q=60"
     ],
     inStock: true,
     stockCount: 5,
@@ -654,7 +765,34 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
   }
 ];
 
-export const PREBUILT_SYSTEMS = [
+export interface PrebuiltSystem {
+  id: string;
+  name: string;
+  sku: string;
+  brand: string;
+  category: string;
+  cpu: string;
+  gpu: string;
+  motherboard: string;
+  ram: string;
+  storage: string;
+  cooling: string;
+  chassis: string;
+  psu: string;
+  os?: string;
+  price: number;
+  sale_price?: number;
+  image: string;
+  images: string[];
+  status: string;
+  inStock?: boolean;
+  stockCount?: number;
+  description: string;
+  highlights: string[];
+  specs: Record<string, string>;
+}
+
+export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   {
     id: "pb-1",
     name: "Tethera Apex Ryzen 7 RTX 4080S",
@@ -663,6 +801,7 @@ export const PREBUILT_SYSTEMS = [
     category: "Pre-Built Systems",
     cpu: "AMD Ryzen 7 7800X3D",
     gpu: "GeForce RTX 4080 SUPER 16GB",
+    motherboard: "ASUS ROG STRIX B650E-F GAMING WIFI",
     ram: "32GB DDR5-6000",
     storage: "2TB NVMe PCIe 4.0",
     cooling: "360mm ARGB Liquid AIO",
@@ -672,6 +811,12 @@ export const PREBUILT_SYSTEMS = [
     price: 43199000,
     sale_price: 39999000,
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80"
+    ],
     status: "In Stock at Flagship (Ready for Pickup in 60m)",
     inStock: true,
     stockCount: 3,
@@ -704,6 +849,7 @@ export const PREBUILT_SYSTEMS = [
     category: "Pre-Built Systems",
     cpu: "Intel Core i7-14700K",
     gpu: "GeForce RTX 4070 Ti SUPER 16GB",
+    motherboard: "ASUS ROG STRIX Z790-E GAMING WIFI II",
     ram: "32GB DDR5-6000",
     storage: "1TB NVMe PCIe 4.0",
     cooling: "Noctua Dual Tower Air",
@@ -711,7 +857,14 @@ export const PREBUILT_SYSTEMS = [
     psu: "850W 80+ Gold Modular",
     os: "Windows 11 Home 64-Bit Pre-installed",
     price: 35199000,
+    sale_price: 33499000,
     image: "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80"
+    ],
     status: "In Stock at Flagship (Ready for Pickup in 60m)",
     inStock: true,
     stockCount: 5,
@@ -744,14 +897,22 @@ export const PREBUILT_SYSTEMS = [
     category: "Pre-Built Systems",
     cpu: "AMD Ryzen 9 7950X 16-Core",
     gpu: "GeForce RTX 4080 SUPER 16GB",
+    motherboard: "ASUS ROG STRIX B650E-F GAMING WIFI",
     ram: "64GB DDR5-6000",
     storage: "4TB NVMe RAID",
-    cooling: "Fractal North Chalk White",
+    cooling: "360mm ARGB White Liquid AIO",
     chassis: "Lian Li O11 Dynamic EVO RGB White",
     psu: "1000W 80+ Gold Modular",
     os: "Windows 11 Pro 64-Bit Pre-installed",
     price: 51199000,
+    sale_price: 48999000,
     image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80"
+    ],
     status: "Built-to-Order (24h Express Assembly)",
     inStock: true,
     stockCount: 2,
@@ -774,6 +935,150 @@ export const PREBUILT_SYSTEMS = [
       "Power Supply": "Seasonic Focus GX-1000 1000W 80+ Gold ATX 3.0",
       "Operating System": "Windows 11 Pro 64-Bit",
       "Burn-in Testing": "48-Hour Continuous Multi-Loop Thermal Chamber Verification"
+    }
+  },
+  {
+    id: "pb-4",
+    name: "Tethera Creator Studio RTX 4070",
+    sku: "TET-CREATOR-14700",
+    brand: "Tethera Systems",
+    category: "Pre-Built Systems",
+    cpu: "Intel Core i7-14700",
+    gpu: "GeForce RTX 4070 12GB",
+    motherboard: "MSI MAG B760 TOMAHAWK WIFI",
+    ram: "32GB DDR5-5600",
+    storage: "2TB NVMe PCIe 4.0",
+    cooling: "240mm ARGB Liquid Cooler",
+    chassis: "NZXT H5 Flow Matte Black",
+    psu: "750W 80+ Gold Semi-Modular",
+    os: "Windows 11 Pro 64-Bit Pre-installed",
+    price: 28999000,
+    sale_price: 26999000,
+    image: "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80"
+    ],
+    status: "In Stock at Flagship (Ready for Pickup in 60m)",
+    inStock: true,
+    stockCount: 4,
+    description:
+      "Tailored for digital artists, 3D animators, and video editors. Combines the Intel Core i7-14700 with NVIDIA GeForce RTX 4070 12GB studio drivers for accelerated rendering in Premiere, Blender, and DaVinci Resolve.",
+    highlights: [
+      "Intel Core i7 20-core processor optimized for heavy multithreaded rendering",
+      "NVIDIA Studio Driver certified RTX 4070 12GB graphics acceleration",
+      "Ultra-fast 2TB NVMe SSD with 7000 MB/s sustained sequential read speeds",
+      "Comprehensive 2-Year Tethera Hardware Warranty and priority support"
+    ],
+    specs: {
+      "Processor (CPU)": "Intel Core i7-14700 (20 Cores, 28 Threads, up to 5.4 GHz)",
+      "Graphics (GPU)": "NVIDIA GeForce RTX 4070 12GB GDDR6X",
+      "Motherboard": "MSI MAG B760 TOMAHAWK WIFI (LGA1700, DDR5, PCIe 5.0)",
+      "Memory (RAM)": "32GB (2x16GB) Kingston Fury Beast DDR5 5600MHz",
+      "Primary SSD": "2TB Kingston KC3000 PCIe 4.0 NVMe (7,000 MB/s Read)",
+      "Liquid Cooler": "DeepCool LS520 240mm High-Performance Liquid Cooler",
+      "Case": "NZXT H5 Flow High Airflow Compact Mid-Tower Black",
+      "Power Supply": "Corsair RM750e 750W 80+ Gold Fully Modular ATX 3.0",
+      "Operating System": "Windows 11 Pro (Licensed & Pre-installed)",
+      "Burn-in Testing": "24-Hour Sustained Blender & PugetBench Stress Verification"
+    }
+  },
+  {
+    id: "pb-5",
+    name: "Tethera Stealth Compact ITX",
+    sku: "TET-ITX-7600X",
+    brand: "Tethera Systems",
+    category: "Pre-Built Systems",
+    cpu: "AMD Ryzen 5 7600X",
+    gpu: "GeForce RTX 4060 Ti 8GB",
+    motherboard: "ASUS ROG STRIX B650E-I GAMING WIFI",
+    ram: "32GB DDR5-6000",
+    storage: "1TB NVMe PCIe 4.0",
+    cooling: "240mm Low-Profile AIO",
+    chassis: "FormD T1 Black Anodized ITX",
+    psu: "750W SFX 80+ Platinum",
+    os: "Windows 11 Home 64-Bit Pre-installed",
+    price: 24999000,
+    sale_price: 22999000,
+    image: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80"
+    ],
+    status: "In Stock at Flagship (Ready for Pickup in 60m)",
+    inStock: true,
+    stockCount: 3,
+    description:
+      "Ultra-compact small-form-factor desktop designed for minimal desks and portable LAN setups. Delivers uncompromised 1080p and 1440p gaming performance inside a premium 9.95L sandwich chassis.",
+    highlights: [
+      "Sub-10 Liter ultra-compact CNC anodized aluminum enclosure",
+      "High-efficiency AMD Zen 4 architecture with low acoustic footprint",
+      "Corsair SF750 SFX Platinum power delivery for silent zero-RPM idle",
+      "Full plug-and-play setup tested with 24h thermal benching"
+    ],
+    specs: {
+      "Processor (CPU)": "AMD Ryzen 5 7600X (6 Cores, 12 Threads, up to 5.3 GHz)",
+      "Graphics (GPU)": "GeForce RTX 4060 Ti 8GB Compact Dual-Fan",
+      "Motherboard": "ASUS ROG STRIX B650E-I GAMING WIFI (Mini-ITX, DDR5, PCIe 5.0)",
+      "Memory (RAM)": "32GB (2x16GB) G.Skill Flare X5 DDR5 6000MHz CL32",
+      "Primary SSD": "1TB Samsung 990 EVO PCIe 4.0 NVMe (5,000 MB/s Read)",
+      "Liquid Cooler": "Phanteks Glacier One 240 T30 Compact AIO",
+      "Case": "FormD T1 V2.1 CNC Aluminum Sandwich Mini-ITX",
+      "Power Supply": "Corsair SF750 750W 80+ Platinum SFX Modular",
+      "Operating System": "Windows 11 Home 64-Bit",
+      "Burn-in Testing": "24-Hour Small-Form-Factor Thermal Loop Verification"
+    }
+  },
+  {
+    id: "pb-6",
+    name: "Tethera Esports Valkyrie",
+    sku: "TET-VALK-7800X3D",
+    brand: "Tethera Systems",
+    category: "Pre-Built Systems",
+    cpu: "AMD Ryzen 7 7800X3D",
+    gpu: "GeForce RTX 4070 SUPER 12GB",
+    motherboard: "MSI MAG B650 TOMAHAWK WIFI",
+    ram: "32GB DDR5-6000",
+    storage: "1TB NVMe PCIe 4.0",
+    cooling: "Thermalright Peerless Assassin 120 SE",
+    chassis: "Montech King 95 Pro White",
+    psu: "750W 80+ Gold ATX 3.0",
+    os: "Windows 11 Home 64-Bit Pre-installed",
+    price: 31499000,
+    sale_price: 29999000,
+    image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80"
+    ],
+    status: "In Stock at Flagship (Ready for Pickup in 60m)",
+    inStock: true,
+    stockCount: 6,
+    description:
+      "The competitive esports standard. Purpose-built for maximum 1% lows and ultra-high framerates in Valorant, CS2, and Apex Legends. Powered by 3D V-Cache and RTX 4070 SUPER inside a curved panoramic tempered glass case.",
+    highlights: [
+      "Unmatched 1080p and 1440p esports framerates with Ryzen 7800X3D",
+      "Dual-chamber chassis with curved panoramic tempered glass panels",
+      "High static pressure air cooling tuned for whisper-quiet competition",
+      "Tethera Esports calibrated BIOS with memory latency optimization"
+    ],
+    specs: {
+      "Processor (CPU)": "AMD Ryzen 7 7800X3D (8 Cores, 16 Threads, up to 5.0 GHz)",
+      "Graphics (GPU)": "MSI GeForce RTX 4070 SUPER 12GB Gaming X Slim White",
+      "Motherboard": "MSI MAG B650 TOMAHAWK WIFI (AM5, DDR5, PCIe 5.0)",
+      "Memory (RAM)": "32GB (2x16GB) TeamGroup T-Force Delta RGB DDR5 6000MHz",
+      "Primary SSD": "1TB Kingston KC3000 PCIe 4.0 NVMe (7,000 MB/s Read)",
+      "Air Cooler": "Thermalright Peerless Assassin 120 SE White Dual-Tower",
+      "Case": "Montech King 95 Pro Curved Tempered Glass White",
+      "Power Supply": "MSI MAG A750GL 750W 80+ Gold PCIe 5.0 ATX 3.0",
+      "Operating System": "Windows 11 Home 64-Bit",
+      "Burn-in Testing": "24-Hour Competitive Esports Framerate and Thermal Verification"
     }
   }
 ];
@@ -856,6 +1161,90 @@ export function getProductOrPrebuiltById(id: string): (ComponentItem | typeof PR
   return PREBUILT_SYSTEMS.find((pb) => pb.id === id);
 }
 
+/**
+ * Resolves the full 4-image hardware gallery queue for any product or prebuilt system.
+ * Matches the exact queue displayed on the product detail page (/products/[id]).
+ */
+export function getProductGalleryImages(product?: {
+  category?: string;
+  image?: string;
+  images?: string[];
+} | null): string[] {
+  if (!product) return [];
+
+  const rawImages =
+    product.images && Array.isArray(product.images) && product.images.length > 0
+      ? product.images.filter(Boolean)
+      : product.image
+      ? [product.image]
+      : [];
+
+  if (rawImages.length >= 4) {
+    return rawImages;
+  }
+
+  const category = (product.category || "").toLowerCase();
+  const isGpu = category.includes("graphics") || category.includes("gpu");
+  const isCpu = category.includes("processor") || category.includes("cpu");
+  const isMb = category.includes("motherboard");
+  const isRam = category.includes("memory") || category.includes("ram");
+
+  const categoryAngles: string[] = isGpu
+    ? [
+        "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      ]
+    : isCpu
+    ? [
+        "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+      ]
+    : isMb
+    ? [
+        "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      ]
+    : isRam
+    ? [
+        "https://images.unsplash.com/photo-1562976540-1502c2145186?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
+      ]
+    : [
+        "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&auto=format&fit=crop&q=80",
+        "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      ];
+
+  const result = [...rawImages];
+  for (const shot of categoryAngles) {
+    if (result.length >= 4) break;
+    if (!result.includes(shot)) {
+      result.push(shot);
+    }
+  }
+  return result;
+}
+
+/**
+ * Returns the second picture in the product's gallery queue, matching what the user sees
+ * on the product detail page (/products/[id]).
+ */
+export function getSecondProductImage(product?: {
+  category?: string;
+  image?: string;
+  images?: string[];
+} | null): string | null {
+  const gallery = getProductGalleryImages(product);
+  if (gallery.length > 1 && gallery[1] && gallery[1] !== gallery[0]) {
+    return gallery[1];
+  }
+  return null;
+}
+
 export interface ProductOverviewInfo {
   summary: string;
   paragraphs: string[];
@@ -883,7 +1272,11 @@ export function getProductOverviewData(
   }
 
   // If component has its own custom description
-  if ("description" in product && product.description) {
+  if (
+    "description" in product &&
+    product.description &&
+    !product.description.includes("high performance PC hardware.")
+  ) {
     return {
       summary: product.description,
       paragraphs: [
@@ -900,7 +1293,13 @@ export function getProductOverviewData(
   }
 
   // Category-tailored dynamic rich descriptions for all components
-  const category = (product.category || "").toLowerCase();
+  const category = (
+    product.category ||
+    (product as any).category_slug ||
+    (product as any).slot ||
+    (product as any).pc_builder_slot ||
+    ""
+  ).toLowerCase();
   const name = product.name;
   const brand = product.brand;
 
@@ -1165,4 +1564,71 @@ export const SERVICE_TIERS = [
     ]
   }
 ];
+
+/**
+ * Formats a clean variation storefront title: Item Name - Variation 1 - Variation 2
+ * Deduplicates attributes or variation names already present in parentName.
+ */
+export function formatVariationTitle(
+  parentName: string,
+  variation: ProductVariation
+): string {
+  const attrValues = Object.values(variation.attributes || {});
+  const newAttrs = attrValues.filter(
+    (val) => val && !parentName.toLowerCase().includes(val.toLowerCase())
+  );
+
+  if (newAttrs.length > 0) {
+    return `${parentName} - ${newAttrs.join(" - ")}`;
+  }
+  if (variation.name && !parentName.toLowerCase().includes(variation.name.toLowerCase())) {
+    return `${parentName} - ${variation.name}`;
+  }
+  return parentName;
+}
+
+/**
+ * Expands products with variations into distinct items for catalog tiles and PC builder picker.
+ * Products without variations (or with no active variations) are returned unchanged.
+ */
+export function getExpandedCatalogItems(items: ComponentItem[]): ComponentItem[] {
+  const result: ComponentItem[] = [];
+  for (const item of items) {
+    const activeVariations = (item.variations || []).filter(
+      (v) => v.isActive !== false && Boolean(v.id)
+    );
+
+    if (activeVariations.length > 0) {
+      for (const variation of activeVariations) {
+        const tileName = formatVariationTitle(item.name, variation);
+        const tileImage = variation.image || item.image;
+
+        result.push({
+          ...item,
+          id: `${item.id}-var-${variation.id}`,
+          sku: variation.sku || item.sku,
+          name: tileName,
+          price: variation.price,
+          originalPrice: variation.originalPrice || item.originalPrice,
+          sale_price: variation.salePrice ?? (variation.originalPrice ? variation.price : undefined),
+          stockCount: variation.stockCount,
+          inStock: variation.stockCount > 0,
+          variationId: variation.id,
+          variationName: variation.name,
+          parentProductId: item.id,
+          selectedAttributes: variation.attributes,
+          image: tileImage,
+          images: tileImage
+            ? [tileImage, ...(item.images || []).filter((img) => img !== tileImage)]
+            : item.images,
+        });
+      }
+    } else {
+      result.push(item);
+    }
+  }
+  return result;
+}
+
+
 
