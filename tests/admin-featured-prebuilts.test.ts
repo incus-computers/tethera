@@ -84,7 +84,6 @@ describe("Admin Featured Prebuilt Systems Configuration", () => {
     const filePath = path.resolve(__dirname, "../src/lib/data/homepageConfig.ts");
     const content = fs.readFileSync(filePath, "utf-8");
     expect(content).not.toContain("\u2014");
-    expect(content).not.toContain("—");
   });
 
   it("ensures admin homepage-modules route contains zero em dashes", () => {
@@ -94,13 +93,11 @@ describe("Admin Featured Prebuilt Systems Configuration", () => {
     );
     const content = fs.readFileSync(filePath, "utf-8");
     expect(content).not.toContain("\u2014");
-    expect(content).not.toContain("—");
   });
 
   it("ensures admin page.tsx contains zero em dashes", () => {
     const filePath = path.resolve(__dirname, "../src/app/admin/page.tsx");
     const content = fs.readFileSync(filePath, "utf-8");
     expect(content).not.toContain("\u2014");
-    expect(content).not.toContain("—");
   });
 });
