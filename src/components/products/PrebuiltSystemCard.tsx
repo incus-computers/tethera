@@ -86,13 +86,13 @@ export function PrebuiltSystemCard({
         isHiddenBelowDesktop ? "hidden lg:flex" : "flex"
       }`,
     },
-    // 1. Full-sized uncropped PC tower showcase balanced in height with the spec sheet
+    // 1. Full-sized uncropped PC tower showcase with transparent background (no side gray shading)
     React.createElement(
       Link,
       {
         href: `/products/${rig.id}`,
         className:
-          "w-full aspect-[4/3.2] max-h-64 sm:max-h-72 relative overflow-hidden bg-slate-50 dark:bg-zinc-900/60 border-b border-slate-200/80 dark:border-white/10 block group/frame",
+          "w-full aspect-[4/3.2] max-h-64 sm:max-h-72 relative overflow-hidden bg-transparent block group/frame",
       },
       React.createElement(Image, {
         src: primaryImage,
