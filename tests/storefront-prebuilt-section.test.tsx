@@ -88,12 +88,12 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     expect(bottomCta!.attrs).toContain("min-h-[44px]");
   });
 
-  it("enforces viewport density with grid-cols-2 lg:grid-cols-3", () => {
+  it("enforces viewport density with grid-cols-2 lg:grid-cols-4", () => {
     const html = renderToStaticMarkup(React.createElement(HomePage));
-    expect(html).toContain("grid-cols-2 lg:grid-cols-3");
+    expect(html).toContain("grid-cols-2 lg:grid-cols-4");
   });
 
-  it("renders exactly 3 prebuilt cards with the 3rd card hidden on mobile/tablet (hidden lg:flex)", () => {
+  it("renders exactly 4 prebuilt cards with cards 3 and 4 hidden on mobile/tablet (hidden lg:flex)", () => {
     const html = renderToStaticMarkup(React.createElement(HomePage));
 
     // Extract the #prebuilt section html
@@ -108,7 +108,7 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     while ((match = articleRegex.exec(sectionHtml)) !== null) {
       cardMatches.push(match);
     }
-    expect(cardMatches.length).toBe(3);
+    expect(cardMatches.length).toBe(4);
 
     // First two cards are visible on all viewports (class contains flex, not hidden lg:flex)
     expect(cardMatches[0][1]).toContain("flex");
@@ -116,8 +116,9 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     expect(cardMatches[1][1]).toContain("flex");
     expect(cardMatches[1][1]).not.toContain("hidden lg:flex");
 
-    // Third card is strictly hidden below lg (hidden lg:flex)
+    // Third and fourth cards are strictly hidden below lg (hidden lg:flex)
     expect(cardMatches[2][1]).toContain("hidden lg:flex");
+    expect(cardMatches[3][1]).toContain("hidden lg:flex");
   });
 
   it("uses PrebuiltSystemCard rendering all 8 hardware specs and zero SKU or badge slop", () => {
@@ -150,31 +151,31 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
   });
 
   it("resolves activePrebuilts with accurate fallback logic", () => {
-    // 1. Exactly 3 custom IDs
-    const threeCustom = resolveActivePrebuilts(["pb-3", "pb-2", "pb-1"]);
-    expect(threeCustom.map((r) => r.id)).toEqual(["pb-3", "pb-2", "pb-1"]);
+    // 1. Exactly 4 custom IDs
+    const fourCustom = resolveActivePrebuilts(["pb-4", "pb-3", "pb-2", "pb-1"], PREBUILT_SYSTEMS, 4);
+    expect(fourCustom.map((r) => r.id)).toEqual(["pb-4", "pb-3", "pb-2", "pb-1"]);
 
     // 2. Only 1 custom ID: falls back with distinct items from PREBUILT_SYSTEMS
-    const oneCustom = resolveActivePrebuilts(["pb-2"]);
-    expect(oneCustom).toHaveLength(3);
+    const oneCustom = resolveActivePrebuilts(["pb-2"], PREBUILT_SYSTEMS, 4);
+    expect(oneCustom).toHaveLength(4);
     expect(oneCustom[0].id).toBe("pb-2");
-    expect(new Set(oneCustom.map((r) => r.id)).size).toBe(3);
+    expect(new Set(oneCustom.map((r) => r.id)).size).toBe(4);
 
-    // 3. Empty list: falls back to first 3 PREBUILT_SYSTEMS
-    const emptyCustom = resolveActivePrebuilts([]);
-    expect(emptyCustom).toHaveLength(3);
-    expect(emptyCustom.map((r) => r.id)).toEqual(["pb-1", "pb-2", "pb-3"]);
+    // 3. Empty list: falls back to first 4 PREBUILT_SYSTEMS
+    const emptyCustom = resolveActivePrebuilts([], PREBUILT_SYSTEMS, 4);
+    expect(emptyCustom).toHaveLength(4);
+    expect(emptyCustom.map((r) => r.id)).toEqual(["pb-1", "pb-2", "pb-3", "pb-4"]);
 
     // 4. Invalid ID with valid IDs
-    const invalidId = resolveActivePrebuilts(["pb-nonexistent", "pb-3"]);
-    expect(invalidId).toHaveLength(3);
+    const invalidId = resolveActivePrebuilts(["pb-nonexistent", "pb-3"], PREBUILT_SYSTEMS, 4);
+    expect(invalidId).toHaveLength(4);
     expect(invalidId[0].id).toBe("pb-3");
-    expect(new Set(invalidId.map((r) => r.id)).size).toBe(3);
+    expect(new Set(invalidId.map((r) => r.id)).size).toBe(4);
 
-    // 5. More than 3 IDs: truncates to first 3
-    const fourIds = resolveActivePrebuilts(["pb-4", "pb-3", "pb-2", "pb-1"]);
-    expect(fourIds).toHaveLength(3);
-    expect(fourIds.map((r) => r.id)).toEqual(["pb-4", "pb-3", "pb-2"]);
+    // 5. More than 4 IDs: truncates to first 4
+    const fiveIds = resolveActivePrebuilts(["pb-5", "pb-4", "pb-3", "pb-2", "pb-1"], PREBUILT_SYSTEMS, 4);
+    expect(fiveIds).toHaveLength(4);
+    expect(fiveIds.map((r) => r.id)).toEqual(["pb-5", "pb-4", "pb-3", "pb-2"]);
   });
 
   it("verifies src/app/page.tsx has zero em dashes across the entire file", () => {

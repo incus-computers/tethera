@@ -240,12 +240,12 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       expect(html).toContain("max-w-[1920px]");
     });
 
-    it("validates Storefront prebuilt section implements 2-col to 3-col grid (grid-cols-2 lg:grid-cols-3)", () => {
+    it("validates Storefront prebuilt section implements 2-col to 4-col grid (grid-cols-2 lg:grid-cols-4)", () => {
       const html = renderToStaticMarkup(React.createElement(HomePage));
-      expect(html).toContain("grid-cols-2 lg:grid-cols-3");
+      expect(html).toContain("grid-cols-2 lg:grid-cols-4");
     });
 
-    it("validates exactly 3 cards rendered with the 3rd card hidden on mobile/tablet (hidden lg:flex)", () => {
+    it("validates exactly 4 cards rendered with cards 3 and 4 hidden on mobile/tablet (hidden lg:flex)", () => {
       const html = renderToStaticMarkup(React.createElement(HomePage));
       const sectionMatch = html.match(/<section[^>]*id="prebuilt"[^>]*>([\s\S]*?)<\/section>/);
       expect(sectionMatch).not.toBeNull();
@@ -258,12 +258,13 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
         cardMatches.push(match);
       }
 
-      expect(cardMatches.length).toBe(3);
+      expect(cardMatches.length).toBe(4);
       expect(cardMatches[0][1]).toContain("flex");
       expect(cardMatches[0][1]).not.toContain("hidden lg:flex");
       expect(cardMatches[1][1]).toContain("flex");
       expect(cardMatches[1][1]).not.toContain("hidden lg:flex");
       expect(cardMatches[2][1]).toContain("hidden lg:flex");
+      expect(cardMatches[3][1]).toContain("hidden lg:flex");
     });
 
     it("validates PrebuiltSystemCard footer implements stacked mobile and horizontal desktop layout", () => {
@@ -304,18 +305,18 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       });
     });
 
-    it("implements picture frame aspect ratio aspect-[4/3.4] with smooth hover crossfade", () => {
+    it("implements picture frame aspect ratio aspect-[16/10] with smooth hover crossfade", () => {
       const testRig = PREBUILT_SYSTEMS[0];
       const html = renderToStaticMarkup(React.createElement(PrebuiltSystemCard, { rig: testRig }));
-      expect(html).toContain("aspect-[4/3.4]");
+      expect(html).toContain("aspect-[16/10]");
       expect(html).toContain("group-hover:opacity-0");
       expect(html).toContain("group-hover:opacity-100");
     });
   });
 
   describe("Suite 6: Homepage Modules Config & Admin API Contract", () => {
-    it("validates DEFAULT_FEATURED_PREBUILT_IDS contains exactly 3 valid prebuilt system IDs", () => {
-      expect(DEFAULT_FEATURED_PREBUILT_IDS.length).toBe(3);
+    it("validates DEFAULT_FEATURED_PREBUILT_IDS contains valid prebuilt system IDs", () => {
+      expect(DEFAULT_FEATURED_PREBUILT_IDS.length).toBe(4);
       DEFAULT_FEATURED_PREBUILT_IDS.forEach((id) => {
         const exists = PREBUILT_SYSTEMS.some((p) => p.id === id);
         expect(exists, `ID ${id} in DEFAULT_FEATURED_PREBUILT_IDS is not in PREBUILT_SYSTEMS`).toBe(true);
@@ -334,31 +335,31 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
     });
 
     it("validates resolveActivePrebuilts fallback behavior under all edge cases", () => {
-      // 1. Exactly 3 IDs
-      const exactThree = resolveActivePrebuilts(["pb-3", "pb-2", "pb-1"]);
-      expect(exactThree.map((r) => r.id)).toEqual(["pb-3", "pb-2", "pb-1"]);
+      // 1. Exactly 4 IDs
+      const exactFour = resolveActivePrebuilts(["pb-4", "pb-3", "pb-2", "pb-1"], PREBUILT_SYSTEMS, 4);
+      expect(exactFour.map((r) => r.id)).toEqual(["pb-4", "pb-3", "pb-2", "pb-1"]);
 
-      // 2. Partial list (1 ID): fills remaining 2 with distinct IDs
-      const partial = resolveActivePrebuilts(["pb-3"]);
-      expect(partial.length).toBe(3);
+      // 2. Partial list (1 ID): fills remaining with distinct IDs
+      const partial = resolveActivePrebuilts(["pb-3"], PREBUILT_SYSTEMS, 4);
+      expect(partial.length).toBe(4);
       expect(partial[0].id).toBe("pb-3");
-      expect(new Set(partial.map((r) => r.id)).size).toBe(3);
+      expect(new Set(partial.map((r) => r.id)).size).toBe(4);
 
-      // 3. Empty list: defaults to first 3
-      const empty = resolveActivePrebuilts([]);
-      expect(empty.length).toBe(3);
-      expect(empty.map((r) => r.id)).toEqual(["pb-1", "pb-2", "pb-3"]);
+      // 3. Empty list: defaults to first 4
+      const empty = resolveActivePrebuilts([], PREBUILT_SYSTEMS, 4);
+      expect(empty.length).toBe(4);
+      expect(empty.map((r) => r.id)).toEqual(["pb-1", "pb-2", "pb-3", "pb-4"]);
 
       // 4. Invalid IDs: ignored and filled with valid ones
-      const invalid = resolveActivePrebuilts(["invalid-id-1", "pb-2"]);
-      expect(invalid.length).toBe(3);
+      const invalid = resolveActivePrebuilts(["invalid-id-1", "pb-2"], PREBUILT_SYSTEMS, 4);
+      expect(invalid.length).toBe(4);
       expect(invalid[0].id).toBe("pb-2");
-      expect(new Set(invalid.map((r) => r.id)).size).toBe(3);
+      expect(new Set(invalid.map((r) => r.id)).size).toBe(4);
 
-      // 5. Overflow list: truncated to 3
-      const overflow = resolveActivePrebuilts(["pb-4", "pb-3", "pb-2", "pb-1"]);
-      expect(overflow.length).toBe(3);
-      expect(overflow.map((r) => r.id)).toEqual(["pb-4", "pb-3", "pb-2"]);
+      // 5. Overflow list: truncated to 4
+      const overflow = resolveActivePrebuilts(["pb-5", "pb-4", "pb-3", "pb-2", "pb-1"], PREBUILT_SYSTEMS, 4);
+      expect(overflow.length).toBe(4);
+      expect(overflow.map((r) => r.id)).toEqual(["pb-5", "pb-4", "pb-3", "pb-2"]);
     });
 
     it("validates homepage modules GET and PUT endpoints for featuredPrebuiltIds", async () => {
@@ -368,10 +369,10 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       const getJson = await getRes.json();
       expect(Array.isArray(getJson.modules)).toBe(true);
       expect(Array.isArray(getJson.featuredPrebuiltIds)).toBe(true);
-      expect(getJson.featuredPrebuiltIds.length).toBe(3);
+      expect(getJson.featuredPrebuiltIds.length).toBe(4);
 
       // Test PUT update
-      const newIds = ["pb-2", "pb-3", "pb-1"];
+      const newIds = ["pb-2", "pb-3", "pb-1", "pb-4"];
       const putReq = new NextRequest("http://localhost:3000/api/admin/homepage-modules", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

@@ -1054,8 +1054,8 @@ export default function AdminPortalPage() {
       }
       setFeaturedPrebuiltIds(featuredPrebuiltIds.filter((item) => item !== id));
     } else {
-      if (featuredPrebuiltIds.length >= 3) {
-        showToast("Maximum of 3 featured systems allowed. Remove a system first to replace it.");
+      if (featuredPrebuiltIds.length >= 4) {
+        showToast("Maximum of 4 featured systems allowed. Remove a system first to replace it.");
         return;
       }
       setFeaturedPrebuiltIds([...featuredPrebuiltIds, id]);
@@ -1063,8 +1063,8 @@ export default function AdminPortalPage() {
   };
 
   const handleSaveFeaturedPrebuilts = async () => {
-    if (featuredPrebuiltIds.length !== 3) {
-      showToast("Please select exactly 3 featured prebuilt systems.");
+    if (featuredPrebuiltIds.length !== 4) {
+      showToast("Please select exactly 4 featured prebuilt systems.");
       return;
     }
     setSavingFeaturedPrebuilts(true);
@@ -3528,7 +3528,7 @@ export default function AdminPortalPage() {
                     <span>Featured Prebuilt Systems (Homepage Showcase)</span>
                   </h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Select and rank exactly 3 prebuilt PCs to feature on the storefront. Rigs 1 and 2 appear across all devices. Rig 3 appears exclusively on Desktop and Ultrawide displays.
+                    Select and rank 4 prebuilt PCs to feature on the storefront row. Rigs 1 and 2 appear across all devices. Rigs 3 and 4 appear on Desktop and Ultrawide displays.
                   </p>
                 </div>
 
@@ -3565,15 +3565,15 @@ export default function AdminPortalPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Active Showcase Slots ({featuredPrebuiltIds.length} of 3 Selected)
+                    Active Showcase Slots ({featuredPrebuiltIds.length} of 4 Selected)
                   </h3>
                   <span className="text-[11px] text-slate-400">
                     Use Up and Down controls to change storefront priority order
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[0, 1, 2].map((slotIndex) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[0, 1, 2, 3].map((slotIndex) => {
                     const rigId = featuredPrebuiltIds[slotIndex];
                     const rig = PREBUILT_SYSTEMS.find((p) => p.id === rigId);
 
@@ -3581,12 +3581,14 @@ export default function AdminPortalPage() {
                       "1st Rig: All Devices (Mobile, Tablet, Desktop, Ultrawide)",
                       "2nd Rig: All Devices (Mobile, Tablet, Desktop, Ultrawide)",
                       "3rd Rig: Desktop and Ultrawide Only",
+                      "4th Rig: Desktop and Ultrawide Only",
                     ];
 
                     const slotBadgeStyles = [
                       "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
                       "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
                       "bg-amber-500/10 text-amber-400 border-amber-500/30",
+                      "bg-purple-500/10 text-purple-400 border-purple-500/30",
                     ];
 
                     if (!rig) {
@@ -3702,7 +3704,7 @@ export default function AdminPortalPage() {
                       Available Prebuilt Systems Catalog
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      Toggle systems to add or replace featured storefront placements. Exactly 3 rigs should be selected.
+                      Toggle systems to add or replace featured storefront placements. Exactly 4 rigs should be selected.
                     </p>
                   </div>
                   <span className="text-xs font-semibold text-slate-400">

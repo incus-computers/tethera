@@ -12,10 +12,10 @@ import { PREBUILT_SYSTEMS } from "../src/lib/data/mockHardware";
 import { GET, PUT } from "../src/app/api/admin/homepage-modules/route";
 
 describe("Admin Featured Prebuilt Systems Configuration", () => {
-  it("exports DEFAULT_FEATURED_PREBUILT_IDS with exactly 3 default system IDs", () => {
+  it("exports DEFAULT_FEATURED_PREBUILT_IDS with default system IDs", () => {
     expect(DEFAULT_FEATURED_PREBUILT_IDS).toBeDefined();
     expect(Array.isArray(DEFAULT_FEATURED_PREBUILT_IDS)).toBe(true);
-    expect(DEFAULT_FEATURED_PREBUILT_IDS).toEqual(["pb-1", "pb-2", "pb-3"]);
+    expect(DEFAULT_FEATURED_PREBUILT_IDS).toEqual(["pb-1", "pb-2", "pb-3", "pb-4"]);
   });
 
   it("ensures all DEFAULT_FEATURED_PREBUILT_IDS exist in PREBUILT_SYSTEMS", () => {
@@ -50,7 +50,7 @@ describe("Admin Featured Prebuilt Systems Configuration", () => {
     expect(data.success).toBe(true);
     expect(data.featuredPrebuiltIds).toBeDefined();
     expect(Array.isArray(data.featuredPrebuiltIds)).toBe(true);
-    expect(data.featuredPrebuiltIds.length).toBe(3);
+    expect(data.featuredPrebuiltIds.length).toBe(4);
   });
 
   it("API route PUT updates and returns updated featuredPrebuiltIds", async () => {

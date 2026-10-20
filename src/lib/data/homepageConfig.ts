@@ -27,7 +27,7 @@ export interface CustomPcHeroConfig {
   imageDescription: string;
 }
 
-export const DEFAULT_FEATURED_PREBUILT_IDS: string[] = ["pb-1", "pb-2", "pb-3"];
+export const DEFAULT_FEATURED_PREBUILT_IDS: string[] = ["pb-1", "pb-2", "pb-3", "pb-4"];
 
 export interface HomepageLayoutConfig {
   modules: HomepageModuleItem[];
@@ -97,21 +97,23 @@ export const DEFAULT_HOMEPAGE_LAYOUT: HomepageLayoutConfig = {
 };
 
 export function resolveActivePrebuilts(
-  featuredIds: string[],
-  catalog: PrebuiltSystem[] = PREBUILT_SYSTEMS
+  featuredIds?: string[],
+  catalog: PrebuiltSystem[] = PREBUILT_SYSTEMS,
+  limit: number = 4
 ): PrebuiltSystem[] {
-  const resolved = featuredIds
+  const ids = Array.isArray(featuredIds) ? featuredIds : [];
+  const resolved = ids
     .map((id) => catalog.find((p) => p.id === id))
     .filter((p): p is PrebuiltSystem => Boolean(p));
 
-  if (resolved.length >= 3) return resolved.slice(0, 3);
+  if (resolved.length >= limit) return resolved.slice(0, limit);
   const fallback = [...resolved];
   for (const p of catalog) {
     if (!fallback.some((item) => item.id === p.id)) {
       fallback.push(p);
     }
-    if (fallback.length >= 3) break;
+    if (fallback.length >= limit) break;
   }
-  return fallback.slice(0, 3);
+  return fallback.slice(0, limit);
 }
 

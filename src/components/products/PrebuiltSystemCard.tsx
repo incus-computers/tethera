@@ -12,14 +12,17 @@ import { formatRupiah } from "../../lib/utils/currency";
 export interface PrebuiltSystemCardProps {
   rig: PrebuiltSystem | (typeof PREBUILT_SYSTEMS)[0];
   isThirdCard?: boolean;
+  isDesktopOnly?: boolean;
   onAddToCart?: (rig: PrebuiltSystem) => void;
 }
 
 export function PrebuiltSystemCard({
   rig,
   isThirdCard = false,
+  isDesktopOnly = false,
   onAddToCart,
 }: PrebuiltSystemCardProps): JSX.Element {
+  const isHiddenBelowDesktop = isDesktopOnly || isThirdCard;
   const rawSale = (rig as any).sale_price;
   const hasDiscount = Boolean(rawSale && rawSale < rig.price);
   const activePrice = hasDiscount ? rawSale : rig.price;
@@ -80,16 +83,16 @@ export function PrebuiltSystemCard({
     "article",
     {
       className: `group flex-col bg-white dark:bg-zinc-950 rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden transition-shadow hover:shadow-lg dark:hover:shadow-zinc-900/50 ${
-        isThirdCard ? "hidden lg:flex" : "flex"
+        isHiddenBelowDesktop ? "hidden lg:flex" : "flex"
       }`,
     },
-    // 1. Picture Frame with smooth hover crossfade and zero badges (fills top of container without gaps)
+    // 1. Scaled down picture frame (height does not exceed spec lines) with smooth hover crossfade
     React.createElement(
       Link,
       {
         href: `/products/${rig.id}`,
         className:
-          "w-full aspect-[4/3.4] relative overflow-hidden bg-slate-100 dark:bg-zinc-900 border-b border-slate-200/80 dark:border-white/10 block group/frame",
+          "w-full aspect-[16/10] max-h-40 sm:max-h-44 relative overflow-hidden bg-slate-100 dark:bg-zinc-900 border-b border-slate-200/80 dark:border-white/10 block group/frame",
       },
       React.createElement(Image, {
         src: primaryImage,
