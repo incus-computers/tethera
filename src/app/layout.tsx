@@ -1,10 +1,17 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { DM_Sans } from "next/font/google";
 import { PersistentHeader } from "../components/navigation/PersistentHeader";
 import { FloatingWhatsAppWidget } from "../components/whatsapp/FloatingWhatsAppWidget";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Phone, Mail, ShieldCheck, Store, Clock } from "lucide-react";
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Tethera | Custom PC Builder & High-Performance Hardware",
@@ -18,8 +25,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full bg-slate-50 dark:bg-zinc-950" suppressHydrationWarning>
+    <html lang="en" className={`h-full bg-slate-50 dark:bg-zinc-950 ${dmSans.variable} font-sans`} suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
+          rel="stylesheet"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -37,7 +50,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-900 dark:selection:bg-zinc-100 selection:text-white dark:selection:text-zinc-900 w-full max-w-full" suppressHydrationWarning>
+      <body className={`min-h-full flex flex-col bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-900 dark:selection:bg-zinc-100 selection:text-white dark:selection:text-zinc-900 w-full max-w-full ${dmSans.className}`} suppressHydrationWarning>
         {/* Persistent 3-Tier Navigation Header */}
         <PersistentHeader />
 
@@ -51,9 +64,9 @@ export default function RootLayout({
         />
 
         {/* Footer (Dark Mode Responsive) */}
-        <footer className="bg-white dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800/80 mt-16 w-full max-w-full overflow-x-hidden">
+        <footer className="bg-white dark:bg-zinc-950 border-t border-slate-300 dark:border-white/40 mt-16 w-full max-w-full overflow-x-hidden">
           <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-12">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-200 dark:border-zinc-800">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pb-10 border-b border-slate-300 dark:border-white/30">
               {/* Brand Col */}
               <div className="space-y-3">
                 <Link href="/" className="inline-block group py-0.5">
