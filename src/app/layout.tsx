@@ -1,15 +1,87 @@
 import "./globals.css";
+import "@fontsource/open-sauce-one/index.css";
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { PersistentHeader } from "../components/navigation/PersistentHeader";
 import { FloatingWhatsAppWidget } from "../components/whatsapp/FloatingWhatsAppWidget";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Phone, Mail, ShieldCheck, Store, Clock } from "lucide-react";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
+const openSauceOne = localFont({
+  src: [
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-300-normal.woff2",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-300-italic.woff2",
+      weight: "300",
+      style: "italic",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-400-normal.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-400-italic.woff2",
+      weight: "400",
+      style: "italic",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-500-normal.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-500-italic.woff2",
+      weight: "500",
+      style: "italic",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-600-normal.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-600-italic.woff2",
+      weight: "600",
+      style: "italic",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-700-normal.woff2",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-700-italic.woff2",
+      weight: "700",
+      style: "italic",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-800-normal.woff2",
+      weight: "800",
+      style: "normal",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-800-italic.woff2",
+      weight: "800",
+      style: "italic",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-900-normal.woff2",
+      weight: "900",
+      style: "normal",
+    },
+    {
+      path: "../fonts/open-sauce-one/open-sauce-one-latin-900-italic.woff2",
+      weight: "900",
+      style: "italic",
+    },
+  ],
+  variable: "--font-open-sauce-one",
   display: "swap",
 });
 
@@ -25,13 +97,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`h-full bg-slate-50 dark:bg-zinc-950 ${dmSans.variable} font-sans`} suppressHydrationWarning>
+    <html lang="en" className={`h-full bg-slate-50 dark:bg-zinc-950 ${openSauceOne.variable} font-sans`} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
           rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@fontsource/open-sauce-one@5.3.0/index.css"
         />
         <script
           dangerouslySetInnerHTML={{
@@ -50,7 +121,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`min-h-full flex flex-col bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-900 dark:selection:bg-zinc-100 selection:text-white dark:selection:text-zinc-900 w-full max-w-full ${dmSans.className}`} suppressHydrationWarning>
+      <body className={`min-h-full flex flex-col bg-slate-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 selection:bg-zinc-900 dark:selection:bg-zinc-100 selection:text-white dark:selection:text-zinc-900 w-full max-w-full ${openSauceOne.className}`} suppressHydrationWarning>
         {/* Persistent 3-Tier Navigation Header */}
         <PersistentHeader />
 

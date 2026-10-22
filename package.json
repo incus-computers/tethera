@@ -11,6 +11,7 @@
     "db:seed": "npx tsx scripts/seed-supabase.ts"
   },
   "dependencies": {
+    "@fontsource/open-sauce-one": "^5.3.0",
     "@supabase/supabase-js": "^2.45.6",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.453.0",

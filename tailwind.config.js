@@ -27,7 +27,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['var(--font-dm-sans)', 'DM Sans', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['var(--font-open-sauce-one)', 'Open Sauce One', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
     },
   },
