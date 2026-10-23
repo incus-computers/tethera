@@ -511,7 +511,7 @@ export default function HomePage() {
 
                     {item.stockCount <= 0 && (
                       <div className="absolute top-2 left-2 z-10 pointer-events-none">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-black tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-normal tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
                           Out of Stock
                         </span>
                       </div>
@@ -537,7 +537,7 @@ export default function HomePage() {
                     >
                       <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-md hover:shadow-lg transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
                         <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover/cart:rotate-90" />
-                        <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
+                        <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-normal transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
                           Add to Cart
                         </span>
                       </div>
@@ -545,7 +545,7 @@ export default function HomePage() {
                   </div>
 
                   <Link href={itemHref} className="block">
-                    <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-tight group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                    <h4 className="text-sm sm:text-base font-normal text-zinc-900 dark:text-zinc-100 line-clamp-2 leading-tight group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
                       {item.name}
                     </h4>
                   </Link>
@@ -556,11 +556,11 @@ export default function HomePage() {
                 <div className="flex items-baseline justify-between gap-2">
                   {/* Left Column: Current Price & Discount Badge */}
                   <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
-                    <span className="text-sm sm:text-lg font-black text-zinc-900 dark:text-zinc-100 leading-tight">
+                    <span className="text-sm sm:text-lg font-normal text-zinc-900 dark:text-zinc-100 leading-tight">
                       {formatRupiah(item.sale_price && item.sale_price < item.price ? item.sale_price : item.price)}
                     </span>
                     {item.sale_price && item.sale_price < item.price && (
-                      <span className="text-[10px] sm:text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight shrink-0">
+                      <span className="text-[10px] sm:text-xs font-normal text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight shrink-0">
                         -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
                       </span>
                     )}
@@ -570,7 +570,7 @@ export default function HomePage() {
                   <div className="flex flex-col items-end text-right shrink-0">
                     {item.sale_price && item.sale_price < item.price ? (
                       <>
-                        <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none">
+                        <span className="text-[11px] sm:text-xs font-normal text-slate-400 dark:text-zinc-500 line-through leading-none">
                           {formatRupiah(item.price)}
                         </span>
                         <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500 leading-none mt-0.5">
