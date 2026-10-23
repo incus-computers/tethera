@@ -78,7 +78,7 @@ export const DEFAULT_HOMEPAGE_MODULES: HomepageModuleItem[] = [
   },
   {
     id: "prebuilt_systems",
-    name: "Pre-Configured Performance Rigs",
+    name: "Ready to Go PCs",
     description: "Turnkey assembled rigs ready for 60-minute in-store Click & Collect pickup",
     enabled: true,
   },

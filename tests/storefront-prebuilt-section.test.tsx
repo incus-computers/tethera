@@ -48,14 +48,14 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
   it("renders section header with title, subtitle, and View More navigation without turnkey label", () => {
     const html = renderToStaticMarkup(React.createElement(HomePage));
     expect(html).not.toContain("Turnkey Gaming Workstations");
-    expect(html).toContain("Pre-Configured Performance Rigs");
+    expect(html).toContain("Ready to Go PCs");
     expect(html).toContain("Assembled, stress-tested, and ready for same-day Click &amp; Collect pickup.");
 
     // Header action link must point to /prebuilts
     expect(html).toMatch(/href="\/prebuilts"[\s\S]*?>[\s\S]*?View More/);
   });
 
-  it("renders View More header action meeting 44px tap target height", () => {
+  it("renders prominent View More header action meeting 44px tap target height with bold font", () => {
     const html = renderToStaticMarkup(React.createElement(HomePage));
     const prebuiltSectionMatch = html.match(/<section[^>]*id="prebuilt"[^>]*>([\s\S]*?)<\/section>/);
     expect(prebuiltSectionMatch).not.toBeNull();
@@ -70,9 +70,10 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
     );
     expect(headerLink).toBeDefined();
     expect(headerLink!.attrs).toContain("min-h-[44px]");
+    expect(headerLink!.attrs).toContain("font-bold");
   });
 
-  it("renders bottom View More CTA button linking to /prebuilts with min-h-[44px]", () => {
+  it("ensures redundant bottom View More Prebuilts CTA is removed to avoid duplicate actions", () => {
     const html = renderToStaticMarkup(React.createElement(HomePage));
     const prebuiltSectionMatch = html.match(/<section[^>]*id="prebuilt"[^>]*>([\s\S]*?)<\/section>/);
     expect(prebuiltSectionMatch).not.toBeNull();
@@ -84,8 +85,7 @@ describe("Storefront Prebuilt Rigs Section Integration & Density Engine", () => 
         l.attrs.includes('href="/prebuilts"') &&
         l.content.includes("View More Prebuilts")
     );
-    expect(bottomCta).toBeDefined();
-    expect(bottomCta!.attrs).toContain("min-h-[44px]");
+    expect(bottomCta).toBeUndefined();
   });
 
   it("enforces viewport density with grid-cols-2 lg:grid-cols-4", () => {

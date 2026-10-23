@@ -165,7 +165,7 @@ export function PrebuiltSystemCard({
           "div",
           {
             className:
-              "text-sm sm:text-base lg:text-lg font-normal text-zinc-900 dark:text-zinc-100 whitespace-nowrap",
+              "text-sm sm:text-base lg:text-lg font-bold text-zinc-900 dark:text-zinc-100 whitespace-nowrap",
           },
           formatRupiah(activePrice)
         ),
@@ -175,7 +175,7 @@ export function PrebuiltSystemCard({
             type: "button",
             onClick: handleAddToCart,
             className:
-              "min-h-[44px] px-3 py-2 text-xs sm:text-sm font-normal text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
+              "min-h-[44px] px-3 py-2 text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
             "aria-label": `Add ${rig.name} to Cart`,
           },
           React.createElement(Plus, {

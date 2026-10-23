@@ -215,7 +215,7 @@ export default function CategoryProductsPage() {
                     >
                       <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-md hover:shadow-lg transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
                         <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover/cart:rotate-90" />
-                        <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-normal transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
+                        <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
                           Add to Cart
                         </span>
                       </div>
@@ -230,37 +230,28 @@ export default function CategoryProductsPage() {
                 </div>
 
                 <div className="mt-1 flex flex-col gap-1">
-                  {/* Price & Tax Note / Original Price Row */}
+                  {/* Price Row */}
                   <div className="flex items-baseline justify-between gap-2">
                     {/* Left Column: Current Price & Discount Badge */}
                     <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
-                      <span className="text-sm sm:text-lg font-normal text-zinc-900 dark:text-zinc-100 leading-tight">
+                      <span className="text-sm sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
                         {formatRupiah(item.sale_price && item.sale_price < item.price ? item.sale_price : item.price)}
                       </span>
                       {item.sale_price && item.sale_price < item.price && (
-                        <span className="text-[10px] sm:text-xs font-normal text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight shrink-0">
+                        <span className="text-[10px] sm:text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight shrink-0">
                           -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
                         </span>
                       )}
                     </div>
 
-                    {/* Right Column: Original Price (if discounted) & Tax Note */}
-                    <div className="flex flex-col items-end text-right shrink-0">
-                      {item.sale_price && item.sale_price < item.price ? (
-                        <>
-                          <span className="text-[11px] sm:text-xs font-normal text-slate-400 dark:text-zinc-500 line-through leading-none">
-                            {formatRupiah(item.price)}
-                          </span>
-                          <span className="text-[9px] sm:text-[10px] text-slate-400 dark:text-zinc-500 leading-none mt-0.5">
-                            incl. tax
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-[11px] sm:text-xs text-slate-400 dark:text-zinc-500 leading-none">
-                          incl. tax
+                    {/* Right Column: Original Price (if discounted) */}
+                    {item.sale_price && item.sale_price < item.price && (
+                      <div className="flex flex-col items-end text-right shrink-0">
+                        <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none">
+                          {formatRupiah(item.price)}
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

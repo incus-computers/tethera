@@ -203,18 +203,13 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       expect(headerViewMoreMatch![0]).toContain("min-h-[44px]");
     });
 
-    it("validates Storefront prebuilt section bottom CTA button meets 44px tap target height", () => {
+    it("validates Storefront prebuilt section removes redundant bottom CTA button", () => {
       const html = renderToStaticMarkup(React.createElement(HomePage));
       const sectionMatch = html.match(/<section[^>]*id="prebuilt"[^>]*>([\s\S]*?)<\/section>/);
       expect(sectionMatch).not.toBeNull();
       const sectionHtml = sectionMatch![1];
 
-      expect(sectionHtml).toContain("View More Prebuilts");
-      const bottomCtaMatches = sectionHtml.match(
-        /<a[^>]*href="\/prebuilts"[^>]*>[\s\S]*?View More Prebuilts[\s\S]*?<\/a>/
-      );
-      expect(bottomCtaMatches).not.toBeNull();
-      expect(bottomCtaMatches![0]).toContain("min-h-[44px]");
+      expect(sectionHtml).not.toContain("View More Prebuilts");
     });
 
     it("validates Admin featured prebuilts control buttons satisfy 44px minimum tap targets", () => {
