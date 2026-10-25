@@ -175,7 +175,7 @@ export function PrebuiltSystemCard({
             type: "button",
             onClick: handleAddToCart,
             className:
-              "min-h-[44px] px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#0A0B0E] bg-[#52E394] hover:brightness-105 active:scale-[0.98] rounded-md transition-all inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs",
+              "min-h-[44px] px-2 py-2 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white hover:text-[#52E394] dark:hover:text-[#52E394] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer bg-transparent border-0 active:scale-95",
             "aria-label": `Add ${rig.name} to Cart`,
           },
           React.createElement(Plus, {

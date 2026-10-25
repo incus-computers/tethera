@@ -194,10 +194,10 @@ const SPONSORS: Sponsor[] = [
 export function SponsorMarquee() {
   return (
     <section className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
-      <div className="w-full bg-slate-100/70 dark:bg-zinc-900/80 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden relative group shadow-2xs transition-colors">
-        <div className="px-4 py-2.5 flex items-center border-b border-slate-200/50 dark:border-zinc-800/80">
+      <div className="w-full bg-slate-100/70 dark:bg-zinc-900/80 border border-slate-300 dark:border-white/40 rounded-2xl overflow-hidden relative group shadow-2xs transition-colors">
+        <div className="px-4 py-2.5 flex items-center border-b border-slate-300/80 dark:border-white/40">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
             <span className="uppercase tracking-wider text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
               Featured Brand Sponsors
             </span>

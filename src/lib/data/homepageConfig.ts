@@ -37,7 +37,7 @@ export interface HomepageLayoutConfig {
 
 export const DEFAULT_CUSTOM_PC_HERO: CustomPcHeroConfig = {
   topBadge: "Jakarta Flagship Store",
-  badgeHighlight: "Same-Day Click & Collect",
+  badgeHighlight: "",
   title: "Custom Desktop PCs.",
   subtitle: "Built & Benchmarked in Jakarta.",
   description:

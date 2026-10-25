@@ -316,11 +316,30 @@ insert into public.promotions (id, code, title, description, discount_type, disc
 on conflict (code) do nothing;
 
 -- Seed Promotional Banners
-insert into public.promotional_banners (id, type, badge, badge_type, title, highlight, description, cta_text, cta_link, secondary_cta_text, secondary_cta_link, perk, bg_gradient, tag_color, is_active, display_order) values
-    ('banner-1', 'content', 'Limited Time Event', 'event', 'Tethera White Edition Build Festival', 'Free 72-Hour Rig Stress Test & Cable Combs', 'Design an all-white custom rig in our Configurator Studio this month. All white builds receive complimentary 72-hour burn-in calibration and Windows 11 Pro setup.', 'Configure White Rig', '/builder', 'Browse Pre-Builts', '/prebuilts', 'Hemat hingga Rp 3.500.000 untuk sasis putih & komponen premium', 'from-slate-50 via-white to-slate-100', 'bg-zinc-900 text-white', true, 1),
-    ('banner-2', 'image', 'Official Brand Partner', 'partner', 'ASUS ROG GeForce RTX 4080 SUPER Matrix', 'Direct Factory Sealed Inventory • In Stock', 'Flagship allocation from ASUS Indonesia. Integrated liquid cooling loop with 360mm radiator ready for 60-minute pickup or express dispatch.', 'Explore ROG Hardware', '/components/gpu', null, null, 'Full 3-Year Official Manufacturer Replacement Warranty', null, 'bg-red-600 text-white', true, 2),
-    ('banner-3', 'content', 'Flagship In Stock', 'hot', 'RTX 4070 Ti SUPER & 4080 SUPER Drop', 'Ready for Pickup at Mangga Dua in 60 Minutes', 'Direct factory-sealed stock from ASUS ROG, MSI, and Gigabyte. Reserve online with instant post-payment stock lock.', 'Shop Graphics Cards', '/components/gpu', 'View Stock', '/components', 'Guaranteed Indonesian Official Distributor Unit', 'from-emerald-950/20 via-zinc-900 to-black', 'bg-emerald-500 text-black', true, 3)
-on conflict (id) do nothing;
+insert into public.promotional_banners (id, type, badge, badge_type, title, highlight, description, cta_text, cta_link, secondary_cta_text, secondary_cta_link, image_url, perk, bg_gradient, tag_color, is_active, display_order) values
+    ('banner-1', 'content', 'Limited Time Event', 'event', 'Incus White Edition Build Festival', 'Free 72-Hour Rig Stress Test & Cable Combs', 'Design an all-white custom rig in our Configurator Studio this month. All white builds receive complimentary 72-hour burn-in calibration, custom white braided cables, and Windows 11 Pro setup.', 'Configure White Rig', '/builder', 'Browse Pre-Builts', '/prebuilts', null, 'Hemat hingga Rp 3.500.000 untuk sasis putih & komponen premium', 'from-slate-50 via-white to-slate-100', 'bg-zinc-900 text-amber-400 border border-amber-400/30', true, 1),
+    ('banner-2', 'image', 'Official Brand Partner', 'partner', 'ASUS ROG GeForce RTX 4080 SUPER Matrix', 'Direct Factory Sealed Inventory • In Stock', 'Flagship allocation from ASUS Indonesia. Integrated liquid cooling loop with 360mm radiator ready for 60-minute pickup or express dispatch.', 'Explore ROG Hardware', '/components/gpu', null, null, 'https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=1400&auto=format&fit=crop&q=80', 'Full 3-Year Official Manufacturer Replacement Warranty', null, 'bg-red-600 text-white', true, 2),
+    ('banner-3', 'content', 'Flagship In Stock', 'hot', 'RTX 4070 Ti SUPER & 4080 SUPER Drop', 'Ready for Pickup at Mangga Dua in 60 Minutes', 'Direct factory-sealed stock from ASUS ROG, MSI, and Gigabyte. Reserve online with instant post-payment stock lock, or have your custom GPU setup assembled same-day.', 'Shop Graphics Cards', '/components/gpu', 'View Stock', '/components', null, 'Zero price gouging • Full 3-Year Official replacement warranty', 'from-emerald-50/40 via-white to-slate-50', 'bg-emerald-600 text-white', true, 3),
+    ('banner-4', 'image', 'Supplier Spotlight', 'partner', 'Corsair Dominator Titanium & iCUE LINK Ecosystem', 'Smart Cable Architecture & High Frequency DDR5', 'Eliminate cable clutter with magnetic daisy-chaining. Precision-tuned DDR5-6000MHz memory profiles certified for Tethera gaming rigs.', 'View Memory & Cooling', '/components/ram', null, null, 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1400&auto=format&fit=crop&q=80', 'Genuine Corsair Direct Factory Warranty', null, 'bg-amber-500 text-zinc-950', true, 4),
+    ('banner-5', 'content', 'Bundle & Save', 'bundle', 'AMD Ryzen 7800X3D + X670E / B650', 'Diskon Langsung Rp 1.500.000 In-Cart', 'Experience the pinnacle of gaming frame rates. Pair the Ryzen 7 7800X3D with any qualifying Socket AM5 motherboard and receive an instant Rp 1.500.000 price deduction at checkout.', 'View Processor Deals', '/components/cpu', 'Matching Motherboards', '/components/motherboards', null, 'Eligible for in-store pickup & express shipping', 'from-amber-50/40 via-white to-slate-50', 'bg-amber-600 text-white', true, 5),
+    ('banner-6', 'content', 'Omnichannel Service', 'flagship', '60-Minute In-Store Click & Collect', 'Order Online • Collect in Mangga Dua Mall', 'Need parts right away? Order before 4:00 PM for 60-minute pickup from our Mangga Dua Mall Store (Lt. 3 No. 36). Secure 4-digit pickup PIN sent straight to your WhatsApp and Email upon payment.', 'Browse All Inventory', '/components', 'Store Details', '#', null, 'Free in-store counter pickup • Dedicated collection bay', 'from-sky-50/40 via-white to-slate-50', 'bg-sky-700 text-white', true, 6)
+on conflict (id) do update set
+    type = excluded.type,
+    badge = excluded.badge,
+    badge_type = excluded.badge_type,
+    title = excluded.title,
+    highlight = excluded.highlight,
+    description = excluded.description,
+    cta_text = excluded.cta_text,
+    cta_link = excluded.cta_link,
+    secondary_cta_text = excluded.secondary_cta_text,
+    secondary_cta_link = excluded.secondary_cta_link,
+    image_url = excluded.image_url,
+    perk = excluded.perk,
+    bg_gradient = excluded.bg_gradient,
+    tag_color = excluded.tag_color,
+    is_active = excluded.is_active,
+    display_order = excluded.display_order;
 
 -- -----------------------------------------------------------------------------
 -- 9. ATOMIC PAYMENT-SUCCESS STOCK RESERVATION PROCEDURE

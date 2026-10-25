@@ -3143,13 +3143,19 @@ export default function AdminPortalPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                     {/* Left preview content */}
                     <div className="lg:col-span-7 space-y-4">
-                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                        <span>{customPcHeroConfig.topBadge || "Jakarta Flagship Store"}</span>
-                        <span>•</span>
-                        <span className="text-emerald-400 font-bold">
-                          {customPcHeroConfig.badgeHighlight || "Same-Day Click & Collect"}
-                        </span>
-                      </div>
+                      {customPcHeroConfig.topBadge && (
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                          <span>{customPcHeroConfig.topBadge}</span>
+                          {customPcHeroConfig.badgeHighlight && (
+                            <>
+                              <span>•</span>
+                              <span className="text-emerald-400 font-bold">
+                                {customPcHeroConfig.badgeHighlight}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
 
                       <h3 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
                         {customPcHeroConfig.title} <br />

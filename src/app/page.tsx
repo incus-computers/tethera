@@ -279,13 +279,11 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Hero Left Content */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-[#8B949E] uppercase tracking-wider">
-              <span>{customPcHero.topBadge || "Jakarta Flagship Store"}</span>
-              <span>•</span>
-              <span className="text-[#0A0B0E] dark:text-[#52E394] bg-[#52E394]/15 px-2 py-0.5 rounded border border-[#52E394]/30 font-bold">
-                {customPcHero.badgeHighlight || "Same-Day Click & Collect"}
-              </span>
-            </div>
+            {customPcHero.topBadge && (
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-[#8B949E] uppercase tracking-wider">
+                <span>{customPcHero.topBadge}</span>
+              </div>
+            )}
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 leading-[1.1]">
               {customPcHero.title} <br />
@@ -525,7 +523,7 @@ export default function HomePage() {
                       title="Add to Cart"
                       aria-label={`Add ${item.name} to Cart`}
                     >
-                      <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-md bg-[#52E394] hover:brightness-105 text-[#0A0B0E] shadow-md transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
+                      <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-[#52E394] hover:brightness-105 text-[#0A0B0E] shadow-md transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
                         <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 stroke-[2.5] transition-transform duration-300 group-hover/cart:rotate-90" />
                         <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-semibold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
                           Add to Cart
