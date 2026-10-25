@@ -338,9 +338,9 @@ function TransactionsContent() {
 
             <Link
               href="/components"
-              className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 min-h-[44px] transition-all shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="px-4 py-2.5 rounded-md bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] text-xs font-semibold flex items-center gap-2 min-h-[44px] transition-all shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52E394]"
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
+              <ShoppingBag className="w-3.5 h-3.5 text-[#0A0B0E]" />
               <span>Shop Hardware</span>
             </Link>
           </div>
@@ -387,14 +387,14 @@ function TransactionsContent() {
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/components"
-                className="w-full sm:w-auto px-6 py-3 bg-zinc-900 hover:bg-zinc-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs min-h-[44px] flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] rounded-md text-xs font-semibold transition-all shadow-xs min-h-[44px] flex items-center justify-center gap-2"
               >
                 <span>Browse Components</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 text-[#0A0B0E]" />
               </Link>
               <Link
                 href="/builder"
-                className="w-full sm:w-auto px-6 py-3 border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-bold transition-colors min-h-[44px] flex items-center justify-center"
+                className="w-full sm:w-auto px-6 py-3 border border-slate-300 dark:border-white/15 bg-transparent hover:border-[#37baf2] text-zinc-800 dark:text-zinc-200 hover:text-[#37baf2] rounded-md text-xs font-medium transition-colors min-h-[44px] flex items-center justify-center"
               >
                 <span>Launch PC Builder</span>
               </Link>
@@ -576,7 +576,7 @@ function TransactionsContent() {
                       type="button"
                       onClick={() => handleDownloadInvoice(trx)}
                       disabled={isDownloading}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:opacity-60"
+                      className="px-4 py-2.5 rounded-md bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] text-xs font-semibold transition-all shadow-xs flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52E394] disabled:opacity-60"
                     >
                       {isDownloadSuccess ? (
                         <>

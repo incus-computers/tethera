@@ -372,7 +372,7 @@ export default function AccountPage() {
           <div className="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center mx-auto text-zinc-300 mb-4">
             <User className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-semibold text-white">Sign in to Tethera</h2>
+          <h2 className="text-xl font-semibold text-white">Sign in to Incus Computers</h2>
           <p className="text-sm text-zinc-400 mt-2 mb-6">
             Sign in to track your current orders, review order history, and update your personal details.
           </p>

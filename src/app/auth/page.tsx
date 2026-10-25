@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { CustomerAddress } from "@/lib/types/customer";
+import { IncusLogo } from "@/components/navigation/IncusLogo";
 
 type AuthMode = "signup" | "signin";
 type SignupStep = "credentials" | "otp" | "details";
@@ -412,9 +413,9 @@ export default function AuthPage() {
         <div className="text-center">
           <Link
             href="/"
-            className="inline-block text-xl font-bold tracking-tight text-white hover:text-zinc-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 rounded-sm"
+            className="inline-block hover:opacity-85 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 rounded-sm"
           >
-            TETHERA
+            <IncusLogo className="h-8 w-auto mx-auto" />
           </Link>
           <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white">
             {mode === "signup" ? "Create your customer account" : "Sign in to your account"}
@@ -879,7 +880,7 @@ export default function AuthPage() {
                         How did you get to know us?
                       </h2>
                       <p className="text-xs text-zinc-400 mt-0.5">
-                        Help us understand where you discovered Tethera.
+                        Help us understand where you discovered Incus Computers.
                       </p>
                     </div>
 

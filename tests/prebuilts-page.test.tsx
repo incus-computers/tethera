@@ -65,8 +65,8 @@ describe("Prebuilts Category Page Item Tiles and Header", () => {
     expect(html).toContain("Gaming PCs");
     expect(html).toContain("Your next great game starts here.");
     // Dual Showcase Alt Texts
-    expect(html).toContain("Tethera White Edition Gaming PC");
-    expect(html).toContain("Tethera Apex RGB Gaming PC");
+    expect(html).toContain("Incus White Edition Gaming PC");
+    expect(html).toContain("Incus Apex RGB Gaming PC");
   });
 
   it("renders Row 1 and Row 2 navigation pills", () => {
@@ -87,7 +87,7 @@ describe("Prebuilts Category Page Item Tiles and Header", () => {
     const html = renderToStaticMarkup(React.createElement(PrebuiltsPage));
     // Secondary Section Header
     expect(html).toContain("Ready-to-go gaming PCs");
-    expect(html).toContain("Prebuilt Tethera gaming PCs. Compare specifications, prices and store availability.");
+    expect(html).toContain("Prebuilt Incus gaming PCs. Compare specifications, prices and store availability.");
     // Toolbar elements
     expect(html).toContain("Category");
     expect(html).toContain("Availability");

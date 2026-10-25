@@ -284,7 +284,7 @@ function OrderSuccessContent() {
               Purchase Successful! Your Order has been received. ({currentOrder.orderNumber})
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 max-w-md mx-auto">
-              Thank you for shopping at Tethera. Your transaction has been approved by Midtrans and our warehouse team is preparing your hardware.
+              Thank you for shopping at Incus Computers. Your transaction has been approved by Midtrans and our warehouse team is preparing your hardware.
             </p>
           </div>
 
@@ -354,11 +354,11 @@ function OrderSuccessContent() {
               {/* Choice 1: Go to Transaction Page */}
               <Link
                 href="/transactions"
-                className="w-full py-3.5 px-5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2.5 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="w-full py-3.5 px-5 bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2.5 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52E394]"
               >
-                <Receipt className="w-4 h-4 shrink-0" />
+                <Receipt className="w-4 h-4 shrink-0 text-[#0A0B0E]" />
                 <span>Go to Transaction Page</span>
-                <ArrowRight className="w-4 h-4 shrink-0" />
+                <ArrowRight className="w-4 h-4 shrink-0 text-[#0A0B0E]" />
               </Link>
 
               {/* Choice 2: Download Invoice */}
@@ -366,11 +366,11 @@ function OrderSuccessContent() {
                 type="button"
                 onClick={handleDownloadInvoice}
                 disabled={isDownloading}
-                className="w-full py-3.5 px-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2.5 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
+                className="w-full py-3.5 px-5 bg-transparent border border-slate-300 dark:border-white/15 hover:border-[#37baf2] text-zinc-900 dark:text-white hover:text-[#37baf2] rounded-md text-xs sm:text-sm font-medium transition-all shadow-sm flex items-center justify-center gap-2.5 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37baf2] disabled:opacity-60"
               >
                 {downloadSuccess ? (
                   <>
-                    <Check className="w-4 h-4 shrink-0 text-white" />
+                    <Check className="w-4 h-4 shrink-0" />
                     <span>Invoice Downloaded!</span>
                   </>
                 ) : isDownloading ? (
@@ -443,7 +443,7 @@ function OrderSuccessContent() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-zinc-400 font-medium">
-                PT Tethera Komputasi Presisi • NPWP: 01.345.678.9-021.000
+                Incus Computers • NPWP: 01.345.678.9-021.000
               </p>
               <p className="text-xs text-slate-500 dark:text-zinc-400">
                 Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat 10730
@@ -616,7 +616,7 @@ function OrderSuccessContent() {
           {/* Legal Footnote */}
           <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 text-[10px] text-slate-400 dark:text-zinc-500 flex flex-col sm:flex-row justify-between items-center gap-2">
             <span>Official digital invoice issued pursuant to Indonesian tax regulations.</span>
-            <span>Thank you for choosing Tethera Systems.</span>
+            <span>Thank you for choosing Incus Computers.</span>
           </div>
         </div>
 
@@ -675,16 +675,16 @@ function OrderSuccessContent() {
                 type="button"
                 onClick={handleDownloadInvoice}
                 disabled={isDownloading}
-                className="w-full sm:w-auto py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:opacity-60"
+                className="w-full sm:w-auto py-3 px-5 rounded-md bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] font-semibold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52E394] disabled:opacity-60"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-4 h-4 text-[#0A0B0E]" />
                 <span>{downloadSuccess ? "Invoice Downloaded!" : "Download Invoice"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handlePrint}
-                className="w-full sm:w-auto py-3 px-5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                className="w-full sm:w-auto py-3 px-5 rounded-md border border-slate-300 dark:border-white/15 bg-transparent hover:border-[#37baf2] text-zinc-800 dark:text-zinc-200 hover:text-[#37baf2] font-medium text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37baf2]"
               >
                 <Printer className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                 <span>Print Tax Invoice</span>
@@ -694,7 +694,7 @@ function OrderSuccessContent() {
             <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
               <Link
                 href="/transactions"
-                className="w-full sm:w-auto py-3 px-5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-bold text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                className="w-full sm:w-auto py-3 px-5 rounded-md border border-slate-300 dark:border-white/15 bg-transparent hover:border-[#37baf2] text-zinc-800 dark:text-zinc-200 hover:text-[#37baf2] font-medium text-xs transition-colors flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37baf2]"
               >
                 <Receipt className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                 <span>Transaction Records</span>
@@ -702,7 +702,7 @@ function OrderSuccessContent() {
 
               <Link
                 href="/"
-                className="w-full sm:w-auto py-3 px-6 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                className="w-full sm:w-auto py-3 px-6 bg-transparent border border-slate-300 dark:border-white/15 hover:border-[#37baf2] text-zinc-900 dark:text-white hover:text-[#37baf2] rounded-md text-xs font-medium transition-all shadow-sm flex items-center justify-center gap-2 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37baf2]"
               >
                 <span>Back to Store</span>
                 <ArrowRight className="w-4 h-4" />

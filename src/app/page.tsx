@@ -279,20 +279,20 @@ export default function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Hero Left Content */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-[#8B949E] uppercase tracking-wider">
               <span>{customPcHero.topBadge || "Jakarta Flagship Store"}</span>
               <span>•</span>
-              <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+              <span className="text-[#0A0B0E] dark:text-[#52E394] bg-[#52E394]/15 px-2 py-0.5 rounded border border-[#52E394]/30 font-bold">
                 {customPcHero.badgeHighlight || "Same-Day Click & Collect"}
               </span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-zinc-900 dark:text-zinc-100 leading-[1.1]">
               {customPcHero.title} <br />
-              <span className="text-slate-500 dark:text-zinc-400 font-normal">{customPcHero.subtitle}</span>
+              <span className="text-slate-500 dark:text-[#8B949E] font-normal">{customPcHero.subtitle}</span>
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-600 dark:text-zinc-300 max-w-xl leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-600 dark:text-[#8B949E] max-w-xl leading-relaxed">
               {customPcHero.description}
             </p>
 
@@ -300,35 +300,35 @@ export default function HomePage() {
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link
                 href={customPcHero.primaryCtaLink || "/builder"}
-                className="min-h-[44px] px-6 py-3.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm flex items-center gap-2 uppercase tracking-wide"
+                className="min-h-[44px] px-6 py-3.5 bg-[#52E394] hover:brightness-105 text-[#0A0B0E] rounded-md text-xs sm:text-sm font-semibold transition-all shadow-sm flex items-center gap-2 uppercase tracking-wide cursor-pointer"
               >
                 <Cpu className="w-4 h-4" />
                 <span>{customPcHero.primaryCtaText || "Open PC Builder"}</span>
               </Link>
 
               <a
-                href={customPcHero.secondaryCtaLink || "https://wa.me/6281234567890?text=Hi%20Tethera%20technician,%20I'd%20like%20guidance%20on%20building%20a%20custom%20PC."}
+                href={customPcHero.secondaryCtaLink || "https://wa.me/6281234567890?text=Hi%20Incus%20Computers%20technician,%20I'd%20like%20guidance%20on%20building%20a%20custom%20PC."}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-h-[44px] px-5 py-3.5 bg-white hover:bg-slate-50 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-slate-300 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs flex items-center gap-2"
+                className="min-h-[44px] px-5 py-3.5 bg-transparent hover:border-[#37baf2] hover:text-[#37baf2] dark:hover:border-[#37baf2] dark:hover:text-[#37baf2] text-zinc-800 dark:text-zinc-200 border border-slate-300 dark:border-white/15 rounded-md text-xs sm:text-sm font-medium transition-all shadow-2xs flex items-center gap-2"
               >
-                <MessageSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <MessageSquare className="w-4 h-4 text-[#37baf2]" />
                 <span>{customPcHero.secondaryCtaText || "Chat with Technician"}</span>
               </a>
             </div>
 
             {/* Guarantees Ribbon */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-slate-300 dark:border-white/40 text-xs text-slate-600 dark:text-zinc-400">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-[#8B949E]">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <ShieldCheck className="w-4 h-4 text-[#52E394] shrink-0" />
                 <span>{customPcHero.guarantee1 || "2-Yr Return-to-Base Warranty"}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <Clock className="w-4 h-4 text-[#52E394] shrink-0" />
                 <span>{customPcHero.guarantee2 || "24h Prime95 Burn-In Test"}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <Store className="w-4 h-4 text-[#52E394] shrink-0" />
                 <span>{customPcHero.guarantee3 || "Flagship Counter Pickup"}</span>
               </div>
             </div>
@@ -336,18 +336,18 @@ export default function HomePage() {
 
           {/* Hero Right Visual Showcase */}
           <div className="lg:col-span-5">
-            <div className="relative rounded-3xl bg-white dark:bg-zinc-900 p-3 shadow-xl border border-slate-300 dark:border-white/30 overflow-hidden group">
-              <div className="relative h-72 sm:h-80 w-full rounded-2xl overflow-hidden bg-slate-100 dark:bg-zinc-800 item-frame">
+            <div className="relative rounded-2xl bg-white dark:bg-[#12141A] p-3 shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden group">
+              <div className="relative h-72 sm:h-80 w-full rounded-xl overflow-hidden bg-slate-100 dark:bg-[#1A1D24] item-frame">
                 {customPcHero.imageUrl ? (
                   <img
                     src={customPcHero.imageUrl}
-                    alt={customPcHero.imageTitle || "Tethera Custom Architecture"}
+                    alt={customPcHero.imageTitle || "Incus Custom Architecture"}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 ) : (
                   <Image
                     src="https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80"
-                    alt="Tethera Precision Custom Rig"
+                    alt="Incus Precision Custom Rig"
                     fill
                     priority
                     sizes="(max-width: 1024px) 100vw, 42vw"
@@ -358,7 +358,7 @@ export default function HomePage() {
 
                 <div className="absolute bottom-4 left-4 right-4 text-white">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest bg-emerald-500 text-zinc-950 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-bold uppercase tracking-widest bg-[#52E394] text-[#0A0B0E] px-2 py-0.5 rounded">
                       {customPcHero.imageBadge || "Flagship Hub"}
                     </span>
                     <span className="text-xs text-slate-200 font-medium">
@@ -366,7 +366,7 @@ export default function HomePage() {
                     </span>
                   </div>
                   <h3 className="text-base font-bold text-white mt-1">
-                    {customPcHero.imageTitle || "Tethera Custom Architecture"}
+                    {customPcHero.imageTitle || "Incus Custom Architecture"}
                   </h3>
                   <p className="text-xs text-slate-300">
                     {customPcHero.imageDescription || "Individually stress-tested workstations & enthusiast gaming rigs"}
@@ -394,7 +394,7 @@ export default function HomePage() {
         </div>
         <Link
           href="/prebuilts"
-          className="min-h-[44px] px-4 py-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all inline-flex items-center gap-2 group shadow-2xs self-start sm:self-auto shrink-0"
+          className="min-h-[44px] px-4 py-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-[#12141A] hover:bg-slate-50 dark:hover:bg-[#1A1D24] text-sm sm:text-base font-bold text-zinc-900 dark:text-zinc-100 hover:text-[#37baf2] dark:hover:text-[#37baf2] hover:border-[#37baf2] transition-all inline-flex items-center gap-2 group shadow-2xs self-start sm:self-auto shrink-0"
         >
           <span>View More</span>
           <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-0.5 transition-transform" />
@@ -429,9 +429,9 @@ export default function HomePage() {
             onClick={() => setIsSortOpen((prev) => !prev)}
             aria-expanded={isSortOpen}
             aria-haspopup="true"
-            className="min-h-[44px] inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500"
+            className="min-h-[44px] inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors focus-visible:outline-2 focus-visible:outline-[#37baf2]"
           >
-            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500 dark:text-[#8B949E]" />
             <span>Sort: {SORT_OPTIONS.find((o) => o.id === sortBy)?.label}</span>
             <ChevronDown
               className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
@@ -442,7 +442,7 @@ export default function HomePage() {
 
           {/* Single Column Sort Dropdown */}
           {isSortOpen && (
-            <div className="absolute right-0 top-full mt-2 z-40 w-48 sm:w-56 bg-white dark:bg-zinc-900 border border-slate-300 dark:border-white/30 rounded-2xl shadow-xl p-1.5 flex flex-col space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 top-full mt-2 z-40 w-48 sm:w-56 bg-white dark:bg-[#12141A] border border-slate-300 dark:border-white/10 rounded-2xl shadow-xl p-1.5 flex flex-col space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
               {SORT_OPTIONS.map((option) => {
                 const isSelected = sortBy === option.id;
                 return (
@@ -454,13 +454,13 @@ export default function HomePage() {
                     }}
                     className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-left flex items-center justify-between transition-colors ${
                       isSelected
-                        ? "text-zinc-950 dark:text-white bg-slate-100 dark:bg-zinc-800"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-zinc-800/50"
+                        ? "text-zinc-950 dark:text-white bg-slate-100 dark:bg-[#1A1D24]"
+                        : "text-zinc-600 dark:text-[#8B949E] hover:text-zinc-950 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#1A1D24]/50"
                     }`}
                   >
                     <span>{option.label}</span>
                     {isSelected && (
-                      <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <Check className="w-4 h-4 text-[#37baf2] shrink-0" />
                     )}
                   </button>
                 );
@@ -472,8 +472,8 @@ export default function HomePage() {
 
       {/* Product Cards Grid */}
       {paginatedComponents.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-300 dark:border-white/30 p-6">
-          <p className="text-sm font-semibold text-slate-600 dark:text-zinc-400">
+        <div className="text-center py-12 bg-white dark:bg-[#12141A] rounded-2xl border border-slate-300 dark:border-white/10 p-6">
+          <p className="text-sm font-semibold text-slate-600 dark:text-[#8B949E]">
             No items available in the catalog.
           </p>
         </div>
@@ -491,7 +491,7 @@ export default function HomePage() {
                 className="flex flex-col justify-between group transition-colors"
               >
                 <div>
-                  <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-1.5 flex items-center justify-center block bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+                  <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-1.5 flex items-center justify-center block bg-slate-100 dark:bg-[#12141A] border border-slate-200 dark:border-white/10">
                     <Link href={itemHref} className="absolute inset-0 block">
                       <ProductItemTileImage
                         item={item}
@@ -507,7 +507,7 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {/* Floating Green + Circle / Add to Cart on Bottom Right of Picture */}
+                    {/* Floating Accent Green + Circle / Add to Cart on Bottom Right of Picture */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -521,13 +521,13 @@ export default function HomePage() {
                         openCart();
                       }}
                       disabled={item.stockCount <= 0}
-                      className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                      className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37baf2]"
                       title="Add to Cart"
                       aria-label={`Add ${item.name} to Cart`}
                     >
-                      <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-md hover:shadow-lg transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
-                        <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover/cart:rotate-90" />
-                        <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
+                      <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-md bg-[#52E394] hover:brightness-105 text-[#0A0B0E] shadow-md transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
+                        <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 stroke-[2.5] transition-transform duration-300 group-hover/cart:rotate-90" />
+                        <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-semibold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
                           Add to Cart
                         </span>
                       </div>
@@ -589,7 +589,7 @@ export default function HomePage() {
       <div className="text-center pt-2">
         <Link
           href="/components"
-          className="min-h-[44px] inline-flex items-center gap-2 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors uppercase tracking-wider group focus-visible:outline-2 focus-visible:outline-emerald-500"
+          className="min-h-[44px] inline-flex items-center gap-2 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors uppercase tracking-wider group focus-visible:outline-2 focus-visible:outline-[#37baf2]"
         >
           <span>View All Items &amp; Hardware</span>
           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

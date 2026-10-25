@@ -82,7 +82,7 @@ export function PrebuiltSystemCard({
   return React.createElement(
     "article",
     {
-      className: `group flex-col bg-white dark:bg-zinc-950 rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden transition-shadow hover:shadow-lg dark:hover:shadow-zinc-900/50 ${
+      className: `group flex-col bg-white dark:bg-[#12141A] rounded-lg border border-slate-200/80 dark:border-white/10 overflow-hidden transition-all duration-200 hover:shadow-xl dark:hover:shadow-black/50 hover:border-[#37baf2]/40 ${
         isHiddenBelowDesktop ? "hidden lg:flex" : "flex"
       }`,
     },
@@ -124,7 +124,7 @@ export function PrebuiltSystemCard({
           {
             href: `/products/${rig.id}`,
             className:
-              "inline-block text-lg sm:text-xl font-normal text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors leading-snug",
+              "inline-block text-lg sm:text-xl font-normal text-zinc-900 dark:text-white hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors leading-snug",
           },
           rig.name
         )
@@ -139,12 +139,12 @@ export function PrebuiltSystemCard({
             {
               key: spec.part,
               className:
-                "flex items-start gap-2.5 text-xs sm:text-sm text-slate-600 dark:text-zinc-300 font-normal leading-normal",
+                "flex items-start gap-2.5 text-xs sm:text-sm text-slate-600 dark:text-[#8B949E] font-normal leading-normal",
             },
             React.createElement(HardwareSpecIcon, {
               part: spec.part,
               className:
-                "w-4 h-4 sm:w-5 sm:h-5 text-slate-400 dark:text-zinc-500 shrink-0 mt-0.5",
+                "w-4 h-4 sm:w-5 sm:h-5 text-slate-400 dark:text-[#555D68] shrink-0 mt-0.5",
             }),
             React.createElement(
               "span",
@@ -165,7 +165,7 @@ export function PrebuiltSystemCard({
           "div",
           {
             className:
-              "text-sm sm:text-base lg:text-lg font-bold text-zinc-900 dark:text-zinc-100 whitespace-nowrap",
+              "text-sm sm:text-base lg:text-lg font-bold text-zinc-900 dark:text-white whitespace-nowrap",
           },
           formatRupiah(activePrice)
         ),
@@ -175,11 +175,11 @@ export function PrebuiltSystemCard({
             type: "button",
             onClick: handleAddToCart,
             className:
-              "min-h-[44px] px-3 py-2 text-xs sm:text-sm font-bold text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer",
+              "min-h-[44px] px-3.5 py-2 text-xs sm:text-sm font-semibold text-[#0A0B0E] bg-[#52E394] hover:brightness-105 active:scale-[0.98] rounded-md transition-all inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer shadow-xs",
             "aria-label": `Add ${rig.name} to Cart`,
           },
           React.createElement(Plus, {
-            className: "w-4 h-4 shrink-0",
+            className: "w-4 h-4 shrink-0 stroke-[2.5]",
             "aria-hidden": true,
           }),
           React.createElement("span", null, "Add to Cart")

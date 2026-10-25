@@ -1,0 +1,131 @@
+{
+  "brand": {
+    "name": "Incus Computers",
+    "industry": "Electronics & High-Performance Computing",
+    "aesthetic": "Modern, minimalistic, precision-engineered, understated luxury",
+    "anti_aesthetic": "No neon gamer tropes, no RGB cycling, no aggressive esport typography, no heavy glowing shadows",
+    "tone_of_voice": [
+      "Precision-focused",
+      "Sophisticated",
+      "Trustworthy",
+      "Concise"
+    ]
+  },
+  "color_palette": {
+    "primary_cta": {
+      "name": "Accent Green",
+      "hex": "#52E394",
+      "rgb": "rgb(82, 227, 148)",
+      "text_contrast_color": "#0A0B0E",
+      "usage": "Primary call-to-action buttons (Buy Now, Add to Cart, Configure), primary conversion triggers, and key success indicators. Always use dark text on this button for accessibility."
+    },
+    "brand_blue": {
+      "name": "Incus Sky Blue",
+      "hex": "#37baf2",
+      "rgb": "rgb(55, 186, 242)",
+      "text_contrast_color": "#FFFFFF",
+      "usage": "Logo subtext ('COMPUTERS'), secondary interactive links, active navigation items, progress rings, and telemetry accents."
+    },
+    "neutrals": {
+      "dark_theme": {
+        "background_base": "#0A0B0E",
+        "surface_card": "#12141A",
+        "surface_elevated": "#1A1D24",
+        "border_subtle": "rgba(255, 255, 255, 0.08)",
+        "text_primary": "#FFFFFF",
+        "text_secondary": "#8B949E",
+        "text_muted": "#555D68"
+      },
+      "light_theme": {
+        "background_base": "#F8FAFC",
+        "surface_card": "#FFFFFF",
+        "surface_elevated": "#F1F5F9",
+        "border_subtle": "#E2E8F0",
+        "text_primary": "#0A0B0E",
+        "text_secondary": "#475569",
+        "text_muted": "#94A3B8"
+      }
+    }
+  },
+  "typography": {
+    "brand_display": {
+      "font_family": "Inter, Montserrat, sans-serif",
+      "style": "italic",
+      "weight": 800,
+      "casing": "uppercase",
+      "letter_spacing": "-0.03em",
+      "usage": "Logo wordmark 'INCUS', major campaign banners"
+    },
+    "headings": {
+      "font_family": "Inter, system-ui, sans-serif",
+      "style": "normal",
+      "weights": [600, 700],
+      "casing": "sentence-case",
+      "letter_spacing": "-0.02em"
+    },
+    "body_and_ui": {
+      "font_family": "Inter, system-ui, sans-serif",
+      "weights": [400, 500],
+      "line_height": 1.5,
+      "letter_spacing": "0em"
+    },
+    "sub_headers_and_monospaced": {
+      "font_family": "'JetBrains Mono', 'SF Mono', monospace",
+      "weight": 500,
+      "casing": "uppercase",
+      "letter_spacing": "0.1em",
+      "usage": "Spec callouts, SKU codes, decibel ratings, telemetry meters"
+    }
+  },
+  "ui_components": {
+    "buttons": {
+      "primary": {
+        "background": "#52E394",
+        "text_color": "#0A0B0E",
+        "font_weight": 600,
+        "border_radius": "6px",
+        "padding": "12px 24px",
+        "border": "none",
+        "hover_effect": "filter: brightness(1.08); transform: translateY(-1px);"
+      },
+      "secondary": {
+        "background": "transparent",
+        "text_color": "#FFFFFF",
+        "font_weight": 500,
+        "border_radius": "6px",
+        "padding": "12px 24px",
+        "border": "1px solid rgba(255, 255, 255, 0.15)",
+        "hover_effect": "border-color: #37baf2; color: #37baf2;"
+      },
+      "ghost_text": {
+        "color": "#37baf2",
+        "hover_color": "#52E394"
+      }
+    },
+    "cards_and_containers": {
+      "border_radius": "8px",
+      "border": "1px solid rgba(255, 255, 255, 0.08)",
+      "box_shadow": "0 4px 20px rgba(0, 0, 0, 0.25)",
+      "spacing_gap": "24px"
+    },
+    "badges_and_indicators": {
+      "status_in_stock": {
+        "background": "rgba(82, 227, 148, 0.12)",
+        "text": "#52E394",
+        "border": "1px solid rgba(82, 227, 148, 0.25)"
+      },
+      "brand_badge": {
+        "background": "rgba(55, 186, 242, 0.12)",
+        "text": "#37baf2",
+        "border": "1px solid rgba(55, 186, 242, 0.25)"
+      }
+    },
+    "iconography": {
+      "style": "Monoline, sharp, 1.5px stroke width",
+      "recommended_library": "Lucide Icons",
+      "default_color": "#8B949E",
+      "active_color": "#37baf2"
+    }
+  },
+  "ai_agent_instructions": "You are a front-end UI engineer and designer building the web presence for Incus Computers. Implement a clean, minimalist, high-end electronics ecommerce experience. Adhere to a dark matte black palette (#0A0B0E) paired with Incus Sky Blue (#37baf2) for logo accents and secondary interactions. The primary conversion CTA (Add to Cart, Buy Now, Checkout) MUST be Accent Green (#52E394) paired with dark text (#0A0B0E) for optimal contrast. Strictly avoid heavy neon glows, multi-colored gamer RGB highlights, or aggressive esports styling."
+}

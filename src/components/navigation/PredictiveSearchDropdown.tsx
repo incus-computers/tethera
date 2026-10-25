@@ -138,10 +138,10 @@ export function PredictiveSearchDropdown({ isCompact = false }: PredictiveSearch
     e.stopPropagation();
     e.preventDefault();
 
-    const activePrice =
-      (pb as any).sale_price && (pb as any).sale_price < pb.price
-        ? (pb as any).sale_price
-        : pb.price;
+    const rawSale = (pb as any).sale_price;
+    const hasDiscount = Boolean(rawSale && rawSale < pb.price);
+    const activePrice = hasDiscount ? rawSale : pb.price;
+    const originalPrice = hasDiscount ? pb.price : undefined;
 
     addCustomPC({
       id: `pb-${pb.id}-${Date.now()}`,
@@ -162,6 +162,7 @@ export function PredictiveSearchDropdown({ isCompact = false }: PredictiveSearch
         leadTime: "Ready in 60 Mins",
       },
       totalPrice: activePrice,
+      originalPrice,
       wattage: 750,
       isPrebuilt: true,
       image: pb.image,
@@ -177,7 +178,12 @@ export function PredictiveSearchDropdown({ isCompact = false }: PredictiveSearch
   const handleAddComponent = (e: React.MouseEvent, item: ComponentItem) => {
     e.stopPropagation();
     e.preventDefault();
-    addStandardItem(item);
+    const hasDiscount = Boolean(item.sale_price && item.sale_price < item.price);
+    addStandardItem(
+      hasDiscount
+        ? { ...item, price: item.sale_price!, originalPrice: item.price }
+        : item
+    );
     setAddedItemIds((prev) => ({ ...prev, [item.id]: true }));
     setTimeout(() => {
       setAddedItemIds((prev) => ({ ...prev, [item.id]: false }));
@@ -356,7 +362,7 @@ export function PredictiveSearchDropdown({ isCompact = false }: PredictiveSearch
                             aria-label={`Add ${item.name} to cart`}
                           >
                             {addedItemIds[item.id] ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <Check className="w-3.5 h-3.5 text-[#52E394]" />
                             ) : (
                               <Plus className="w-3.5 h-3.5" />
                             )}

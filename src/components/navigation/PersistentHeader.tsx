@@ -34,11 +34,13 @@ import { FlagshipStoreModal } from "./FlagshipStoreModal";
 import { PredictiveSearchDropdown } from "./PredictiveSearchDropdown";
 import { CartDrawer } from "./CartDrawer";
 import { ThemeToggle } from "./ThemeToggle";
+import { IncusLogo } from "./IncusLogo";
 import { GlobalLocationModal } from "../shipping/GlobalLocationModal";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { useLocationStore } from "../../lib/store/useLocationStore";
 import { formatRupiah } from "../../lib/utils/currency";
 import { useAuthStore } from "../../lib/store/useAuthStore";
+import { useHeaderStore } from "../../lib/store/useHeaderStore";
 
 function MonitorTowerIcon({ className = "w-5 h-5" }: { className?: string }) {
   return (
@@ -80,6 +82,7 @@ export function PersistentHeader() {
   const { userLocation, openLocationModal, selectedRate, initLocation } = useLocationStore();
   const { user, isAuthenticated, initSession, logout } = useAuthStore();
   const { openCart, getTotalItemsCount, getSubtotal, initCart } = useCartStore();
+  const { setIsCategoryBarVisible } = useHeaderStore();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -146,20 +149,23 @@ export function PersistentHeader() {
           const currentY = Math.max(0, window.scrollY);
           const diff = currentY - lastScrollYRef.current;
 
-          // Near top: always keep the category bar visible
-          if (currentY <= 20) {
+          // Near top (within or just past header height): always keep category bar visible
+          if (currentY <= 60) {
             setIsScrolled(false);
-          } else if (diff > 8 && currentY > 60) {
-            // Scrolling down past header: hide category bar
+            setIsCategoryBarVisible(true);
+          } else if (diff > 10 && currentY > 140) {
+            // Scrolling down past full header height: tuck category bar
             if (categoriesTimeoutRef.current) {
               clearTimeout(categoriesTimeoutRef.current);
               categoriesTimeoutRef.current = null;
             }
             setIsAllCategoriesOpen(false);
             setIsScrolled(true);
-          } else if (diff < -8) {
-            // Scrolling up anywhere on page: bring category bar back
+            setIsCategoryBarVisible(false);
+          } else if (diff < -15) {
+            // Deliberate upward scroll: bring category bar back
             setIsScrolled(false);
+            setIsCategoryBarVisible(true);
           }
 
           lastScrollYRef.current = currentY;
@@ -171,7 +177,7 @@ export function PersistentHeader() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [setIsCategoryBarVisible]);
 
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -196,11 +202,14 @@ export function PersistentHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white dark:bg-zinc-950 shadow-sm dark:shadow-zinc-950/40">
+    <header
+      style={{ overflowAnchor: "none" }}
+      className="sticky top-0 z-50 w-full bg-white dark:bg-zinc-950 shadow-sm dark:shadow-zinc-950/40 [overflow-anchor:none]"
+    >
       {/* ========================================================================= */}
       {/* TIER 1: Announcement Banner (Top-of-page announcement strip, persists) */}
       {/* ========================================================================= */}
-      <div className="bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800/80 w-full max-w-full overflow-hidden px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-2 text-xs">
+      <div className="bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-b border-slate-300 dark:border-white/40 w-full max-w-full overflow-hidden px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-2 text-xs">
         <div className="w-full max-w-[1920px] mx-auto flex justify-between items-center gap-2 text-[11px] sm:text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200">
             <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
@@ -208,12 +217,12 @@ export function PersistentHeader() {
           </div>
 
           <a
-            href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
+            href="https://wa.me/6281234567890?text=Hi%20Incus%20Computers%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-slate-600 dark:text-zinc-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium whitespace-nowrap"
+            className="flex items-center gap-1 text-slate-600 dark:text-[#8B949E] hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors font-medium whitespace-nowrap"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <MessageSquare className="w-3.5 h-3.5 text-[#37baf2] shrink-0" />
             <span>WhatsApp: +62 812-3456-7890</span>
           </a>
         </div>
@@ -222,7 +231,7 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 2: Main Search & Action Bar (Fixed comfortable height, does not shrink) */}
       {/* ========================================================================= */}
-      <div className="relative z-20 bg-white dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full max-w-full py-2.5 sm:py-3 shadow-xs">
+      <div className="relative z-20 bg-white dark:bg-[#0A0B0E] border-b border-slate-200 dark:border-white/10 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full max-w-full py-2.5 sm:py-3 shadow-xs">
         <div className="w-full max-w-[1920px] mx-auto flex items-center gap-3 sm:gap-4 md:gap-5 relative">
           {/* Mobile Hamburger Menu Toggle (Visible on <lg screens) */}
           <button
@@ -234,16 +243,9 @@ export function PersistentHeader() {
             <Menu className="w-5 h-5 text-zinc-800 dark:text-zinc-200" />
           </button>
 
-          {/* Brand Logo: Tethera */}
+          {/* Brand Logo: Incus Computers */}
           <Link href="/" className="flex items-center shrink-0 group py-0.5">
-            <Image
-              src="/tethera-long.png"
-              alt="Tethera"
-              width={240}
-              height={63}
-              className="h-9 sm:h-11 md:h-12 lg:h-[54px] w-auto object-contain transition-opacity group-hover:opacity-80 tethera-logo dark:brightness-0 dark:invert"
-              priority
-            />
+            <IncusLogo className="h-9 sm:h-11 md:h-12 lg:h-[50px] w-auto transition-opacity group-hover:opacity-85" />
           </Link>
 
           {/* Predictive Autocomplete Search Bar & Dropdown */}
@@ -256,7 +258,7 @@ export function PersistentHeader() {
             {/* Custom PC Builder Button (Borderless with Monitor & Tower logo) */}
             <Link
               href="/builder"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[44px] rounded-xl bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group tactile-btn"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[44px] rounded-xl bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group tactile-btn"
               aria-label="Custom PC Builder"
               title="Custom PC Builder - Configurator"
             >
@@ -268,13 +270,13 @@ export function PersistentHeader() {
             <button
               type="button"
               onClick={openCart}
-              className="relative flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="relative flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label={`Shopping cart with ${isMounted ? itemCount : 0} items`}
               title={`Shopping Cart (${isMounted ? itemCount : 0} items)`}
             >
               <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-105" />
               {isMounted && itemCount > 0 && (
-                <span className="absolute top-1 right-1 min-w-[16px] h-[16px] rounded-full bg-emerald-600 text-white font-black text-[9px] flex items-center justify-center px-1 shadow-xs pointer-events-none">
+                <span className="absolute top-1 right-1 min-w-[16px] h-[16px] rounded-full bg-[#52E394] text-[#0A0B0E] font-black text-[9px] flex items-center justify-center px-1 shadow-xs pointer-events-none">
                   {itemCount}
                 </span>
               )}
@@ -284,7 +286,7 @@ export function PersistentHeader() {
             <button
               type="button"
               onClick={() => setIsStoreModalOpen(true)}
-              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label="Flagship Store Location"
               title="Flagship Store Location (Mangga Dua Mall Lt. 3)"
             >
@@ -294,7 +296,7 @@ export function PersistentHeader() {
             {/* 3. Notifications */}
             <button
               type="button"
-              className="relative flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="relative flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label="Notifications"
               title="Notifications"
             >
@@ -305,7 +307,7 @@ export function PersistentHeader() {
             <button
               type="button"
               onClick={openLocationModal}
-              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label="Delivery Location"
               title={`Delivery to: ${isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : "Set Delivery Location"}`}
             >
@@ -318,8 +320,8 @@ export function PersistentHeader() {
             {/* 6. Profile */}
             <Link
               href={isMounted && isAuthenticated ? "/account" : "/auth"}
-              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
-              aria-label={isMounted && isAuthenticated ? "User Profile" : "Sign In to Tethera"}
+              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              aria-label={isMounted && isAuthenticated ? "User Profile" : "Sign In to Incus Computers"}
               title={isMounted && isAuthenticated ? `My Profile (${user?.fullName || "Account"})` : "Sign In"}
             >
               <User className="w-5 h-5 transition-transform group-hover:scale-105" />
@@ -337,10 +339,10 @@ export function PersistentHeader() {
         } ${
           isScrolled
             ? "-translate-y-full max-h-0 opacity-0 overflow-hidden pointer-events-none"
-            : "translate-y-0 max-h-24 opacity-100 overflow-visible pointer-events-auto"
+            : "translate-y-0 max-h-12 opacity-100 overflow-visible pointer-events-auto"
         }`}
       >
-        <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-200 dark:border-zinc-800/80 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full transition-colors">
+        <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-300 dark:border-white/40 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full transition-colors">
         {/* Mobile Category Quick Strip (<sm viewports) */}
         <div className="sm:hidden flex items-center gap-1.5 py-1 overflow-x-auto scrollbar-none w-full max-w-full">
           <Link
@@ -532,7 +534,7 @@ export function PersistentHeader() {
                     <Link
                       href="/prebuilts"
                       onClick={() => setIsAllCategoriesOpen(false)}
-                      className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-sm font-bold text-emerald-800 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-200 transition-colors tactile-item"
+                      className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-[#37baf2]/10 text-sm font-bold text-[#37baf2] transition-colors tactile-item"
                     >
                       Pre-Built Systems
                     </Link>
@@ -602,7 +604,7 @@ export function PersistentHeader() {
               </Link>
               <Link
                 href="/prebuilts"
-                className="flex items-center gap-1.5 px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100/70 dark:hover:bg-emerald-900/50 text-sm font-bold transition-colors whitespace-nowrap border border-transparent"
+                className="flex items-center gap-1.5 px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-[#37baf2] bg-[#37baf2]/10 hover:bg-[#37baf2]/20 text-sm font-bold transition-colors whitespace-nowrap border border-[#37baf2]/25"
               >
                 <span>Pre-Built Systems</span>
               </Link>
@@ -634,19 +636,13 @@ export function PersistentHeader() {
             >
               <div>
                 {/* Drawer Top Header */}
-                <div className="p-4 bg-slate-50 dark:bg-zinc-950 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between transition-colors">
+                <div className="p-4 bg-slate-50 dark:bg-[#12141A] border-b border-slate-200 dark:border-white/10 flex items-center justify-between transition-colors">
                   <Link
                     href="/"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center"
                   >
-                    <Image
-                      src="/tethera-long.png"
-                      alt="Tethera"
-                      width={140}
-                      height={36}
-                      className="h-8 w-auto object-contain tethera-logo dark:brightness-0 dark:invert"
-                    />
+                    <IncusLogo className="h-8 w-auto" />
                   </Link>
                   <button
                     type="button"
@@ -663,11 +659,11 @@ export function PersistentHeader() {
                   {isMounted && isAuthenticated && user ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 flex items-center justify-center font-bold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-[#52E394]/20 text-[#0A0B0E] dark:text-[#52E394] flex items-center justify-center font-bold text-sm">
                           {user.fullName ? user.fullName[0].toUpperCase() : "U"}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">
+                          <span className="text-[10px] font-bold text-[#52E394] uppercase tracking-wider block">
                             Logged In
                           </span>
                           <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm truncate block">
@@ -708,7 +704,7 @@ export function PersistentHeader() {
                         </div>
                         <div className="min-w-0">
                           <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate">
-                            Welcome to Tethera
+                            Welcome to Incus Computers
                           </span>
                           <span className="text-[11px] text-slate-500 dark:text-zinc-400 block truncate">
                             Sign in for order tracking
@@ -799,16 +795,16 @@ export function PersistentHeader() {
                   <Link
                     href="/prebuilts"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-200 transition-all group"
+                    className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-[#37baf2]/10 border border-[#37baf2]/25 text-zinc-900 dark:text-white transition-all group"
                   >
                     <div className="flex items-center gap-2.5">
-                      <Monitor className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <Monitor className="w-4 h-4 text-[#37baf2]" />
                       <div>
                         <div className="text-xs font-black">Pre-Built Performance PCs</div>
-                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400">24h Prime95 Benchmarked</div>
+                        <div className="text-[10px] text-[#37baf2]">24h Prime95 Benchmarked</div>
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-4 h-4 text-[#37baf2] group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                 </div>
 

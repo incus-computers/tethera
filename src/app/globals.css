@@ -6,20 +6,28 @@
 
 :root {
   --background: #F8FAFC;
-  --foreground: #18181B;
+  --foreground: #0A0B0E;
   --surface: #FFFFFF;
   --surface-subtle: #F1F5F9;
   --border: #E2E8F0;
   --border-strong: #CBD5E1;
+  --incus-green: #52E394;
+  --incus-blue: #37baf2;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
 }
 
 .dark {
-  --background: #09090B;
-  --foreground: #F4F4F5;
-  --surface: #18181B;
-  --surface-subtle: #27272A;
-  --border: rgba(255, 255, 255, 0.4);
-  --border-strong: rgba(255, 255, 255, 0.6);
+  --background: #0A0B0E;
+  --foreground: #FFFFFF;
+  --surface: #12141A;
+  --surface-subtle: #1A1D24;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --incus-green: #52E394;
+  --incus-blue: #37baf2;
+  --text-secondary: #8B949E;
+  --text-muted: #555D68;
   color-scheme: dark;
 }
 
@@ -29,14 +37,14 @@ html {
 }
 
 html.dark {
-  background-color: #09090B;
+  background-color: #0A0B0E;
   color-scheme: dark;
 }
 
 body {
   color: var(--foreground);
   background-color: var(--background);
-  font-family: var(--font-open-sauce-one), 'Open Sauce One', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-inter), 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -46,49 +54,45 @@ body {
 }
 
 .dark body {
-  background-color: #09090B;
-  color: #F4F4F5;
+  background-color: #0A0B0E;
+  color: #FFFFFF;
 }
 
-/* Dedicated Tethera logo filter: transforms dark logo to pure white in dark mode */
-.tethera-logo {
-  transition: filter 0.2s ease, opacity 0.2s ease;
+/* Incus Computers brand logo styling */
+.incus-logo {
+  transition: opacity 0.2s ease;
 }
 
-.dark .tethera-logo {
-  filter: brightness(0) invert(1) !important;
-}
-
-/* Ensure text boxes are gray with white text in dark mode */
+/* Ensure text boxes are sleek dark cards with white text in dark mode */
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
 .dark textarea,
 .dark select {
-  background-color: #27272A !important;
+  background-color: #12141A !important;
   color: #FFFFFF !important;
-  border-color: #3F3F46 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"])::placeholder,
 .dark textarea::placeholder {
-  color: #A1A1AA !important;
+  color: #8B949E !important;
 }
 
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):focus,
 .dark textarea:focus,
 .dark select:focus {
-  background-color: #27272A !important;
+  background-color: #1A1D24 !important;
   color: #FFFFFF !important;
-  border-color: #52525B !important;
+  border-color: #37baf2 !important;
 }
 
-/* Ensure all item frames and image boxes are solid dark gray with white text and clean borders in dark mode */
+/* Ensure all item frames and image boxes are clean dark cards with subtle borders in dark mode */
 .dark .item-frame,
 .dark [data-item-frame],
 .dark .product-image-frame,
 .dark .product-card-image,
 .dark [class*="item-frame"] {
-  background-color: #27272A !important;
-  border-color: #3F3F46 !important;
+  background-color: #12141A !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Custom sleek scrollbar for light theme */
@@ -109,13 +113,13 @@ body {
 
 /* Custom sleek scrollbar for dark theme */
 .dark ::-webkit-scrollbar-track {
-  background: #18181B;
+  background: #0A0B0E;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: #27272A;
+  background: #1A1D24;
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: #3F3F46;
+  background: #37baf2;
 }
 
 @layer utilities {
@@ -124,13 +128,15 @@ body {
   }
 
   /* Clean card hover state */
-  .tethera-card-hover {
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  .tethera-card-hover,
+  .incus-card-hover {
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
   }
 
-  .tethera-card-hover:hover {
-    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
-    border-color: #94a3b8;
+  .tethera-card-hover:hover,
+  .incus-card-hover:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    border-color: rgba(55, 186, 242, 0.4);
   }
 
   /* Tactile press effect for buttons and actionable elements */

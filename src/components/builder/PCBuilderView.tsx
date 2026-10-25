@@ -32,10 +32,12 @@ import { ComponentSelectModal } from "./ComponentSelectModal";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { WhatsAppInquiryButton } from "../whatsapp/WhatsAppInquiryButton";
 import { formatRupiah } from "../../lib/utils/currency";
+import { useHeaderStore } from "../../lib/store/useHeaderStore";
 
 export function PCBuilderView() {
   const [activeSlot, setActiveSlot] = useState<BuilderSlotKey | null>(null);
   const [copiedUrl, setCopiedUrl] = useState(false);
+  const { isCategoryBarVisible } = useHeaderStore();
 
   const {
     slots,
@@ -219,7 +221,7 @@ export function PCBuilderView() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-900 dark:text-zinc-100 bg-slate-200/80 dark:bg-zinc-800 px-2.5 py-0.5 rounded">
-              Tethera Precision Studio
+              Incus Precision Studio
             </span>
             <span className="text-xs text-slate-400 dark:text-zinc-400 font-medium">Auto-Compatibility Engine</span>
           </div>
@@ -384,7 +386,7 @@ export function PCBuilderView() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Assembly, Tuning & Stress-Testing Service</h3>
-                <p className="text-xs text-slate-500 dark:text-zinc-400">Every system built by Tethera undergoes thorough quality assurance</p>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">Every system built by Incus Computers undergoes thorough quality assurance</p>
               </div>
             </div>
 
@@ -426,7 +428,11 @@ export function PCBuilderView() {
         {/* ========================================================================= */}
         {/* RIGHT COLUMN: Live Technical Station & Summary (Sticky) */}
         {/* ========================================================================= */}
-        <div className="lg:col-span-4 sticky top-28 space-y-4">
+        <div
+          className={`lg:col-span-4 sticky space-y-4 transition-[top] duration-300 ease-in-out ${
+            isCategoryBarVisible ? "top-36" : "top-28"
+          }`}
+        >
           {/* Main Price & Action Card */}
           <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-md p-6 space-y-5">
             <div>
@@ -519,7 +525,7 @@ export function PCBuilderView() {
               <button
                 onClick={handleAddToCart}
                 disabled={!compatibility.isCompatible}
-                className="w-full py-3.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 font-black text-xs sm:text-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed tactile-btn active:scale-98"
+                className="w-full min-h-[44px] py-3.5 px-4 bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] font-semibold text-xs sm:text-sm rounded-md transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed tactile-btn active:scale-98"
               >
                 <ShoppingCart className="w-4 h-4" />
                 <span>Add Assembled PC to Cart</span>
@@ -530,7 +536,7 @@ export function PCBuilderView() {
                 mode="builder"
                 build={{
                   buildSlug: "custom",
-                  buildUrl: typeof window !== "undefined" ? window.location.href : "https://tethera.com/builder",
+                  buildUrl: typeof window !== "undefined" ? window.location.href : "https://incuscomputers.com/builder",
                   estimatedWattage: estimated,
                   totalPrice: formatRupiah(totalPrice),
                 }}
@@ -539,7 +545,7 @@ export function PCBuilderView() {
 
             <div className="text-[11px] text-slate-400 dark:text-zinc-400 text-center flex items-center justify-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Includes Tethera 2-Year Precision Hardware Warranty</span>
+              <span>Includes Incus 2-Year Precision Hardware Warranty</span>
             </div>
           </div>
         </div>

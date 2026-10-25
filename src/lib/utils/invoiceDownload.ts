@@ -122,7 +122,7 @@ export function generateInvoiceHtml(order: InvoiceDownloadData): string {
 <html lang="id">
 <head>
   <meta charset="utf-8">
-  <title>Tax Invoice ${order.orderNumber} - PT Tethera Komputasi Presisi</title>
+  <title>Tax Invoice ${order.orderNumber} - Incus Computers</title>
   <style>
     @media print {
       body { margin: 0; padding: 12mm; background: #fff !important; color: #000 !important; }
@@ -233,11 +233,11 @@ export function generateInvoiceHtml(order: InvoiceDownloadData): string {
     <table class="header-table">
       <tr>
         <td>
-          <div class="company-title">PT TETHERA KOMPUTASI PRESISI</div>
+          <div class="company-title">INCUS COMPUTERS</div>
           <div class="company-subtitle">
             NPWP: 01.345.678.9-021.000<br>
             Mangga Dua Mall Lt. 3 No. 36, Jl. Mangga Dua Raya, Jakarta Pusat 10730<br>
-            Email: billing@tethera.com | Tel: +62 21 6230 8899
+            Email: billing@incuscomputers.com | Tel: +62 21 6230 8899
           </div>
         </td>
         <td style="text-align: right;">
@@ -314,9 +314,9 @@ export function generateInvoiceHtml(order: InvoiceDownloadData): string {
     </div>
 
     <div class="footer">
-      Official digital tax invoice issued by PT Tethera Komputasi Presisi pursuant to Indonesian tax regulations.<br>
+      Official digital tax invoice issued by Incus Computers pursuant to Indonesian tax regulations.<br>
       A copy of this invoice has been sent to ${order.customer?.email || "your registered email"}.<br>
-      For technical support or warranty validation, visit tethera.com or contact support@tethera.com.
+      For technical support or warranty validation, visit incuscomputers.com or contact support@incuscomputers.com.
     </div>
   </div>
 </body>
@@ -335,7 +335,7 @@ export function downloadInvoiceFile(order: InvoiceDownloadData): void {
   const anchor = document.createElement("a");
 
   anchor.href = url;
-  anchor.download = `Invoice-${order.orderNumber || "Tethera"}.html`;
+  anchor.download = `Invoice-${order.orderNumber || "Incus"}.html`;
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);

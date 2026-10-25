@@ -795,9 +795,9 @@ export interface PrebuiltSystem {
 export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   {
     id: "pb-1",
-    name: "Tethera Apex Ryzen 7 RTX 4080S",
-    sku: "TET-APEX-7800X3D",
-    brand: "Tethera Systems",
+    name: "Incus Apex Ryzen 7 RTX 4080S",
+    sku: "INC-APEX-7800X3D",
+    brand: "Incus Computers",
     category: "Pre-Built Systems",
     cpu: "AMD Ryzen 7 7800X3D",
     gpu: "GeForce RTX 4080 SUPER 16GB",
@@ -826,7 +826,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
       "4K Ultra Gaming & High-FPS Esports Benchmark Winner",
       "AMD 3D V-Cache Technology for unrivaled gaming speeds",
       "Panoramic dual-chamber chassis with precision cable routing",
-      "2-Year Tethera Comprehensive Hardware Warranty & Express Support"
+      "2-Year Incus Comprehensive Hardware Warranty & Express Support"
     ],
     specs: {
       "Processor (CPU)": "AMD Ryzen 7 7800X3D (8 Cores, 16 Threads, up to 5.0 GHz)",
@@ -843,9 +843,9 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-2",
-    name: "Tethera Kinetic Core i7 RTX 4070Ti",
-    sku: "TET-KIN-14700K",
-    brand: "Tethera Systems",
+    name: "Incus Kinetic Core i7 RTX 4070Ti",
+    sku: "INC-KIN-14700K",
+    brand: "Incus Computers",
     category: "Pre-Built Systems",
     cpu: "Intel Core i7-14700K",
     gpu: "GeForce RTX 4070 Ti SUPER 16GB",
@@ -891,9 +891,9 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-3",
-    name: "Tethera Minimalist White Workstation",
-    sku: "TET-MIN-7950X",
-    brand: "Tethera Systems",
+    name: "Incus Minimalist White Workstation",
+    sku: "INC-MIN-7950X",
+    brand: "Incus Computers",
     category: "Pre-Built Systems",
     cpu: "AMD Ryzen 9 7950X 16-Core",
     gpu: "GeForce RTX 4080 SUPER 16GB",
@@ -922,7 +922,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
       "16 High-Performance Cores and 32 threads running up to 5.7 GHz",
       "Massive 64GB high-bandwidth DDR5 memory capacity",
       "Tier-1 Seasonic 1000W ATX 3.0 PCIe 5.0 power delivery",
-      "Tethera White Glove express workbench delivery"
+      "Incus White Glove express workbench delivery"
     ],
     specs: {
       "Processor (CPU)": "AMD Ryzen 9 7950X (16 Cores, 32 Threads, up to 5.7 GHz)",
@@ -939,9 +939,9 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-4",
-    name: "Tethera Creator Studio RTX 4070",
-    sku: "TET-CREATOR-14700",
-    brand: "Tethera Systems",
+    name: "Incus Creator Studio RTX 4070",
+    sku: "INC-CREATOR-14700",
+    brand: "Incus Computers",
     category: "Pre-Built Systems",
     cpu: "Intel Core i7-14700",
     gpu: "GeForce RTX 4070 12GB",
@@ -970,7 +970,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
       "Intel Core i7 20-core processor optimized for heavy multithreaded rendering",
       "NVIDIA Studio Driver certified RTX 4070 12GB graphics acceleration",
       "Ultra-fast 2TB NVMe SSD with 7000 MB/s sustained sequential read speeds",
-      "Comprehensive 2-Year Tethera Hardware Warranty and priority support"
+      "Comprehensive 2-Year Incus Hardware Warranty and priority support"
     ],
     specs: {
       "Processor (CPU)": "Intel Core i7-14700 (20 Cores, 28 Threads, up to 5.4 GHz)",
@@ -987,9 +987,9 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-5",
-    name: "Tethera Stealth Compact ITX",
-    sku: "TET-ITX-7600X",
-    brand: "Tethera Systems",
+    name: "Incus Stealth Compact ITX",
+    sku: "INC-ITX-7600X",
+    brand: "Incus Computers",
     category: "Pre-Built Systems",
     cpu: "AMD Ryzen 5 7600X",
     gpu: "GeForce RTX 4060 Ti 8GB",
@@ -1035,9 +1035,9 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-6",
-    name: "Tethera Esports Valkyrie",
-    sku: "TET-VALK-7800X3D",
-    brand: "Tethera Systems",
+    name: "Incus Valkyrie",
+    sku: "INC-VALK-7800X3D",
+    brand: "Incus Computers",
     category: "Pre-Built Systems",
     cpu: "AMD Ryzen 7 7800X3D",
     gpu: "GeForce RTX 4070 SUPER 12GB",
@@ -1066,7 +1066,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
       "Unmatched 1080p and 1440p esports framerates with Ryzen 7800X3D",
       "Dual-chamber chassis with curved panoramic tempered glass panels",
       "High static pressure air cooling tuned for whisper-quiet competition",
-      "Tethera Esports calibrated BIOS with memory latency optimization"
+      "Incus Precision calibrated BIOS with memory latency optimization"
     ],
     specs: {
       "Processor (CPU)": "AMD Ryzen 7 7800X3D (8 Cores, 16 Threads, up to 5.0 GHz)",
