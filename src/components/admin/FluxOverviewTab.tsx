@@ -375,15 +375,19 @@ export function FluxOverviewTab({
     const list = weeklyMetrics.dailyBreakdown;
     const len = Math.max(1, list.length);
     return list.map((day, idx) => {
-      const x = Math.round(35 + (idx * 630) / Math.max(1, len - 1));
+      // Align x to the exact mathematical center of each column in 700 viewBox width
+      const x = Math.round((idx + 0.5) * (700 / len));
       const ratio = weeklyMetrics.maxDayRev > 0 ? day.revenue / weeklyMetrics.maxDayRev : 0;
-      const y = Math.round(155 - ratio * 125);
-      return { x, y, ...day };
+      // y ranges from 30 (peak) to 150 (baseline) in 180 viewBox height
+      const y = Math.round(150 - ratio * 120);
+      const leftPct = ((idx + 0.5) / len) * 100;
+      const topPct = (y / 180) * 100;
+      return { x, y, leftPct, topPct, ...day };
     });
   }, [weeklyMetrics.dailyBreakdown, weeklyMetrics.maxDayRev]);
 
   const chartLinePath = useMemo(() => {
-    if (chartPoints.length === 0) return "M 35,155 L 665,155";
+    if (chartPoints.length === 0) return "M 50,150 L 650,150";
     return chartPoints.reduce((acc, pt, idx) => {
       if (idx === 0) return `M ${pt.x},${pt.y}`;
       const prev = chartPoints[idx - 1];
@@ -393,8 +397,11 @@ export function FluxOverviewTab({
   }, [chartPoints]);
 
   const chartAreaPath = useMemo(() => {
-    return `${chartLinePath} L 665,170 L 35,170 Z`;
-  }, [chartLinePath]);
+    if (chartPoints.length === 0) return "";
+    const last = chartPoints[chartPoints.length - 1];
+    const first = chartPoints[0];
+    return `${chartLinePath} L ${last.x},175 L ${first.x},175 Z`;
+  }, [chartLinePath, chartPoints]);
 
   return (
     <div
@@ -610,10 +617,11 @@ export function FluxOverviewTab({
           {/* Floating Tooltip positioned over active point */}
           {hoveredDayIndex !== null && chartPoints[hoveredDayIndex] && (
             <div
-              className="absolute z-30 px-3 py-1.5 rounded-xl bg-[#0E1015] border border-[#37baf2]/40 shadow-2xl text-center pointer-events-none -translate-x-1/2 transition-all duration-150 animate-in fade-in zoom-in-95"
+              className="absolute z-30 px-3 py-1.5 rounded-xl bg-[#0E1015] border border-[#37baf2]/40 shadow-2xl text-center pointer-events-none transition-all duration-150 animate-in fade-in zoom-in-95"
               style={{
-                left: `${(chartPoints[hoveredDayIndex].x / 700) * 100}%`,
-                top: `${Math.max(10, (chartPoints[hoveredDayIndex].y / 180) * 100 - 15)}%`,
+                left: `${chartPoints[hoveredDayIndex].leftPct}%`,
+                top: `${chartPoints[hoveredDayIndex].topPct}%`,
+                transform: "translate(-50%, calc(-100% - 14px))",
               }}
             >
               <div className="text-[10px] text-slate-400 font-semibold">
@@ -628,7 +636,7 @@ export function FluxOverviewTab({
             </div>
           )}
 
-          {/* SVG Line Graph */}
+          {/* SVG Line Graph Container */}
           <div className="w-full h-48 sm:h-56 relative">
             <svg
               viewBox="0 0 700 180"
@@ -653,17 +661,17 @@ export function FluxOverviewTab({
               />
               <line
                 x1="30"
-                y1="95"
+                y1="92"
                 x2="670"
-                y2="95"
+                y2="92"
                 stroke="rgba(255,255,255,0.05)"
                 strokeDasharray="4 4"
               />
               <line
                 x1="30"
-                y1="155"
+                y1="150"
                 x2="670"
-                y2="155"
+                y2="150"
                 stroke="rgba(255,255,255,0.08)"
               />
 
@@ -691,62 +699,60 @@ export function FluxOverviewTab({
                 }}
               />
 
-              {/* Hover Indicator Vertical Line & Data Points */}
+              {/* Hover Indicator Vertical Line */}
+              {hoveredDayIndex !== null && chartPoints[hoveredDayIndex] && (
+                <line
+                  x1={chartPoints[hoveredDayIndex].x}
+                  y1="25"
+                  x2={chartPoints[hoveredDayIndex].x}
+                  y2="165"
+                  stroke="#37baf2"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 3"
+                  opacity="0.6"
+                />
+              )}
+            </svg>
+
+            {/* Circular Nodes Aligned with Mathematical Precision to the X-Axis */}
+            <div className="absolute inset-0 pointer-events-none">
               {chartPoints.map((pt, idx) => {
                 const isHovered = hoveredDayIndex === idx;
                 return (
-                  <g key={pt.dateStr}>
-                    {/* Vertical guideline on hover */}
-                    {isHovered && (
-                      <line
-                        x1={pt.x}
-                        y1="25"
-                        x2={pt.x}
-                        y2="160"
-                        stroke="#37baf2"
-                        strokeWidth="1.5"
-                        strokeDasharray="3 3"
-                        opacity="0.6"
-                      />
-                    )}
-
-                    {/* Outer glowing halo when active */}
-                    {isHovered && (
-                      <circle
-                        cx={pt.x}
-                        cy={pt.y}
-                        r="9"
-                        fill="#37baf2"
-                        opacity="0.25"
-                      />
-                    )}
-
-                    {/* Point Circle Node */}
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={isHovered ? 5.5 : 4}
-                      fill="#0E1015"
-                      stroke="#37baf2"
-                      strokeWidth="2.5"
-                      className="transition-all duration-200"
-                    />
-
-                    {/* Transparent Click/Hover Hit Box */}
-                    <rect
-                      x={pt.x - 45}
-                      y="15"
-                      width="90"
-                      height="150"
-                      fill="transparent"
-                      className="cursor-pointer"
+                  <div
+                    key={pt.dateStr}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 pointer-events-auto"
+                    style={{
+                      left: `${pt.leftPct}%`,
+                      top: `${pt.topPct}%`,
+                      opacity: isLoaded ? 1 : 0,
+                    }}
+                  >
+                    <button
+                      type="button"
                       onMouseEnter={() => setHoveredDayIndex(idx)}
                       onMouseLeave={() => setHoveredDayIndex(null)}
-                    />
-                  </g>
+                      className="relative flex items-center justify-center p-2 focus:outline-none min-h-[44px] min-w-[44px] group/node"
+                      aria-label={`${pt.label}: ${formatRupiah(pt.revenue)}`}
+                    >
+                      {/* Active Ping Halo */}
+                      {isHovered && (
+                        <span className="absolute w-6 h-6 rounded-full bg-[#37baf2]/25 animate-ping pointer-events-none" />
+                      )}
+
+                      {/* True Circular Node (Aspect Ratio 1:1, Never Stretched) */}
+                      <span
+                        className={`rounded-full border-2 transition-all duration-200 block ${
+                          isHovered
+                            ? "w-3.5 h-3.5 bg-[#37baf2] border-white shadow-lg shadow-[#37baf2]/50 scale-125"
+                            : "w-2.5 h-2.5 bg-[#0E1015] border-[#37baf2] group-hover/node:border-white group-hover/node:scale-110"
+                        }`}
+                      />
+                    </button>
+                  </div>
                 );
               })}
-            </svg>
+            </div>
           </div>
 
           {/* X-Axis Day Labels along bottom */}

@@ -93,6 +93,16 @@ describe("FluxOverviewTab Enhancements", () => {
     expect(html).not.toContain("font-mono");
   });
 
+  it("renders non-stretched circular nodes aligned with mathematical precision with the X axis", () => {
+    const html = renderToStaticMarkup(React.createElement(FluxOverviewTab, defaultProps));
+    // Verify circle nodes are rendered as HTML rounded-full elements with 1:1 aspect ratio
+    expect(html).toContain("rounded-full border-2 transition-all duration-200 block");
+    // Verify mathematical center alignment for column 0: (0.5 / 7) * 100 = 7.142857%
+    expect(html).toContain("left:7.142857142857142%");
+    // Verify center alignment for column 3: (3.5 / 7) * 100 = 50%
+    expect(html).toContain("left:50%");
+  });
+
   it("renders faint page load animation classes", () => {
     const html = renderToStaticMarkup(React.createElement(FluxOverviewTab, defaultProps));
     expect(html).toContain("animate-in fade-in slide-in-from-bottom-2 duration-700");
