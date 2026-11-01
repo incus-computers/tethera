@@ -17,8 +17,8 @@ import {
   Search,
   X,
   RotateCcw,
+  ArrowUpDown,
 } from "lucide-react";
-import { Pagination } from "../../components/ui/Pagination";
 import { ProductItemTileImage } from "../../components/products/ProductItemTileImage";
 
 export default function ComponentsCatalogPage() {
@@ -26,8 +26,11 @@ export default function ComponentsCatalogPage() {
   const [selectedBrand, setSelectedBrand] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  const INITIAL_BATCH = 24;
+  const BATCH_INCREMENT = 12;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   const { addStandardItem, openCart } = useCartStore();
 
@@ -57,22 +60,22 @@ export default function ComponentsCatalogPage() {
 
   const handleCategoryChange = (cat: string) => {
     setActiveCategory(cat);
-    setCurrentPage(1);
+    setVisibleCount(INITIAL_BATCH);
   };
 
   const handleBrandChange = (brand: string) => {
     setSelectedBrand(brand);
-    setCurrentPage(1);
+    setVisibleCount(INITIAL_BATCH);
   };
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1);
+    setVisibleCount(INITIAL_BATCH);
   };
 
   const handleSortChange = (sort: "featured" | "price-asc" | "price-desc") => {
     setSortBy(sort);
-    setCurrentPage(1);
+    setVisibleCount(INITIAL_BATCH);
   };
 
   // Filtering
@@ -97,10 +100,25 @@ export default function ComponentsCatalogPage() {
   }
 
   const totalFiltered = filtered.length;
-  const paginatedItems = filtered.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+
+  React.useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + BATCH_INCREMENT, filtered.length));
+        }
+      },
+      { rootMargin: "400px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filtered.length]);
+
+  const visibleItems = filtered.slice(0, visibleCount);
 
   return (
     <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 space-y-8">
@@ -173,16 +191,16 @@ export default function ComponentsCatalogPage() {
         </div>
 
         {/* Secondary Filter Bar */}
-        <div className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-3">
-            <span className="font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1">
+        <div className="p-3.5 sm:p-4 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1 whitespace-nowrap">
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span>Brand:</span>
             </span>
             <select
               value={selectedBrand}
               onChange={(e) => handleBrandChange(e.target.value)}
-              className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-none min-h-[36px]"
+              className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#37baf2] min-h-[44px] cursor-pointer"
             >
               {brands.map((b) => (
                 <option key={b} value={b}>
@@ -193,16 +211,21 @@ export default function ComponentsCatalogPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="font-bold text-slate-500 dark:text-zinc-400">Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e: any) => handleSortChange(e.target.value)}
-              className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-none min-h-[36px]"
-            >
-              <option value="featured">Featured First</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1 whitespace-nowrap">
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>Sort:</span>
+              </span>
+              <select
+                value={sortBy}
+                onChange={(e: any) => handleSortChange(e.target.value)}
+                className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#37baf2] min-h-[44px] cursor-pointer"
+              >
+                <option value="featured">Featured First</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+            </div>
 
             <span className="text-slate-400 dark:text-zinc-600">|</span>
             <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{totalFiltered} products available</span>
@@ -238,7 +261,7 @@ export default function ComponentsCatalogPage() {
       ) : (
         <div className="space-y-6" id="catalog-results">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
-            {paginatedItems.map((item) => {
+            {visibleItems.map((item) => {
               const itemHref =
                 item.parentProductId && item.variationId
                   ? `/products/${item.parentProductId}?variation=${item.variationId}`
@@ -259,13 +282,19 @@ export default function ComponentsCatalogPage() {
                         />
                       </Link>
 
-                      {item.stockCount <= 0 && (
-                        <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                      {/* Top Left Badges: Red Discount Percentage & Out of Stock */}
+                      <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1 items-start">
+                        {item.sale_price && item.sale_price < item.price && (
+                          <span className="px-2 py-1 sm:px-2.5 sm:py-1 rounded-md text-xs sm:text-sm font-black tracking-tight leading-none bg-red-600 text-white shadow-md">
+                            -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                          </span>
+                        )}
+                        {item.stockCount <= 0 && (
                           <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-normal tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
                             Out of Stock
                           </span>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       {/* Floating Green + Circle / Add to Cart on Bottom Right of Picture */}
                       <button
@@ -331,16 +360,21 @@ export default function ComponentsCatalogPage() {
           })}
         </div>
 
-          {/* Catalog Pagination with 10, 20, 50 settings */}
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalFiltered}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-            scrollToId="catalog-results"
-            itemLabel="components"
-          />
+          {/* Infinite Scroll Sentinel / Loading Indicator */}
+          {visibleCount < totalFiltered && (
+            <div ref={sentinelRef} className="py-8 flex justify-center items-center">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+                <div className="w-2 h-2 rounded-full bg-[#37baf2] animate-pulse" />
+                <span>Loading more components...</span>
+              </div>
+            </div>
+          )}
+
+          {visibleCount >= totalFiltered && totalFiltered > 0 && (
+            <div className="py-6 text-center text-xs font-medium text-slate-400 dark:text-zinc-500">
+              Showing all {totalFiltered} components
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -32,7 +32,6 @@ import { formatRupiah } from "../lib/utils/currency";
 import { WhatsAppInquiryButton } from "../components/whatsapp/WhatsAppInquiryButton";
 import { SponsorMarquee } from "../components/marketing/SponsorMarquee";
 import { PromotionalBanners } from "../components/marketing/PromotionalBanners";
-import { Pagination } from "../components/ui/Pagination";
 import { ProductItemTileImage } from "../components/products/ProductItemTileImage";
 import { PrebuiltSystemCard } from "../components/products/PrebuiltSystemCard";
 import {
@@ -57,9 +56,7 @@ function getGridColumns(width: number): number {
 }
 
 export default function HomePage() {
-  const [currentPage, setCurrentPage] = useState(1);
   const [columns, setColumns] = useState<number>(4);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(4);
   const { addStandardItem, addCustomPC, openCart } = useCartStore();
 
   // Sort state for Item Catalog
@@ -167,12 +164,10 @@ export default function HomePage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Dynamically calculate items per page based on current columns and rows preference
-  const itemsPerPage = columns * rowsPerPage;
-
-  // Row multipliers to offer clean multiples of the dynamic column count
-  const rowMultipliers = columns >= 5 ? [3, 4, 6] : [4, 6, 8];
-  const paginationOptions = rowMultipliers.map((r) => r * columns);
+  const INITIAL_BATCH = 24;
+  const BATCH_INCREMENT = 12;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Click-outside and Escape key listener for sort dropdown
   useEffect(() => {
@@ -222,28 +217,29 @@ export default function HomePage() {
   }, [sortBy]);
 
   const totalComponents = sortedComponents.length;
-  const totalPages = Math.max(1, Math.ceil(totalComponents / itemsPerPage));
 
   useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [totalPages, currentPage]);
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
 
-  const paginatedComponents = sortedComponents.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + BATCH_INCREMENT, sortedComponents.length));
+        }
+      },
+      { rootMargin: "400px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [sortedComponents.length]);
+
+  const visibleComponents = sortedComponents.slice(0, visibleCount);
 
   const handleSortChange = (sort: SortOptionId) => {
     setSortBy(sort);
-    setCurrentPage(1);
-  };
-
-  const handleItemsPerPageChange = (newCount: number) => {
-    const calculatedRows = Math.max(1, Math.round(newCount / columns));
-    setRowsPerPage(calculatedRows);
-    setCurrentPage(1);
+    setVisibleCount(INITIAL_BATCH);
   };
 
   const activePrebuilts = useMemo(
@@ -421,55 +417,58 @@ export default function HomePage() {
           </h2>
         </div>
 
-        {/* Sort Selector (No container, single column) */}
-        <div className="relative" ref={sortDropdownRef}>
-          <button
-            onClick={() => setIsSortOpen((prev) => !prev)}
-            aria-expanded={isSortOpen}
-            aria-haspopup="true"
-            className="min-h-[44px] inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors focus-visible:outline-2 focus-visible:outline-[#37baf2]"
-          >
-            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500 dark:text-[#8B949E]" />
-            <span>Sort: {SORT_OPTIONS.find((o) => o.id === sortBy)?.label}</span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
-                isSortOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+        {/* Right header controls: Sort (moved left) and Page Navigation (on right) */}
+        <div className="flex items-center gap-3 sm:gap-6 self-start sm:self-auto flex-wrap sm:flex-nowrap">
+          {/* Sort Selector (No container, single column) */}
+          <div className="relative" ref={sortDropdownRef}>
+            <button
+              onClick={() => setIsSortOpen((prev) => !prev)}
+              aria-expanded={isSortOpen}
+              aria-haspopup="true"
+              className="min-h-[44px] inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-zinc-100 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors focus-visible:outline-2 focus-visible:outline-[#37baf2]"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500 dark:text-[#8B949E]" />
+              <span>Sort: {SORT_OPTIONS.find((o) => o.id === sortBy)?.label}</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+                  isSortOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
 
-          {/* Single Column Sort Dropdown */}
-          {isSortOpen && (
-            <div className="absolute right-0 top-full mt-2 z-40 w-48 sm:w-56 bg-white dark:bg-[#12141A] border border-slate-300 dark:border-white/10 rounded-2xl shadow-xl p-1.5 flex flex-col space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
-              {SORT_OPTIONS.map((option) => {
-                const isSelected = sortBy === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    onClick={() => {
-                      handleSortChange(option.id);
-                      setIsSortOpen(false);
-                    }}
-                    className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-left flex items-center justify-between transition-colors ${
-                      isSelected
-                        ? "text-zinc-950 dark:text-white bg-slate-100 dark:bg-[#1A1D24]"
-                        : "text-zinc-600 dark:text-[#8B949E] hover:text-zinc-950 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#1A1D24]/50"
-                    }`}
-                  >
-                    <span>{option.label}</span>
-                    {isSelected && (
-                      <Check className="w-4 h-4 text-[#37baf2] shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+            {/* Single Column Sort Dropdown */}
+            {isSortOpen && (
+              <div className="absolute right-0 top-full mt-2 z-40 w-48 sm:w-56 bg-white dark:bg-[#12141A] border border-slate-300 dark:border-white/10 rounded-2xl shadow-xl p-1.5 flex flex-col space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                {SORT_OPTIONS.map((option) => {
+                  const isSelected = sortBy === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => {
+                        handleSortChange(option.id);
+                        setIsSortOpen(false);
+                      }}
+                      className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-left flex items-center justify-between transition-colors ${
+                        isSelected
+                          ? "text-zinc-950 dark:text-white bg-slate-100 dark:bg-[#1A1D24]"
+                          : "text-zinc-600 dark:text-[#8B949E] hover:text-zinc-950 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#1A1D24]/50"
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {isSelected && (
+                        <Check className="w-4 h-4 text-[#37baf2] shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Product Cards Grid */}
-      {paginatedComponents.length === 0 ? (
+      {visibleComponents.length === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-[#12141A] rounded-2xl border border-slate-300 dark:border-white/10 p-6">
           <p className="text-sm font-semibold text-slate-600 dark:text-[#8B949E]">
             No items available in the catalog.
@@ -477,7 +476,7 @@ export default function HomePage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-5">
-          {paginatedComponents.map((item) => {
+          {visibleComponents.map((item) => {
             const itemHref =
               item.parentProductId && item.variationId
                 ? `/products/${item.parentProductId}?variation=${item.variationId}`
@@ -497,13 +496,19 @@ export default function HomePage() {
                       />
                     </Link>
 
-                    {item.stockCount <= 0 && (
-                      <div className="absolute top-2 left-2 z-10 pointer-events-none">
+                    {/* Top Left Badges: Red Discount Percentage & Out of Stock */}
+                    <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1 items-start">
+                      {item.sale_price && item.sale_price < item.price && (
+                        <span className="px-2 py-1 sm:px-2.5 sm:py-1 rounded-md text-xs sm:text-sm font-black tracking-tight leading-none bg-red-600 text-white shadow-md">
+                          -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                        </span>
+                      )}
+                      {item.stockCount <= 0 && (
                         <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-normal tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
                           Out of Stock
                         </span>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {/* Floating Accent Green + Circle / Add to Cart on Bottom Right of Picture */}
                     <button
@@ -570,18 +575,21 @@ export default function HomePage() {
       </div>
       )}
 
-      {/* Catalog Pagination dynamically aligned with column count */}
-      <Pagination
-        currentPage={currentPage}
-        totalItems={totalComponents}
-        itemsPerPage={itemsPerPage}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={handleItemsPerPageChange}
-        options={paginationOptions}
-        columns={columns}
-        scrollToId="components"
-        itemLabel="components"
-      />
+      {/* Infinite Scroll Sentinel / Loading Indicator */}
+      {visibleCount < totalComponents && (
+        <div ref={sentinelRef} className="py-8 flex justify-center items-center">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+            <div className="w-2 h-2 rounded-full bg-[#37baf2] animate-pulse" />
+            <span>Loading more items...</span>
+          </div>
+        </div>
+      )}
+
+      {visibleCount >= totalComponents && totalComponents > 0 && (
+        <div className="py-6 text-center text-xs font-medium text-slate-400 dark:text-zinc-500">
+          Showing all {totalComponents} items
+        </div>
+      )}
 
       {/* View All Components CTA (Container invisible) */}
       <div className="text-center pt-2">

@@ -1603,6 +1603,20 @@ function ProductDetailContent() {
                     />
                   </Link>
 
+                  {/* Top Left Badges: Red Discount Percentage & Out of Stock */}
+                  <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1 items-start">
+                    {item.sale_price && item.sale_price < item.price && (
+                      <span className="px-2 py-1 sm:px-2.5 sm:py-1 rounded-md text-xs sm:text-sm font-black tracking-tight leading-none bg-red-600 text-white shadow-md">
+                        -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                      </span>
+                    )}
+                    {item.stockCount <= 0 && (
+                      <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-normal tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
+                        Out of Stock
+                      </span>
+                    )}
+                  </div>
+
                   {/* Floating Green + Circle / Add to Cart on Bottom Right of Picture */}
                   <button
                     type="button"

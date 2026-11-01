@@ -3,6 +3,7 @@ import { db, OrderStatus } from "@/lib/db";
 import { verifyAdminClearance } from "@/lib/auth/adminAuth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
@@ -79,17 +80,31 @@ export async function PUT(req: NextRequest) {
     }
 
     // Validate valid status transitions
-    const validManualTransitions: OrderStatus[] = [
+    const validManualTransitions: string[] = [
       "order_received",
       "order_accepted",
       "finding_stock",
+      "ready_for_dispatch",
       "finding_courier",
+      "dispatched",
+      "finished",
       "ready_for_pickup",
       "collected",
+      "shipped",
+      "delivered",
+      "on_delivery",
+      "delivery_arrived",
+      "processing",
+      "pending",
+      "pending_payment",
+      "payment_received",
+      "assembly_in_progress",
+      "testing_bench",
       "cancelled",
+      "refunded",
     ];
 
-    if (!validManualTransitions.includes(nextStatus) && nextStatus !== "on_delivery" && nextStatus !== "delivery_arrived") {
+    if (!validManualTransitions.includes(nextStatus)) {
       return NextResponse.json(
         { success: false, error: `Invalid status transition: '${nextStatus}'` },
         { status: 400 }

@@ -35,6 +35,11 @@ export interface ComponentItem {
     wattage?: number;
     capacity?: string;
     speed?: string;
+    gpuManufacturer?: "NVIDIA" | "AMD" | string;
+    coolingType?: "Water Cooling" | "Air Cooling" | "Cooling Fans" | string;
+    memoryType?: "Desktop Memory" | "Laptop Memory" | string;
+    storageType?: "SSD" | "HDD" | string;
+    efficiencyRating?: "Bronze" | "Gold" | "Platinum" | string;
     [key: string]: any;
   };
 }
@@ -99,6 +104,59 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     inStock: true,
     stockCount: 4,
     specs: { socket: "LGA1700", tdpWatts: 253 }
+  },
+  {
+    id: "cpu-5",
+    sku: "AMD-100-100001503WOF",
+    name: "AMD Ryzen 7 5700X3D 8-Core 16-Thread Processor",
+    brand: "AMD",
+    category: "Processors",
+    slot: "cpu",
+    price: 3699000,
+    sale_price: 3399000,
+    image: "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 18,
+    specs: { socket: "AM4", tdpWatts: 105 }
+  },
+  {
+    id: "cpu-6",
+    sku: "AMD-100-100000065BOX",
+    name: "AMD Ryzen 5 5600X 6-Core 12-Thread Processor",
+    brand: "AMD",
+    category: "Processors",
+    slot: "cpu",
+    price: 2199000,
+    image: "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 22,
+    specs: { socket: "AM4", tdpWatts: 65 }
+  },
+  {
+    id: "cpu-7",
+    sku: "INT-BX80768265K",
+    name: "Intel Core Ultra 7 265K 20-Core (8P+12E) Processor",
+    brand: "Intel",
+    category: "Processors",
+    slot: "cpu",
+    price: 6899000,
+    image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 8,
+    specs: { socket: "LGA1851", tdpWatts: 250 }
+  },
+  {
+    id: "cpu-8",
+    sku: "INT-BX80768285K",
+    name: "Intel Core Ultra 9 285K 24-Core (8P+16E) Processor",
+    brand: "Intel",
+    category: "Processors",
+    slot: "cpu",
+    price: 9999000,
+    image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 5,
+    specs: { socket: "LGA1851", tdpWatts: 250 }
   },
 
   // --- Motherboards ---
@@ -180,7 +238,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 22,
-    specs: { ramType: "DDR5", capacity: "32GB", speed: "6000MHz" },
+    specs: { ramType: "DDR5", capacity: "32GB", speed: "6000MHz", memoryType: "Desktop Memory" },
     variations: [
       {
         id: "ram-1-black-32",
@@ -241,7 +299,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 8,
-    specs: { ramType: "DDR5", capacity: "64GB", speed: "6000MHz" }
+    specs: { ramType: "DDR5", capacity: "64GB", speed: "6000MHz", memoryType: "Desktop Memory" }
   },
   {
     id: "ram-3",
@@ -254,7 +312,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 15,
-    specs: { ramType: "DDR4", capacity: "32GB", speed: "3600MHz" },
+    specs: { ramType: "DDR4", capacity: "32GB", speed: "3600MHz", memoryType: "Desktop Memory" },
     variations: [
       {
         id: "ram-3-black-16",
@@ -305,6 +363,58 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
       },
     ],
   },
+  {
+    id: "ram-4",
+    sku: "CRU-CT2K16G56C46S5",
+    name: "Crucial 32GB (2x16GB) DDR5 5600MHz Laptop Memory SODIMM",
+    brand: "Crucial",
+    category: "Memory",
+    slot: "ram",
+    price: 1599000,
+    image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 18,
+    specs: { ramType: "DDR5", capacity: "32GB", memoryType: "Laptop Memory", speed: "5600MHz" }
+  },
+  {
+    id: "ram-5",
+    sku: "KIN-KF432S20IBK2-16",
+    name: "Kingston FURY Impact 16GB (2x8GB) DDR4 3200MHz Laptop Memory SODIMM",
+    brand: "Kingston",
+    category: "Memory",
+    slot: "ram",
+    price: 699000,
+    image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 25,
+    specs: { ramType: "DDR4", capacity: "16GB", memoryType: "Laptop Memory", speed: "3200MHz" }
+  },
+  {
+    id: "ram-6",
+    sku: "KIN-KF560C36BBEK2-64",
+    name: "Kingston FURY Beast 64GB (2x32GB) DDR5 6000MHz Desktop Memory",
+    brand: "Kingston",
+    category: "Memory",
+    slot: "ram",
+    price: 3499000,
+    image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 9,
+    specs: { ramType: "DDR5", capacity: "64GB", memoryType: "Desktop Memory", speed: "6000MHz" }
+  },
+  {
+    id: "ram-7",
+    sku: "TMG-FF3D532G6400HC32DC01",
+    name: "TeamGroup T-Force Delta RGB 32GB (2x16GB) DDR5 6400MHz Desktop Memory",
+    brand: "TeamGroup",
+    category: "Memory",
+    slot: "ram",
+    price: 1999000,
+    image: "https://images.unsplash.com/photo-1562976540-1502c2145186?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 14,
+    specs: { ramType: "DDR5", capacity: "32GB", memoryType: "Desktop Memory", speed: "6400MHz" }
+  },
 
   // --- Graphics Cards (GPU) ---
   {
@@ -325,7 +435,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     ],
     inStock: true,
     stockCount: 5,
-    specs: { tdpWatts: 320, lengthMm: 348 }
+    specs: { gpuManufacturer: "NVIDIA", tdpWatts: 320, lengthMm: 348 }
   },
   {
     id: "gpu-2",
@@ -338,7 +448,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 9,
-    specs: { tdpWatts: 285, lengthMm: 300 }
+    specs: { gpuManufacturer: "NVIDIA", tdpWatts: 285, lengthMm: 300 }
   },
   {
     id: "gpu-3",
@@ -351,7 +461,47 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 14,
-    specs: { tdpWatts: 160, lengthMm: 227 }
+    specs: { gpuManufacturer: "NVIDIA", tdpWatts: 160, lengthMm: 227 }
+  },
+  {
+    id: "gpu-4",
+    sku: "SAP-11322-02-20G",
+    name: "Sapphire NITRO+ AMD Radeon RX 7900 XTX Vapor-X 24GB",
+    brand: "Sapphire",
+    category: "Graphics Cards",
+    slot: "gpu",
+    price: 17499000,
+    sale_price: 16299000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 6,
+    specs: { gpuManufacturer: "AMD", tdpWatts: 355, lengthMm: 320 }
+  },
+  {
+    id: "gpu-5",
+    sku: "ASUS-TUF-RX7800XT-O16G",
+    name: "ASUS TUF Gaming AMD Radeon RX 7800 XT OC Edition 16GB",
+    brand: "ASUS",
+    category: "Graphics Cards",
+    slot: "gpu",
+    price: 9499000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 11,
+    specs: { gpuManufacturer: "AMD", tdpWatts: 263, lengthMm: 320 }
+  },
+  {
+    id: "gpu-6",
+    sku: "PWR-RX7700XT-12G-L/OC",
+    name: "PowerColor Hellhound AMD Radeon RX 7700 XT 12GB",
+    brand: "PowerColor",
+    category: "Graphics Cards",
+    slot: "gpu",
+    price: 7699000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 8,
+    specs: { gpuManufacturer: "AMD", tdpWatts: 245, lengthMm: 322 }
   },
 
   // --- CPU Coolers ---
@@ -366,7 +516,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 10,
-    specs: { radiatorSizeMm: 360 }
+    specs: { radiatorSizeMm: 360, coolingType: "Water Cooling" }
   },
   {
     id: "clr-2",
@@ -379,7 +529,59 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 15,
-    specs: { radiatorSizeMm: 0 }
+    specs: { radiatorSizeMm: 0, coolingType: "Air Cooling" }
+  },
+  {
+    id: "clr-3",
+    sku: "LIA-UF-TL120-3W",
+    name: "Lian Li UNI FAN TL LCD 120 ARGB Cooling Fans Triple Pack - White",
+    brand: "Lian Li",
+    category: "Cooling",
+    slot: "cooler",
+    price: 1699000,
+    image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 20,
+    specs: { coolingType: "Cooling Fans" }
+  },
+  {
+    id: "clr-4",
+    sku: "NZX-RL-KR36E-01",
+    name: "NZXT Kraken Elite 360 RGB Liquid Cooler with LCD Display",
+    brand: "NZXT",
+    category: "Cooling",
+    slot: "cooler",
+    price: 4399000,
+    image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 8,
+    specs: { radiatorSizeMm: 360, coolingType: "Water Cooling" }
+  },
+  {
+    id: "clr-5",
+    sku: "DPC-R-AK620-BKNNMT-G",
+    name: "DeepCool AK620 Digital High-Performance Air Cooler",
+    brand: "DeepCool",
+    category: "Cooling",
+    slot: "cooler",
+    price: 1199000,
+    image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 16,
+    specs: { coolingType: "Air Cooling" }
+  },
+  {
+    id: "clr-6",
+    sku: "COR-QX120-RGB-3PK",
+    name: "Corsair iCUE LINK QX120 RGB 120mm Magnetic Dome Cooling Fans",
+    brand: "Corsair",
+    category: "Cooling",
+    slot: "cooler",
+    price: 1899000,
+    image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 12,
+    specs: { coolingType: "Cooling Fans" }
   },
 
   // --- Storage ---
@@ -394,7 +596,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 30,
-    specs: { capacity: "2TB", speed: "7,450 MB/s" }
+    specs: { capacity: "2TB", storageType: "SSD", speed: "7,450 MB/s" }
   },
   {
     id: "str-2",
@@ -407,7 +609,85 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 25,
-    specs: { capacity: "1TB", speed: "7,000 MB/s" }
+    specs: { capacity: "1TB", storageType: "SSD", speed: "7,000 MB/s" }
+  },
+  {
+    id: "str-3",
+    sku: "SEA-ST4000DM004",
+    name: "Seagate BarraCuda 4TB SATA 3.5\" 5400RPM Desktop Internal Hard Drive HDD",
+    brand: "Seagate",
+    category: "Storage",
+    slot: "storage_primary",
+    price: 1549000,
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 22,
+    specs: { capacity: "4TB", storageType: "HDD", speed: "190 MB/s" }
+  },
+  {
+    id: "str-4",
+    sku: "WDC-WD2003FZEX",
+    name: "Western Digital WD Black 2TB SATA 3.5\" 7200RPM Gaming Internal HDD",
+    brand: "Western Digital",
+    category: "Storage",
+    slot: "storage_primary",
+    price: 1399000,
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 16,
+    specs: { capacity: "2TB", storageType: "HDD", speed: "215 MB/s" }
+  },
+  {
+    id: "str-5",
+    sku: "CRU-CT4000T700SSD3",
+    name: "Crucial T700 4TB PCIe Gen 5.0 NVMe M.2 Solid State Drive",
+    brand: "Crucial",
+    category: "Storage",
+    slot: "storage_primary",
+    price: 7499000,
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 6,
+    specs: { capacity: "4TB", storageType: "SSD", speed: "12,400 MB/s" }
+  },
+  {
+    id: "str-6",
+    sku: "KIN-SNV2S-500G",
+    name: "Kingston NV2 500GB PCIe 4.0 NVMe M.2 Solid State Drive",
+    brand: "Kingston",
+    category: "Storage",
+    slot: "storage_primary",
+    price: 629000,
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 35,
+    specs: { capacity: "500GB", storageType: "SSD", speed: "3,500 MB/s" }
+  },
+  {
+    id: "str-7",
+    sku: "WDC-WDS100T3B0A",
+    name: "Western Digital WD Blue SA510 1TB 2.5\" SATA Internal SSD",
+    brand: "Western Digital",
+    category: "Storage",
+    slot: "storage_primary",
+    price: 1149000,
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 20,
+    specs: { capacity: "1TB", storageType: "SSD", speed: "560 MB/s" }
+  },
+  {
+    id: "str-8",
+    sku: "SEA-ST8000VN004",
+    name: "Seagate IronWolf 8TB SATA 3.5\" 7200RPM NAS Internal HDD",
+    brand: "Seagate",
+    category: "Storage",
+    slot: "storage_primary",
+    price: 3499000,
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 10,
+    specs: { capacity: "8TB", storageType: "HDD", speed: "210 MB/s" }
   },
 
   // --- Chassis (Case) ---
@@ -437,6 +717,58 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     stockCount: 6,
     specs: { formFactor: "ATX", maxGpuLengthMm: 355, radiatorSizeMm: 360 }
   },
+  {
+    id: "cas-3",
+    sku: "ASU-PRIME-AP201-BK",
+    name: "ASUS Prime AP201 33L MicroATX Mesh Chassis - Black",
+    brand: "ASUS",
+    category: "Chassis",
+    slot: "case",
+    price: 1199000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 10,
+    specs: { formFactor: "mATX", maxGpuLengthMm: 338, radiatorSizeMm: 360 }
+  },
+  {
+    id: "cas-4",
+    sku: "FRA-FD-C-RID1N-11",
+    name: "Fractal Design Ridge SFF Slim Mini-ITX Case - White",
+    brand: "Fractal Design",
+    category: "Chassis",
+    slot: "case",
+    price: 2199000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 7,
+    specs: { formFactor: "mini ITX", maxGpuLengthMm: 335, radiatorSizeMm: 280 }
+  },
+  {
+    id: "cas-5",
+    sku: "CLM-NR200P-V2-BK",
+    name: "Cooler Master MasterBox NR200P V2 Mini-ITX Chassis",
+    brand: "Cooler Master",
+    category: "Chassis",
+    slot: "case",
+    price: 1450000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 12,
+    specs: { formFactor: "mini ITX", maxGpuLengthMm: 356, radiatorSizeMm: 280 }
+  },
+  {
+    id: "cas-6",
+    sku: "LIA-A3-MATX-BK",
+    name: "Lian Li A3-mATX Mesh Compact Micro-ATX Case - Black",
+    brand: "Lian Li",
+    category: "Chassis",
+    slot: "case",
+    price: 1099000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 15,
+    specs: { formFactor: "mATX", maxGpuLengthMm: 415, radiatorSizeMm: 360 }
+  },
 
   // --- Power Supplies (PSU) ---
   {
@@ -450,7 +782,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 16,
-    specs: { wattage: 850 }
+    specs: { wattage: 850, efficiencyRating: "Gold" }
   },
   {
     id: "psu-2",
@@ -463,7 +795,85 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
     image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
     inStock: true,
     stockCount: 7,
-    specs: { wattage: 1000 }
+    specs: { wattage: 1000, efficiencyRating: "Gold" }
+  },
+  {
+    id: "psu-3",
+    sku: "COR-CP-9020278-NA",
+    name: "Corsair CX650 650W 80+ Bronze Non-Modular Power Supply",
+    brand: "Corsair",
+    category: "Power Supplies",
+    slot: "psu",
+    price: 999000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 20,
+    specs: { wattage: 650, efficiencyRating: "Bronze" }
+  },
+  {
+    id: "psu-4",
+    sku: "CLM-MPE-7501-ACABW-B",
+    name: "Cooler Master MWE 750 Bronze V2 750W 80+ Bronze Power Supply",
+    brand: "Cooler Master",
+    category: "Power Supplies",
+    slot: "psu",
+    price: 1199000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 18,
+    specs: { wattage: 750, efficiencyRating: "Bronze" }
+  },
+  {
+    id: "psu-5",
+    sku: "SEA-PRIME-TX-1000",
+    name: "Seasonic PRIME TX-1000 1000W 80+ Platinum Ultra-Quiet Modular PSU",
+    brand: "Seasonic",
+    category: "Power Supplies",
+    slot: "psu",
+    price: 4499000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 5,
+    specs: { wattage: 1000, efficiencyRating: "Platinum" }
+  },
+  {
+    id: "psu-6",
+    sku: "ASU-ROG-THOR-1200P2",
+    name: "ASUS ROG Thor 1200W Platinum II EVA Edition Power Supply",
+    brand: "ASUS",
+    category: "Power Supplies",
+    slot: "psu",
+    price: 5899000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 4,
+    specs: { wattage: 1200, efficiencyRating: "Platinum" }
+  },
+  {
+    id: "psu-7",
+    sku: "COR-CP-9020262-NA",
+    name: "Corsair RM750e 750W 80+ Gold Fully Modular ATX 3.0 Power Supply",
+    brand: "Corsair",
+    category: "Power Supplies",
+    slot: "psu",
+    price: 1899000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 14,
+    specs: { wattage: 750, efficiencyRating: "Gold" }
+  },
+  {
+    id: "psu-8",
+    sku: "BQT-BN337",
+    name: "be quiet! Straight Power 12 850W 80+ Platinum ATX 3.0 Modular PSU",
+    brand: "be quiet!",
+    category: "Power Supplies",
+    slot: "psu",
+    price: 2899000,
+    image: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=500&auto=format&fit=crop&q=60",
+    inStock: true,
+    stockCount: 8,
+    specs: { wattage: 850, efficiencyRating: "Platinum" }
   },
 
   // --- Operating System ---
@@ -787,6 +1197,7 @@ export interface PrebuiltSystem {
   status: string;
   inStock?: boolean;
   stockCount?: number;
+  systemType?: "gaming" | "workstation";
   description: string;
   highlights: string[];
   specs: Record<string, string>;
@@ -799,6 +1210,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
     sku: "INC-APEX-7800X3D",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
+    systemType: "gaming",
     cpu: "AMD Ryzen 7 7800X3D",
     gpu: "GeForce RTX 4080 SUPER 16GB",
     motherboard: "ASUS ROG STRIX B650E-F GAMING WIFI",
@@ -847,6 +1259,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
     sku: "INC-KIN-14700K",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
+    systemType: "gaming",
     cpu: "Intel Core i7-14700K",
     gpu: "GeForce RTX 4070 Ti SUPER 16GB",
     motherboard: "ASUS ROG STRIX Z790-E GAMING WIFI II",
@@ -895,6 +1308,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
     sku: "INC-MIN-7950X",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
+    systemType: "workstation",
     cpu: "AMD Ryzen 9 7950X 16-Core",
     gpu: "GeForce RTX 4080 SUPER 16GB",
     motherboard: "ASUS ROG STRIX B650E-F GAMING WIFI",
@@ -943,6 +1357,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
     sku: "INC-CREATOR-14700",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
+    systemType: "workstation",
     cpu: "Intel Core i7-14700",
     gpu: "GeForce RTX 4070 12GB",
     motherboard: "MSI MAG B760 TOMAHAWK WIFI",
@@ -991,6 +1406,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
     sku: "INC-ITX-7600X",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
+    systemType: "gaming",
     cpu: "AMD Ryzen 5 7600X",
     gpu: "GeForce RTX 4060 Ti 8GB",
     motherboard: "ASUS ROG STRIX B650E-I GAMING WIFI",
@@ -1039,6 +1455,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
     sku: "INC-VALK-7800X3D",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
+    systemType: "gaming",
     cpu: "AMD Ryzen 7 7800X3D",
     gpu: "GeForce RTX 4070 SUPER 12GB",
     motherboard: "MSI MAG B650 TOMAHAWK WIFI",
@@ -1079,6 +1496,104 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
       "Power Supply": "MSI MAG A750GL 750W 80+ Gold PCIe 5.0 ATX 3.0",
       "Operating System": "Windows 11 Home 64-Bit",
       "Burn-in Testing": "24-Hour Competitive Esports Framerate and Thermal Verification"
+    }
+  },
+  {
+    id: "pb-7",
+    name: "Incus Titan Threadripper Studio",
+    sku: "INC-TITAN-7960X",
+    brand: "Incus Computers",
+    category: "Pre-Built Systems",
+    systemType: "workstation",
+    cpu: "AMD Ryzen Threadripper 7960X 24-Core",
+    gpu: "GeForce RTX 4090 24GB",
+    motherboard: "ASUS Pro WS TRX50-SAGE WIFI",
+    ram: "128GB DDR5 ECC Registered",
+    storage: "4TB NVMe PCIe 5.0",
+    cooling: "360mm Industrial Liquid Cooler",
+    chassis: "Fractal Define 7 XL Titanium",
+    psu: "1600W 80+ Titanium Fully Modular",
+    os: "Windows 11 Pro for Workstations",
+    price: 98999000,
+    sale_price: 94999000,
+    image: "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80"
+    ],
+    status: "Built-to-Order (48h Master Assembly)",
+    inStock: true,
+    stockCount: 2,
+    description:
+      "Enterprise-grade compute workstation engineered for local LLM inference, 8K video timelines, and multithreaded simulation.",
+    highlights: [
+      "24 Zen 4 Cores and 48 Threads with quad-channel memory",
+      "Flagship NVIDIA RTX 4090 with 24GB high-bandwidth VRAM",
+      "Industrial 1600W Titanium power supply for 24/7 sustained stability",
+      "48-Hour Prime95 & ECC memory burn-in stress certification"
+    ],
+    specs: {
+      "Processor (CPU)": "AMD Ryzen Threadripper 7960X (24 Cores, 48 Threads, up to 5.3 GHz)",
+      "Graphics (GPU)": "NVIDIA GeForce RTX 4090 24GB GDDR6X",
+      "Motherboard": "ASUS Pro WS TRX50-SAGE WIFI (sTR5, PCIe 5.0, 10G LAN)",
+      "Memory (RAM)": "128GB (4x32GB) DDR5 5600MHz ECC Registered RDIMM",
+      "Primary SSD": "4TB Crucial T700 PCIe 5.0 NVMe (12,400 MB/s Read)",
+      "Liquid Cooler": "SilverStone IceMyst 360mm Industrial Liquid Cooler",
+      "Case": "Fractal Design Define 7 XL Solid Sound-Dampened Titanium",
+      "Power Supply": "Seasonic Prime TX-1600 1600W 80+ Titanium Modular",
+      "Operating System": "Windows 11 Pro for Workstations 64-Bit",
+      "Burn-in Testing": "48-Hour Continuous Multi-Loop Workstation Stress Verification"
+    }
+  },
+  {
+    id: "pb-8",
+    name: "Incus Precision CAD Core i9",
+    sku: "INC-CAD-14900K",
+    brand: "Incus Computers",
+    category: "Pre-Built Systems",
+    systemType: "workstation",
+    cpu: "Intel Core i9-14900K",
+    gpu: "GeForce RTX 4080 SUPER 16GB",
+    motherboard: "ASUS ProArt Z790-CREATOR WIFI",
+    ram: "64GB DDR5-5600",
+    storage: "2TB NVMe PCIe 4.0",
+    cooling: "Noctua NH-D15 Chromax Air Cooler",
+    chassis: "Fractal Design North Charcoal Black",
+    psu: "1000W 80+ Gold Modular",
+    os: "Windows 11 Pro 64-Bit Pre-installed",
+    price: 44999000,
+    sale_price: 42499000,
+    image: "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&auto=format&fit=crop&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1587202372634-32705e3bf49c?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1555680202-c86f0e12f086?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80"
+    ],
+    status: "In Stock at Flagship (Ready for Pickup in 60m)",
+    inStock: true,
+    stockCount: 3,
+    description:
+      "A quiet, high-clock workstation tailored for AutoCAD, SolidWorks, Revit, and Adobe Creative Cloud with 24 cores.",
+    highlights: [
+      "Intel Core i9 up to 6.0 GHz for peak single-threaded CAD performance",
+      "ProArt motherboard with dual Thunderbolt 4 and 10G networking",
+      "Acoustically tuned Noctua air cooling with real walnut wood accent",
+      "2-Year Incus Comprehensive Hardware Warranty and priority support"
+    ],
+    specs: {
+      "Processor (CPU)": "Intel Core i9-14900K (24 Cores, 32 Threads, up to 6.0 GHz)",
+      "Graphics (GPU)": "ASUS TUF Gaming GeForce RTX 4080 SUPER 16GB OC",
+      "Motherboard": "ASUS ProArt Z790-CREATOR WIFI (LGA1700, DDR5, 10G LAN)",
+      "Memory (RAM)": "64GB (2x32GB) Kingston Fury Renegade DDR5 5600MHz",
+      "Primary SSD": "2TB Kingston KC3000 PCIe 4.0 NVMe (7,000 MB/s Read)",
+      "Air Cooler": "Noctua NH-D15 chromax.black Dual-Tower Air Cooler",
+      "Case": "Fractal Design North Charcoal Black with Walnut Accent",
+      "Power Supply": "Corsair RM1000x 1000W 80+ Gold Modular",
+      "Operating System": "Windows 11 Pro 64-Bit",
+      "Burn-in Testing": "24-Hour Continuous Multi-Loop Workstation CAD Verification"
     }
   }
 ];

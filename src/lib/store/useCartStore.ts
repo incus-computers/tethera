@@ -14,6 +14,7 @@ export interface CartCustomPC {
     leadTime: string;
   };
   totalPrice: number;
+  originalPrice?: number;
   wattage: number;
   isPrebuilt?: boolean;
   image?: string;
@@ -23,6 +24,7 @@ export interface CartStandardItem {
   id: string;
   item: ComponentItem;
   quantity: number;
+  originalPrice?: number;
 }
 
 export const CART_STORAGE_KEY = "tethera_cart_storage";
@@ -86,6 +88,26 @@ export const useCartStore = create<CartState>()(
       // Universal addItem helper (increments quantity if already in cart)
       addItem: (item: ComponentItem, quantity = 1) => {
         const qty = Math.max(1, quantity);
+
+        // Normalize sale price and original regular price
+        const rawSale = item.sale_price ?? item.salePrice;
+        let activePrice = item.price;
+        let origPrice = item.originalPrice ?? item.retail_price;
+
+        if (!origPrice && rawSale && rawSale > 0 && rawSale < item.price) {
+          origPrice = item.price;
+          activePrice = rawSale;
+        }
+
+        const normalizedItem: ComponentItem = {
+          ...item,
+          price: activePrice,
+          ...(origPrice && origPrice > activePrice ? { originalPrice: origPrice } : {}),
+        };
+
+        const resolvedOriginalPrice =
+          origPrice && origPrice > activePrice ? origPrice : undefined;
+
         set((state) => {
           const existingIndex = state.items.findIndex(
             (i) => i.item.id === item.id || i.id === item.id
@@ -93,9 +115,20 @@ export const useCartStore = create<CartState>()(
 
           if (existingIndex > -1) {
             const nextItems = [...state.items];
+            const existing = nextItems[existingIndex];
+            const finalOriginalPrice =
+              resolvedOriginalPrice ??
+              existing.originalPrice ??
+              (existing.item.originalPrice ?? undefined);
+
             nextItems[existingIndex] = {
-              ...nextItems[existingIndex],
-              quantity: nextItems[existingIndex].quantity + qty,
+              ...existing,
+              item: {
+                ...normalizedItem,
+                originalPrice: finalOriginalPrice,
+              },
+              originalPrice: finalOriginalPrice,
+              quantity: existing.quantity + qty,
             };
             return { items: nextItems, isCartOpen: true };
           }
@@ -103,7 +136,12 @@ export const useCartStore = create<CartState>()(
           return {
             items: [
               ...state.items,
-              { id: `cart-${Date.now()}-${item.id}`, item, quantity: qty },
+              {
+                id: `cart-${Date.now()}-${item.id}`,
+                item: normalizedItem,
+                originalPrice: resolvedOriginalPrice,
+                quantity: qty,
+              },
             ],
             isCartOpen: true,
           };
@@ -118,20 +156,19 @@ export const useCartStore = create<CartState>()(
         }));
       },
 
-      // Universal updateQuantity helper (removes item if quantity <= 0)
+      // Universal updateQuantity helper (minimum quantity is 1; use removeItem to delete)
       updateQuantity: (id: string, quantity: number) => {
-        set((state) => {
-          if (quantity <= 0) {
-            return {
-              items: state.items.filter((i) => i.id !== id && i.item.id !== id),
-            };
-          }
-          return {
-            items: state.items.map((i) =>
-              i.id === id || i.item.id === id ? { ...i, quantity } : i
-            ),
-          };
-        });
+        const safeQty = Math.max(1, Math.floor(quantity));
+        set((state) => ({
+          items: state.items.map((i) => {
+            if (i.id === id || i.item.id === id) {
+              const maxStock =
+                i.item.stockCount !== undefined && i.item.stockCount > 0 ? i.item.stockCount : 99;
+              return { ...i, quantity: Math.min(maxStock, safeQty) };
+            }
+            return i;
+          }),
+        }));
       },
 
       // Backwards-compatible aliases
@@ -184,7 +221,15 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: CART_STORAGE_KEY,
-      storage: createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : (null as any))),
+      storage: createJSONStorage(() =>
+        typeof window !== "undefined"
+          ? window.localStorage
+          : {
+              getItem: () => null,
+              setItem: () => {},
+              removeItem: () => {},
+            }
+      ),
       skipHydration: true,
       partialize: (state) => ({
         items: state.items,

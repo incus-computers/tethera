@@ -109,7 +109,23 @@ export function PrebuiltSystemCard({
         sizes: "(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw",
         className:
           "object-contain p-2 sm:p-2.5 opacity-0 transition-opacity duration-500 group-hover:opacity-100",
-      })
+      }),
+      hasDiscount &&
+        React.createElement(
+          "div",
+          {
+            className:
+              "absolute top-2 left-2 sm:top-2.5 sm:left-2.5 z-10 pointer-events-none",
+          },
+          React.createElement(
+            "span",
+            {
+              className:
+                "px-2 py-1 sm:px-2.5 sm:py-1 rounded-md text-xs sm:text-sm font-black tracking-tight leading-none bg-red-600 text-white shadow-md",
+            },
+            `-${Math.round(((rig.price - rawSale) / rig.price) * 100)}%`
+          )
+        )
     ),
     // Card Body Container
     React.createElement(

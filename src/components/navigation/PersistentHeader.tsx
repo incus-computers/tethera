@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
   MapPin,
   Search,
@@ -71,6 +72,7 @@ function MonitorTowerIcon({ className = "w-5 h-5" }: { className?: string }) {
 }
 
 export function PersistentHeader() {
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -201,6 +203,10 @@ export function PersistentHeader() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <header
       style={{ overflowAnchor: "none" }}
@@ -209,8 +215,8 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 1: Announcement Banner (Top-of-page announcement strip, persists) */}
       {/* ========================================================================= */}
-      <div className="bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-b border-slate-300 dark:border-white/40 w-full max-w-full overflow-hidden px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-2 text-xs">
-        <div className="w-full max-w-[1920px] mx-auto flex justify-between items-center gap-2 text-[11px] sm:text-xs">
+      <div className="bg-slate-100 dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 border-b border-slate-300 dark:border-white/40 w-full max-w-full overflow-hidden py-2 text-xs">
+        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex justify-between items-center gap-2 text-[11px] sm:text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200">
             <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
             <span className="text-zinc-900 dark:text-zinc-100 font-bold whitespace-nowrap">Open 9:00 AM to 6:00 PM WIB</span>
@@ -231,8 +237,8 @@ export function PersistentHeader() {
       {/* ========================================================================= */}
       {/* TIER 2: Main Search & Action Bar (Fixed comfortable height, does not shrink) */}
       {/* ========================================================================= */}
-      <div className="relative z-20 bg-white dark:bg-[#0A0B0E] border-b border-slate-200 dark:border-white/10 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full max-w-full py-2.5 sm:py-3 shadow-xs">
-        <div className="w-full max-w-[1920px] mx-auto flex items-center gap-3 sm:gap-4 md:gap-5 relative">
+      <div className="relative z-20 bg-white dark:bg-[#0A0B0E] border-b border-slate-200 dark:border-white/10 w-full max-w-full py-2.5 sm:py-3 shadow-xs">
+        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex items-center gap-3 sm:gap-4 md:gap-5 relative">
           {/* Mobile Hamburger Menu Toggle (Visible on <lg screens) */}
           <button
             type="button"
@@ -342,9 +348,9 @@ export function PersistentHeader() {
             : "translate-y-0 max-h-12 opacity-100 overflow-visible pointer-events-auto"
         }`}
       >
-        <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-300 dark:border-white/40 px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 w-full transition-colors">
+        <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-300 dark:border-white/40 w-full transition-colors">
         {/* Mobile Category Quick Strip (<sm viewports) */}
-        <div className="sm:hidden flex items-center gap-1.5 py-1 overflow-x-auto scrollbar-none w-full max-w-full">
+        <div className="sm:hidden flex items-center gap-1.5 py-1 px-3 overflow-x-auto scrollbar-none w-full max-w-full">
           <Link
             href="/builder"
             className="flex items-center gap-1.5 bg-zinc-900 dark:bg-zinc-800 text-white font-bold px-3 py-1 rounded-lg text-xs shrink-0 shadow-xs border border-transparent dark:border-zinc-700 tactile-btn active:scale-95 min-h-[34px]"
@@ -353,7 +359,7 @@ export function PersistentHeader() {
             <span>PC Builder</span>
           </Link>
           <Link
-            href="/prebuilts"
+            href="/prebuilt-systems"
             className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold px-3 py-1 rounded-lg text-xs shrink-0 border border-transparent tactile-btn active:scale-95 min-h-[34px]"
           >
             <span>Pre-Builts</span>
@@ -409,7 +415,7 @@ export function PersistentHeader() {
         </div>
 
         {/* Desktop Category Bar (>=sm viewports) */}
-        <div className="hidden sm:flex w-full max-w-[1920px] mx-auto items-center justify-between font-semibold text-zinc-700 dark:text-zinc-300 text-sm transition-colors py-0.5">
+        <div className="hidden sm:flex w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 items-center justify-between font-semibold text-zinc-700 dark:text-zinc-300 text-sm transition-colors py-0.5">
           <div className="flex items-center min-w-0">
             {/* All Categories Dropdown (To the left of CPU category, borderless hamburger style) */}
             <div
@@ -532,7 +538,7 @@ export function PersistentHeader() {
 
                     {/* Prebuilts */}
                     <Link
-                      href="/prebuilts"
+                      href="/prebuilt-systems"
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-[#37baf2]/10 text-sm font-bold text-[#37baf2] transition-colors tactile-item"
                     >
@@ -603,7 +609,7 @@ export function PersistentHeader() {
                 Power Supplies
               </Link>
               <Link
-                href="/prebuilts"
+                href="/prebuilt-systems"
                 className="flex items-center gap-1.5 px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-[#37baf2] bg-[#37baf2]/10 hover:bg-[#37baf2]/20 text-sm font-bold transition-colors whitespace-nowrap border border-[#37baf2]/25"
               >
                 <span>Pre-Built Systems</span>
@@ -793,7 +799,7 @@ export function PersistentHeader() {
                   </Link>
 
                   <Link
-                    href="/prebuilts"
+                    href="/prebuilt-systems"
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="min-h-[44px] flex items-center justify-between p-3 rounded-xl bg-[#37baf2]/10 border border-[#37baf2]/25 text-zinc-900 dark:text-white transition-all group"
                   >

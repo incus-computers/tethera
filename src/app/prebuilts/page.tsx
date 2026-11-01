@@ -17,7 +17,6 @@ import {
   List,
   RotateCcw,
 } from "lucide-react";
-import { Pagination } from "../../components/ui/Pagination";
 import { PrebuiltSystemCard } from "../../components/products/PrebuiltSystemCard";
 
 type PrimaryCategory = "all" | "ready-to-go" | "built-to-order";
@@ -26,8 +25,10 @@ type SortOption = "featured" | "price-asc" | "price-desc" | "name-asc";
 type ViewMode = "grid-4" | "grid-3" | "grid-2" | "list";
 
 export default function PrebuiltsPage() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const INITIAL_BATCH = 12;
+  const BATCH_INCREMENT = 6;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState("");
@@ -161,10 +162,25 @@ export default function PrebuiltsPage() {
   ]);
 
   const totalPrebuilts = filteredPrebuilts.length;
-  const paginatedPrebuilts = filteredPrebuilts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + BATCH_INCREMENT, filteredPrebuilts.length));
+        }
+      },
+      { rootMargin: "400px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredPrebuilts.length]);
+
+  const visiblePrebuilts = filteredPrebuilts.slice(0, visibleCount);
 
   const resetAllFilters = () => {
     setSearchQuery("");
@@ -176,7 +192,7 @@ export default function PrebuiltsPage() {
     setFilterCase("all");
     setFilterMemory("all");
     setSortBy("featured");
-    setCurrentPage(1);
+    setVisibleCount(INITIAL_BATCH);
   };
 
   const hasActiveFilters =
@@ -248,7 +264,7 @@ export default function PrebuiltsPage() {
             </h1>
 
             {/* Description Subtitle */}
-            <p className="text-xs sm:text-sm md:text-base text-zinc-300 max-w-xl font-normal leading-relaxed">
+            <p className="text-sm sm:text-base text-zinc-300 max-w-xl font-normal leading-relaxed">
               Your next great game starts here. Explore Incus ready-to-go gaming PCs
               or build a system around the way you play.
             </p>
@@ -256,7 +272,7 @@ export default function PrebuiltsPage() {
 
           {/* Right Column: Dual PC Showcase Visual */}
           <div className="lg:col-span-5 flex items-center justify-center lg:justify-end relative">
-            {/* Ambient Lighting Glow Behind Towers (Understated, non-neon luxury) */}
+            {/* Ambient Lighting Glow Behind Towers */}
             <div
               className="absolute -inset-4 bg-gradient-to-r from-[#37baf2]/10 via-[#52E394]/10 to-[#37baf2]/10 blur-3xl rounded-full opacity-60 pointer-events-none"
               aria-hidden="true"
@@ -303,7 +319,7 @@ export default function PrebuiltsPage() {
               onClick={() => {
                 setPrimaryCategory("all");
                 setTierFilter("all");
-                setCurrentPage(1);
+                setVisibleCount(INITIAL_BATCH);
               }}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-bold inline-flex items-center gap-2 transition-all shadow-xs ${
                 primaryCategory === "all"
@@ -319,7 +335,7 @@ export default function PrebuiltsPage() {
               type="button"
               onClick={() => {
                 setPrimaryCategory("ready-to-go");
-                setCurrentPage(1);
+                setVisibleCount(INITIAL_BATCH);
               }}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all shadow-xs ${
                 primaryCategory === "ready-to-go"
@@ -335,7 +351,7 @@ export default function PrebuiltsPage() {
               type="button"
               onClick={() => {
                 setPrimaryCategory("built-to-order");
-                setCurrentPage(1);
+                setVisibleCount(INITIAL_BATCH);
               }}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all shadow-xs ${
                 primaryCategory === "built-to-order"
@@ -349,7 +365,7 @@ export default function PrebuiltsPage() {
 
             <Link
               href="/builder"
-              className="min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] border border-slate-300 dark:border-white/10 hover:border-[#37baf2]/60 hover:text-[#37baf2] shadow-xs"
+              className="min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all shadow-xs bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] border border-slate-300 dark:border-white/10 hover:border-[#37baf2]/60 hover:text-[#37baf2]"
             >
               <span>Total custom</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -357,58 +373,70 @@ export default function PrebuiltsPage() {
           </div>
         </div>
 
-        {/* Row 2: Sub-tier Filter Pills */}
+        {/* Row 2: Secondary Category / Tier Pills */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-          <span className="text-xs sm:text-sm font-medium text-slate-500 dark:text-[#8B949E] w-36 shrink-0">
+          <span className="text-xs sm:text-sm font-semibold text-zinc-700 dark:text-[#8B949E] w-36 shrink-0">
             Prebuilt, ready to go
           </span>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => {
-                setTierFilter(tierFilter === "entry" ? "all" : "entry");
-                setCurrentPage(1);
+                setTierFilter("all");
+                setVisibleCount(INITIAL_BATCH);
+              }}
+              className={`min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all ${
+                tierFilter === "all"
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-bold"
+                  : "bg-slate-100 dark:bg-zinc-900 text-zinc-600 dark:text-[#8B949E] hover:text-zinc-900 dark:hover:text-white"
+              }`}
+            >
+              <span>All prebuilts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTierFilter("entry");
+                setVisibleCount(INITIAL_BATCH);
               }}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all ${
                 tierFilter === "entry"
-                  ? "bg-[#37baf2]/15 text-[#37baf2] border border-[#37baf2] font-bold"
-                  : "border border-slate-300 dark:border-white/15 text-zinc-700 dark:text-[#8B949E] hover:border-[#37baf2]/60 hover:text-[#37baf2]"
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-bold"
+                  : "bg-slate-100 dark:bg-zinc-900 text-zinc-600 dark:text-[#8B949E] hover:text-zinc-900 dark:hover:text-white"
               }`}
             >
               <span>Just want to play</span>
-              <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
             <button
               type="button"
               onClick={() => {
-                setTierFilter(tierFilter === "premium" ? "all" : "premium");
-                setCurrentPage(1);
+                setTierFilter("premium");
+                setVisibleCount(INITIAL_BATCH);
               }}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all ${
                 tierFilter === "premium"
-                  ? "bg-[#37baf2]/15 text-[#37baf2] border border-[#37baf2] font-bold"
-                  : "border border-slate-300 dark:border-white/15 text-zinc-700 dark:text-[#8B949E] hover:border-[#37baf2]/60 hover:text-[#37baf2]"
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-bold"
+                  : "bg-slate-100 dark:bg-zinc-900 text-zinc-600 dark:text-[#8B949E] hover:text-zinc-900 dark:hover:text-white"
               }`}
             >
               <span>Premium</span>
-              <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
             <button
               type="button"
               onClick={() => {
-                setTierFilter(tierFilter === "ultra" ? "all" : "ultra");
-                setCurrentPage(1);
+                setTierFilter("ultra");
+                setVisibleCount(INITIAL_BATCH);
               }}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-xs sm:text-sm font-medium inline-flex items-center gap-2 transition-all ${
                 tierFilter === "ultra"
-                  ? "bg-[#37baf2]/15 text-[#37baf2] border border-[#37baf2] font-bold"
-                  : "border border-slate-300 dark:border-white/15 text-zinc-700 dark:text-[#8B949E] hover:border-[#37baf2]/60 hover:text-[#37baf2]"
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-bold"
+                  : "bg-slate-100 dark:bg-zinc-900 text-zinc-600 dark:text-[#8B949E] hover:text-zinc-900 dark:hover:text-white"
               }`}
             >
               <span>Ultra</span>
-              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -416,634 +444,471 @@ export default function PrebuiltsPage() {
 
       {/* Secondary Section Header */}
       <div className="pt-4 border-t border-slate-200 dark:border-white/10">
-        <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+        <h2 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
           Ready-to-go gaming PCs
         </h2>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-[#8B949E] mt-1">
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-[#8B949E] mt-1 font-normal">
           Prebuilt Incus gaming PCs. Compare specifications, prices and store availability.
         </p>
       </div>
 
-      {/* Filter and Control Toolbar */}
+      {/* Filter and View Toolbar */}
       <div
         ref={dropdownRef}
-        className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2"
+        className="bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl p-3 sm:p-4 shadow-sm relative z-20"
       >
-        {/* Left Side: Filter Dropdowns */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Category Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "category" ? null : "category")
-              }
-              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 transition-colors border ${
-                primaryCategory !== "all"
-                  ? "border-[#37baf2] text-[#37baf2] dark:text-[#37baf2] bg-[#37baf2]/10"
-                  : "border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20"
-              }`}
-            >
-              <span>Category</span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "category" && (
-              <div className="absolute top-full left-0 mt-1.5 z-30 min-w-[200px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-1.5 space-y-1">
-                {[
-                  { id: "all", label: "All Categories" },
-                  { id: "ready-to-go", label: "Ready to Go Desktops" },
-                  { id: "built-to-order", label: "Built to Order Workstations" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setPrimaryCategory(item.id as PrimaryCategory);
-                      setActiveDropdown(null);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
-                  >
-                    <span>{item.label}</span>
-                    {primaryCategory === item.id && (
-                      <Check className="w-3.5 h-3.5 text-[#37baf2]" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Availability Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "availability" ? null : "availability")
-              }
-              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 transition-colors border ${
-                filterAvailability !== "all"
-                  ? "border-[#37baf2] text-[#37baf2] dark:text-[#37baf2] bg-[#37baf2]/10"
-                  : "border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20"
-              }`}
-            >
-              <span>Availability</span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "availability" && (
-              <div className="absolute top-full left-0 mt-1.5 z-30 min-w-[200px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-1.5 space-y-1">
-                {[
-                  { id: "all", label: "All Availability" },
-                  { id: "in-stock", label: "In Stock at Flagship" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setFilterAvailability(item.id);
-                      setActiveDropdown(null);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
-                  >
-                    <span>{item.label}</span>
-                    {filterAvailability === item.id && (
-                      <Check className="w-3.5 h-3.5 text-[#37baf2]" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Case Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "case" ? null : "case")
-              }
-              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 transition-colors border ${
-                filterCase !== "all"
-                  ? "border-[#37baf2] text-[#37baf2] dark:text-[#37baf2] bg-[#37baf2]/10"
-                  : "border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20"
-              }`}
-            >
-              <span>Case</span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "case" && (
-              <div className="absolute top-full left-0 mt-1.5 z-30 min-w-[220px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-1.5 space-y-1">
-                {[
-                  { id: "all", label: "All Chassis" },
-                  { id: "Lian Li", label: "Lian Li Cases" },
-                  { id: "Fractal", label: "Fractal Design Cases" },
-                  { id: "NZXT", label: "NZXT Cases" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setFilterCase(item.id);
-                      setActiveDropdown(null);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
-                  >
-                    <span>{item.label}</span>
-                    {filterCase === item.id && (
-                      <Check className="w-3.5 h-3.5 text-[#37baf2]" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* CPU Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "cpu" ? null : "cpu")
-              }
-              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 transition-colors border ${
-                filterCpu !== "all"
-                  ? "border-[#37baf2] text-[#37baf2] dark:text-[#37baf2] bg-[#37baf2]/10"
-                  : "border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20"
-              }`}
-            >
-              <span>CPU</span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "cpu" && (
-              <div className="absolute top-full left-0 mt-1.5 z-30 min-w-[220px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-1.5 space-y-1">
-                {[
-                  { id: "all", label: "All Processors" },
-                  { id: "Ryzen 7", label: "AMD Ryzen 7" },
-                  { id: "Ryzen 9", label: "AMD Ryzen 9" },
-                  { id: "Core i7", label: "Intel Core i7" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setFilterCpu(item.id);
-                      setActiveDropdown(null);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
-                  >
-                    <span>{item.label}</span>
-                    {filterCpu === item.id && (
-                      <Check className="w-3.5 h-3.5 text-[#37baf2]" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Graphics Card Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "gpu" ? null : "gpu")
-              }
-              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 transition-colors border ${
-                filterGpu !== "all"
-                  ? "border-[#37baf2] text-[#37baf2] dark:text-[#37baf2] bg-[#37baf2]/10"
-                  : "border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20"
-              }`}
-            >
-              <span>Graphics Card</span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "gpu" && (
-              <div className="absolute top-full left-0 mt-1.5 z-30 min-w-[220px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-1.5 space-y-1">
-                {[
-                  { id: "all", label: "All Graphics Cards" },
-                  { id: "4070", label: "GeForce RTX 4070 Series" },
-                  { id: "4080", label: "GeForce RTX 4080 Series" },
-                  { id: "4060", label: "GeForce RTX 4060 Series" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setFilterGpu(item.id);
-                      setActiveDropdown(null);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
-                  >
-                    <span>{item.label}</span>
-                    {filterGpu === item.id && (
-                      <Check className="w-3.5 h-3.5 text-[#37baf2]" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Memory Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "memory" ? null : "memory")
-              }
-              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 transition-colors border ${
-                filterMemory !== "all"
-                  ? "border-[#37baf2] text-[#37baf2] dark:text-[#37baf2] bg-[#37baf2]/10"
-                  : "border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20"
-              }`}
-            >
-              <span>Memory</span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "memory" && (
-              <div className="absolute top-full left-0 mt-1.5 z-30 min-w-[200px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-1.5 space-y-1">
-                {[
-                  { id: "all", label: "All Memory" },
-                  { id: "32GB", label: "32GB High Speed" },
-                  { id: "64GB", label: "64GB High Speed" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setFilterMemory(item.id);
-                      setActiveDropdown(null);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
-                  >
-                    <span>{item.label}</span>
-                    {filterMemory === item.id && (
-                      <Check className="w-3.5 h-3.5 text-[#37baf2]" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* More filters Button */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "more" ? null : "more")
-              }
-              className={`min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 transition-colors border ${
-                activeFilterCount > 0
-                  ? "border-[#37baf2] text-[#37baf2] dark:text-[#37baf2] bg-[#37baf2]/10"
-                  : "border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20"
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>More filters</span>
-              {activeFilterCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-[#37baf2] text-[#0A0B0E] text-[10px] flex items-center justify-center font-bold">
-                  {activeFilterCount}
-                </span>
-              )}
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "more" && (
-              <div className="absolute top-full left-0 mt-1.5 z-30 min-w-[240px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-3 space-y-3">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-2">
-                  <span className="text-xs font-bold text-zinc-900 dark:text-white">
-                    Active Filters ({activeFilterCount})
-                  </span>
-                  {activeFilterCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={resetAllFilters}
-                      className="text-[11px] text-[#37baf2] hover:underline font-semibold"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-[#8B949E] space-y-1">
-                  <p>Category: {primaryCategory}</p>
-                  <p>Tier: {tierFilter}</p>
-                  <p>CPU: {filterCpu}</p>
-                  <p>GPU: {filterGpu}</p>
-                  <p>Case: {filterCase}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Side: Search, Sort, View Switcher */}
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search within results */}
-          <div className="relative min-w-[200px] sm:min-w-[240px] flex-1 sm:flex-initial">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search within results"
-              className="w-full min-h-[44px] pl-9 pr-8 py-2 text-xs bg-white dark:bg-[#12141A] border border-slate-300 dark:border-white/10 rounded-lg text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-[#8B949E] focus:outline-none focus:ring-1 focus:ring-[#37baf2] focus:border-[#37baf2] transition-all"
-            />
-            {searchQuery && (
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Left: Filter Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Category Filter */}
+            <div className="relative">
               <button
                 type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 dark:hover:text-white p-1"
-                aria-label="Clear search"
+                onClick={() =>
+                  setActiveDropdown(activeDropdown === "category" ? null : "category")
+                }
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 border transition-colors ${
+                  primaryCategory !== "all"
+                    ? "bg-[#37baf2]/10 border-[#37baf2] text-[#37baf2]"
+                    : "bg-slate-50 dark:bg-[#1A1D24] border-slate-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-slate-400"
+                }`}
               >
-                <X className="w-3.5 h-3.5" />
+                <span>Category</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {activeDropdown === "category" && (
+                <div className="absolute left-0 top-full mt-2 w-48 bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-2 z-30 space-y-1">
+                  {[
+                    { id: "all", label: "All Categories" },
+                    { id: "ready-to-go", label: "Ready to Go" },
+                    { id: "built-to-order", label: "Built to Order" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setPrimaryCategory(item.id as PrimaryCategory);
+                        setActiveDropdown(null);
+                        setVisibleCount(INITIAL_BATCH);
+                      }}
+                      className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
+                    >
+                      <span>{item.label}</span>
+                      {primaryCategory === item.id && (
+                        <Check className="w-3.5 h-3.5 text-[#37baf2]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Availability Filter */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveDropdown(
+                    activeDropdown === "availability" ? null : "availability"
+                  )
+                }
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 border transition-colors ${
+                  filterAvailability !== "all"
+                    ? "bg-[#37baf2]/10 border-[#37baf2] text-[#37baf2]"
+                    : "bg-slate-50 dark:bg-[#1A1D24] border-slate-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-slate-400"
+                }`}
+              >
+                <span>Availability</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {activeDropdown === "availability" && (
+                <div className="absolute left-0 top-full mt-2 w-48 bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-2 z-30 space-y-1">
+                  {[
+                    { id: "all", label: "All Stock Statuses" },
+                    { id: "in-stock", label: "Ready for Pickup Today" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setFilterAvailability(item.id);
+                        setActiveDropdown(null);
+                        setVisibleCount(INITIAL_BATCH);
+                      }}
+                      className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
+                    >
+                      <span>{item.label}</span>
+                      {filterAvailability === item.id && (
+                        <Check className="w-3.5 h-3.5 text-[#37baf2]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Case Filter */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveDropdown(activeDropdown === "case" ? null : "case")
+                }
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 border transition-colors ${
+                  filterCase !== "all"
+                    ? "bg-[#37baf2]/10 border-[#37baf2] text-[#37baf2]"
+                    : "bg-slate-50 dark:bg-[#1A1D24] border-slate-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-slate-400"
+                }`}
+              >
+                <span>Case</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {activeDropdown === "case" && (
+                <div className="absolute left-0 top-full mt-2 w-52 bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-2 z-30 space-y-1">
+                  {[
+                    { id: "all", label: "All Cases" },
+                    { id: "lian li", label: "Lian Li Chassis" },
+                    { id: "nzxt", label: "NZXT Chassis" },
+                    { id: "fractal", label: "Fractal Design" },
+                    { id: "corsair", label: "Corsair Chassis" },
+                    { id: "phanteks", label: "Phanteks Chassis" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setFilterCase(item.id);
+                        setActiveDropdown(null);
+                        setVisibleCount(INITIAL_BATCH);
+                      }}
+                      className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
+                    >
+                      <span>{item.label}</span>
+                      {filterCase === item.id && (
+                        <Check className="w-3.5 h-3.5 text-[#37baf2]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* CPU Filter */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveDropdown(activeDropdown === "cpu" ? null : "cpu")
+                }
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 border transition-colors ${
+                  filterCpu !== "all"
+                    ? "bg-[#37baf2]/10 border-[#37baf2] text-[#37baf2]"
+                    : "bg-slate-50 dark:bg-[#1A1D24] border-slate-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-slate-400"
+                }`}
+              >
+                <span>CPU</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {activeDropdown === "cpu" && (
+                <div className="absolute left-0 top-full mt-2 w-48 bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-2 z-30 space-y-1">
+                  {[
+                    { id: "all", label: "All Processors" },
+                    { id: "ryzen 7", label: "AMD Ryzen 7" },
+                    { id: "ryzen 9", label: "AMD Ryzen 9" },
+                    { id: "core i7", label: "Intel Core i7" },
+                    { id: "core i9", label: "Intel Core i9" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setFilterCpu(item.id);
+                        setActiveDropdown(null);
+                        setVisibleCount(INITIAL_BATCH);
+                      }}
+                      className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
+                    >
+                      <span>{item.label}</span>
+                      {filterCpu === item.id && (
+                        <Check className="w-3.5 h-3.5 text-[#37baf2]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Graphics Card Filter */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveDropdown(activeDropdown === "gpu" ? null : "gpu")
+                }
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 border transition-colors ${
+                  filterGpu !== "all"
+                    ? "bg-[#37baf2]/10 border-[#37baf2] text-[#37baf2]"
+                    : "bg-slate-50 dark:bg-[#1A1D24] border-slate-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-slate-400"
+                }`}
+              >
+                <span>Graphics Card</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {activeDropdown === "gpu" && (
+                <div className="absolute left-0 top-full mt-2 w-52 bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-2 z-30 space-y-1">
+                  {[
+                    { id: "all", label: "All GPUs" },
+                    { id: "rtx 4070", label: "RTX 4070 / 4070 Ti" },
+                    { id: "rtx 4080", label: "RTX 4080 Super" },
+                    { id: "rtx 4090", label: "RTX 4090" },
+                    { id: "rx 7900", label: "Radeon RX 7900 XTX" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setFilterGpu(item.id);
+                        setActiveDropdown(null);
+                        setVisibleCount(INITIAL_BATCH);
+                      }}
+                      className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
+                    >
+                      <span>{item.label}</span>
+                      {filterGpu === item.id && (
+                        <Check className="w-3.5 h-3.5 text-[#37baf2]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Memory Filter */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveDropdown(activeDropdown === "memory" ? null : "memory")
+                }
+                className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 border transition-colors ${
+                  filterMemory !== "all"
+                    ? "bg-[#37baf2]/10 border-[#37baf2] text-[#37baf2]"
+                    : "bg-slate-50 dark:bg-[#1A1D24] border-slate-200 dark:border-white/10 text-zinc-700 dark:text-zinc-300 hover:border-slate-400"
+                }`}
+              >
+                <span>Memory</span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+              </button>
+
+              {activeDropdown === "memory" && (
+                <div className="absolute left-0 top-full mt-2 w-48 bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-2 z-30 space-y-1">
+                  {[
+                    { id: "all", label: "All Memory Sizes" },
+                    { id: "32gb", label: "32 GB DDR5" },
+                    { id: "64gb", label: "64 GB DDR5" },
+                    { id: "128gb", label: "128 GB DDR5" },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setFilterMemory(item.id);
+                        setActiveDropdown(null);
+                        setVisibleCount(INITIAL_BATCH);
+                      }}
+                      className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
+                    >
+                      <span>{item.label}</span>
+                      {filterMemory === item.id && (
+                        <Check className="w-3.5 h-3.5 text-[#37baf2]" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* More filters trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDropdown(null);
+              }}
+              className="min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#1A1D24] text-zinc-700 dark:text-zinc-300 hover:border-slate-400 transition-colors"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400" />
+              <span>More filters</span>
+            </button>
+
+            {/* Reset Filters */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Reset ({activeFilterCount})</span>
               </button>
             )}
           </div>
 
-          {/* Sort Dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() =>
-                setActiveDropdown(activeDropdown === "sort" ? null : "sort")
-              }
-              className="min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2 border border-slate-300 dark:border-white/10 bg-white dark:bg-[#12141A] text-zinc-700 dark:text-[#8B949E] hover:border-slate-400 dark:hover:border-white/20 transition-colors"
+          {/* Right: Search, Grid View Switcher, and Sort */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Search Input */}
+            <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+              <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setVisibleCount(INITIAL_BATCH);
+                }}
+                placeholder="Search within results"
+                className="w-full min-h-[44px] pl-9 pr-8 py-2 text-xs bg-white dark:bg-[#12141A] border border-slate-300 dark:border-white/10 rounded-lg text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-[#8B949E] focus:outline-none focus:ring-1 focus:ring-[#37baf2] focus:border-[#37baf2] transition-all"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-white p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* View Mode Grid Switchers */}
+            <div
+              role="radiogroup"
+              aria-label="View layout options"
+              className="hidden sm:flex items-center bg-slate-100 dark:bg-[#1A1D24] border border-slate-200 dark:border-white/10 rounded-lg p-0.5"
             >
-              <span className="text-zinc-400 font-normal">Sort:</span>
-              <span className="font-bold">
-                {sortBy === "price-asc"
-                  ? "Price (Low to High)"
-                  : sortBy === "price-desc"
-                  ? "Price (High to Low)"
-                  : sortBy === "name-asc"
-                  ? "Name (A to Z)"
-                  : "Price"}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === "grid-4"}
+                onClick={() => setViewMode("grid-4")}
+                aria-label="4 columns grid"
+                className={`min-h-[40px] px-2 py-1 rounded text-xs transition-colors ${
+                  viewMode === "grid-4"
+                    ? "bg-white dark:bg-[#12141A] text-zinc-900 dark:text-white shadow-xs font-bold"
+                    : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                }`}
+              >
+                <Columns4 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === "grid-3"}
+                onClick={() => setViewMode("grid-3")}
+                aria-label="3 columns grid"
+                className={`min-h-[40px] px-2 py-1 rounded text-xs transition-colors ${
+                  viewMode === "grid-3"
+                    ? "bg-white dark:bg-[#12141A] text-zinc-900 dark:text-white shadow-xs font-bold"
+                    : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                }`}
+              >
+                <Columns3 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === "grid-2"}
+                onClick={() => setViewMode("grid-2")}
+                aria-label="2 columns grid"
+                className={`min-h-[40px] px-2 py-1 rounded text-xs transition-colors ${
+                  viewMode === "grid-2"
+                    ? "bg-white dark:bg-[#12141A] text-zinc-900 dark:text-white shadow-xs font-bold"
+                    : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                }`}
+              >
+                <Columns2 className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === "list"}
+                onClick={() => setViewMode("list")}
+                aria-label="List view"
+                className={`min-h-[40px] px-2 py-1 rounded text-xs transition-colors ${
+                  viewMode === "list"
+                    ? "bg-white dark:bg-[#12141A] text-zinc-900 dark:text-white shadow-xs font-bold"
+                    : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                }`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-slate-500 dark:text-[#8B949E] whitespace-nowrap">
+                Sort:
               </span>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
-            </button>
-
-            {activeDropdown === "sort" && (
-              <div className="absolute top-full right-0 mt-1.5 z-30 min-w-[200px] bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-1.5 space-y-1">
-                {[
-                  { id: "featured", label: "Featured" },
-                  { id: "price-asc", label: "Price: Low to High" },
-                  { id: "price-desc", label: "Price: High to Low" },
-                  { id: "name-asc", label: "System Name: A to Z" },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSortBy(item.id as SortOption);
-                      setActiveDropdown(null);
-                    }}
-                    className="w-full min-h-[40px] px-3 py-1.5 rounded-lg text-xs font-medium text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-[#1A1D24] text-zinc-900 dark:text-white"
-                  >
-                    <span>{item.label}</span>
-                    {sortBy === item.id && (
-                      <Check className="w-3.5 h-3.5 text-[#37baf2]" />
-                    )}
-                  </button>
-                ))}
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  aria-label="Sort prebuilts"
+                  className="min-h-[44px] bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-[#37baf2] cursor-pointer"
+                >
+                  <option value="featured">Featured First</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="name-asc">Name: A to Z</option>
+                </select>
               </div>
-            )}
-          </div>
-
-          {/* View Mode Toggle Button Cluster */}
-          <div
-            role="group"
-            aria-label="View layout options"
-            className="flex items-center border border-slate-300 dark:border-white/10 rounded-lg overflow-hidden bg-white dark:bg-[#12141A] p-0.5"
-          >
-            <button
-              type="button"
-              onClick={() => setViewMode("grid-2")}
-              title="2-column view"
-              className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded transition-colors ${
-                viewMode === "grid-2"
-                  ? "bg-[#37baf2] text-[#0A0B0E]"
-                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              }`}
-            >
-              <Columns2 className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode("grid-3")}
-              title="3-column view"
-              className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded transition-colors ${
-                viewMode === "grid-3"
-                  ? "bg-[#37baf2] text-[#0A0B0E]"
-                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              }`}
-            >
-              <Columns3 className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode("grid-4")}
-              title="4-column view"
-              className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded transition-colors ${
-                viewMode === "grid-4"
-                  ? "bg-[#37baf2] text-[#0A0B0E]"
-                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              }`}
-            >
-              <Columns4 className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              title="List view"
-              className={`min-h-[40px] min-w-[40px] flex items-center justify-center rounded transition-colors ${
-                viewMode === "list"
-                  ? "bg-[#37baf2] text-[#0A0B0E]"
-                  : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              }`}
-            >
-              <List className="w-4 h-4" />
-            </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Active Filter Indicators */}
-      {hasActiveFilters && (
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-          <span className="text-slate-500 dark:text-[#8B949E] font-medium">
-            Active filters:
-          </span>
-          {searchQuery && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              Query: "{searchQuery}"
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          {primaryCategory !== "all" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              Category: {primaryCategory}
-              <button
-                type="button"
-                onClick={() => setPrimaryCategory("all")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          {tierFilter !== "all" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              Tier: {tierFilter}
-              <button
-                type="button"
-                onClick={() => setTierFilter("all")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          {filterAvailability !== "all" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              In Stock Only
-              <button
-                type="button"
-                onClick={() => setFilterAvailability("all")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          {filterCpu !== "all" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              CPU: {filterCpu}
-              <button
-                type="button"
-                onClick={() => setFilterCpu("all")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          {filterGpu !== "all" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              GPU: {filterGpu}
-              <button
-                type="button"
-                onClick={() => setFilterGpu("all")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          {filterCase !== "all" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              Case: {filterCase}
-              <button
-                type="button"
-                onClick={() => setFilterCase("all")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          {filterMemory !== "all" && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-200 dark:bg-[#1A1D24] text-zinc-900 dark:text-zinc-200 border border-slate-300 dark:border-white/10">
-              RAM: {filterMemory}
-              <button
-                type="button"
-                onClick={() => setFilterMemory("all")}
-                className="hover:text-[#37baf2] ml-1"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={resetAllFilters}
-            className="inline-flex items-center gap-1 text-[#37baf2] font-semibold hover:underline ml-2"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Reset filters</span>
-          </button>
-        </div>
-      )}
-
-      {/* Grid of Prebuilt Rigs */}
+      {/* Prebuilts Grid Listing */}
       <div className="space-y-8" id="prebuilts-list">
         {totalPrebuilts > 0 ? (
           <div className={gridClasses}>
-            {paginatedPrebuilts.map((pb) => (
+            {visiblePrebuilts.map((pb) => (
               <PrebuiltSystemCard key={pb.id} rig={pb} />
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 px-4 bg-white dark:bg-[#12141A] rounded-2xl border border-slate-200 dark:border-white/10 space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
-              No gaming PCs match your criteria
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-[#8B949E] max-w-md mx-auto">
-              Try adjusting your search terms or clearing some active filters to view available performance systems.
+          <div className="py-16 text-center space-y-4 bg-white dark:bg-[#12141A] border border-slate-200 dark:border-white/10 rounded-2xl">
+            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              No prebuilt systems found matching your criteria.
             </p>
-            <div className="pt-2 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={resetAllFilters}
-                className="min-h-[44px] px-4 py-2 bg-[#52E394] hover:brightness-105 text-[#0A0B0E] rounded-md text-xs font-semibold transition-all shadow-xs"
-              >
-                Reset All Filters
-              </button>
-              <Link
-                href="/builder"
-                className="min-h-[44px] px-4 py-2 border border-slate-300 dark:border-white/15 hover:border-[#37baf2] hover:text-[#37baf2] rounded-md text-xs font-medium text-zinc-900 dark:text-white transition-all flex items-center gap-2"
-              >
-                <span>Customize in PC Builder</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] text-[#0A0B0E] text-xs font-bold hover:bg-[#52c6f5] transition-all shadow-sm inline-flex items-center gap-2"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Clear all filters</span>
+            </button>
+          </div>
+        )}
+
+        {/* Infinite Scroll Sentinel / Loading Indicator */}
+        {visibleCount < totalPrebuilts && (
+          <div ref={sentinelRef} className="py-8 flex justify-center items-center">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-zinc-400">
+              <div className="w-2 h-2 rounded-full bg-[#37baf2] animate-pulse" />
+              <span>Loading more systems...</span>
             </div>
           </div>
         )}
 
-        {/* Prebuilts Pagination with 10, 20, 50 settings */}
-        {totalPrebuilts > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalPrebuilts}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-            scrollToId="prebuilts-list"
-            itemLabel="systems"
-          />
+        {visibleCount >= totalPrebuilts && totalPrebuilts > 0 && (
+          <div className="py-6 text-center text-xs font-medium text-slate-400 dark:text-zinc-500">
+            Showing all {totalPrebuilts} systems
+          </div>
         )}
       </div>
     </div>

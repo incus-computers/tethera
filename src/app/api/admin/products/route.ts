@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       warranty_months,
       pc_builder_slot,
       initial_stock,
+      variations,
     } = body;
 
     if (!name || !brand || !sku || !retail_price) {
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
       warranty_months: Number(warranty_months) || 24,
       is_active: true,
       pc_builder_slot: pc_builder_slot || null,
+      variations: Array.isArray(variations) ? variations : [],
     });
 
     // Initialize store inventory

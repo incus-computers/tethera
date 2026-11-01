@@ -5,11 +5,7 @@ import {
   MapPin,
   Search,
   CheckCircle2,
-  Truck,
   Loader2,
-  LocateFixed,
-  Store,
-  Compass,
 } from "lucide-react";
 import { FLAGSHIP_ORIGIN, calculateHaversineDistanceKm } from "../../lib/shipping/distance";
 import { DeliveryLocation } from "../../lib/shipping/types";
@@ -47,7 +43,6 @@ export function GoogleMapPicker({
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
 
   // Current selected pin position
@@ -292,38 +287,6 @@ export function GoogleMapPicker({
   };
 
   // =========================================================================
-  // 5. USE CURRENT DEVICE GPS LOCATION
-  // =========================================================================
-  const handleUseCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        updateMapMarker(latitude, longitude);
-        handleReverseGeocode(latitude, longitude);
-        setIsLocating(false);
-      },
-      (error) => {
-        setIsLocating(false);
-        alert("Unable to access device GPS position. Please click or drag the pin on the map.");
-      },
-      { timeout: 8000 }
-    );
-  };
-
-  // =========================================================================
-  // 6. CENTER ON TETHERA FLAGSHIP HUB
-  // =========================================================================
-  const handleCenterOnFlagshipStore = () => {
-    updateMapMarker(FLAGSHIP_ORIGIN.latitude!, FLAGSHIP_ORIGIN.longitude!);
-    handleReverseGeocode(FLAGSHIP_ORIGIN.latitude!, FLAGSHIP_ORIGIN.longitude!);
-  };
-
   // =========================================================================
   // 7. CONFIRM LOCATION
   // =========================================================================
@@ -356,7 +319,7 @@ export function GoogleMapPicker({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Type landmark, mall, street, or kecamatan (e.g. SCBD, Grand Indonesia, Senayan, Kelapa Gading)..."
+            placeholder="Search location..."
             className="w-full pl-10 pr-10 py-2.5 bg-slate-100/90 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400 focus:bg-white dark:focus:bg-zinc-800 transition-all shadow-2xs"
           />
           {isSearching && (
@@ -401,43 +364,6 @@ export function GoogleMapPicker({
         {/* Leaflet Google Roadmap Canvas */}
         <div ref={mapContainerRef} className="w-full h-full z-10" />
 
-        {/* Floating Map Action Buttons */}
-        <div className="absolute top-3 right-3 z-20 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleUseCurrentLocation}
-            disabled={isLocating}
-            className="p-2.5 rounded-xl bg-white/95 dark:bg-zinc-900/95 hover:bg-white dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-md border border-slate-200/80 dark:border-zinc-700 transition flex items-center gap-1.5 text-xs font-bold tactile-btn active:scale-95"
-            title="Locate my device position"
-          >
-            <LocateFixed className={`w-4 h-4 text-emerald-600 dark:text-emerald-400 ${isLocating ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">{isLocating ? "Locating..." : "My GPS"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCenterOnFlagshipStore}
-            className="p-2.5 rounded-xl bg-white/95 dark:bg-zinc-900/95 hover:bg-white dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-100 shadow-md border border-slate-200/80 dark:border-zinc-700 transition flex items-center gap-1.5 text-xs font-bold tactile-btn active:scale-95"
-            title="Center on Mangga Dua Mall Flagship Hub"
-          >
-            <Store className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span className="hidden sm:inline">Flagship Hub</span>
-          </button>
-        </div>
-
-        {/* Map Drag / Click Guidance Banner */}
-        <div className="absolute bottom-3 left-3 right-3 z-20 pointer-events-none">
-          <div className="p-2 rounded-xl bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm border border-slate-200/80 dark:border-zinc-700 shadow-md text-[11px] text-slate-600 dark:text-zinc-300 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 truncate">
-              <Compass className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-              <span className="truncate">Click map or drag red pin to set exact doorstep location</span>
-            </div>
-            <span className="font-mono text-zinc-900 dark:text-zinc-100 font-bold text-[10px] shrink-0 ml-2">
-              {pinPosition.lat.toFixed(4)}, {pinPosition.lng.toFixed(4)}
-            </span>
-          </div>
-        </div>
-
         {/* Geocoding Loading Indicator */}
         {isGeocoding && (
           <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-2xs flex items-center justify-center z-30">
@@ -461,11 +387,6 @@ export function GoogleMapPicker({
                 <span className="text-xs font-black text-zinc-900 dark:text-zinc-100 truncate">
                   {currentAddress}
                 </span>
-                {currentAreaId && (
-                  <span className="text-[9px] bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 font-bold px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800">
-                    Biteship Connected
-                  </span>
-                )}
               </div>
               <div className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 flex flex-wrap items-center gap-1.5">
                 <span>Kecamatan: <strong>{currentSubdistrict}</strong></span>
@@ -485,15 +406,6 @@ export function GoogleMapPicker({
             <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
               {distanceKm.toFixed(1)} km
             </div>
-            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block">from Mangga Dua Hub</span>
-          </div>
-        </div>
-
-        {/* Courier Support Indicator */}
-        <div className="pt-2 border-t border-slate-200/80 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-zinc-400">
-          <div className="flex items-center gap-1.5">
-            <Truck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-            <span>Multi-courier rates: <strong>JNE, J&T, SiCepat, AnterAja, Gojek, Grab</strong></span>
           </div>
         </div>
       </div>

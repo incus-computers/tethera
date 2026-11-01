@@ -175,8 +175,8 @@ export function PromotionalBanners() {
                             {slide.title}
                           </h2>
                           {slide.highlight && (
-                            <div className="text-xs sm:text-base font-bold text-emerald-400 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                            <div className="text-xs sm:text-base font-bold text-[#37baf2] flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#37baf2]" />
                               <span>{slide.highlight}</span>
                             </div>
                           )}
@@ -187,13 +187,13 @@ export function PromotionalBanners() {
                           )}
                           {slide.perk && (
                             <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900/80 backdrop-blur-xs border border-white/20 rounded-lg text-xs sm:text-sm font-semibold text-slate-200">
-                              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                              <ShieldCheck className="w-4 h-4 text-[#37baf2] shrink-0" />
                               <span>{slide.perk}</span>
                             </div>
                           )}
                           {slide.ctaText && (
                             <div className="pt-3">
-                              <span className="min-h-[44px] inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-white group-hover:text-emerald-400 transition-colors uppercase tracking-wide">
+                              <span className="min-h-[44px] inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-white group-hover:text-[#37baf2] transition-colors uppercase tracking-wide">
                                 <span>{slide.ctaText}</span>
                                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                               </span>
@@ -233,15 +233,7 @@ export function PromotionalBanners() {
                           {slide.badgeType === "bundle" && <Gift className="w-3.5 h-3.5" />}
                           {slide.badgeType === "flagship" && <Clock className="w-3.5 h-3.5" />}
                           {slide.badgeType === "event" && (
-                            <Sparkles
-                              className={`w-3.5 h-3.5 ${
-                                slide.id === "banner-1" ||
-                                slide.title?.toLowerCase().includes("white edition") ||
-                                slide.tagColor?.includes("amber")
-                                  ? "text-amber-400"
-                                  : ""
-                              }`}
-                            />
+                            <Sparkles className="w-3.5 h-3.5 text-[#37baf2]" />
                           )}
                           <span>{slide.badge}</span>
                         </span>
@@ -257,15 +249,7 @@ export function PromotionalBanners() {
                     </h2>
                     {slide.highlight && (
                       <div className="text-xs sm:text-base font-bold text-zinc-700 dark:text-zinc-300 mt-2 flex items-center gap-1.5">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            slide.id === "banner-1" ||
-                            slide.title?.toLowerCase().includes("white edition") ||
-                            slide.tagColor?.includes("amber")
-                              ? "bg-amber-400"
-                              : "bg-emerald-500"
-                          }`}
-                        />
+                        <span className="w-2 h-2 rounded-full bg-[#37baf2]" />
                         <span>{slide.highlight}</span>
                       </div>
                     )}
@@ -280,15 +264,7 @@ export function PromotionalBanners() {
                     {/* Benefit perk pill */}
                     {slide.perk && (
                       <div className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 dark:bg-zinc-800/90 border border-slate-200/80 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 dark:text-zinc-200 shadow-2xs">
-                        <ShieldCheck
-                          className={`w-4 h-4 shrink-0 ${
-                            slide.id === "banner-1" ||
-                            slide.title?.toLowerCase().includes("white edition") ||
-                            slide.tagColor?.includes("amber")
-                              ? "text-amber-400"
-                              : "text-emerald-600 dark:text-emerald-400"
-                          }`}
-                        />
+                        <ShieldCheck className="w-4 h-4 shrink-0 text-[#37baf2]" />
                         <span>{slide.perk}</span>
                       </div>
                     )}
@@ -299,24 +275,10 @@ export function PromotionalBanners() {
                     <div className="flex items-center gap-4">
                       <Link
                         href={slide.ctaLink}
-                        className={`min-h-[44px] inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-zinc-900 dark:text-white transition-colors uppercase tracking-wide group ${
-                          slide.id === "banner-1" ||
-                          slide.title?.toLowerCase().includes("white edition") ||
-                          slide.tagColor?.includes("amber")
-                            ? "hover:text-amber-400 dark:hover:text-amber-400"
-                            : "hover:text-emerald-600 dark:hover:text-emerald-400"
-                        }`}
+                        className="min-h-[44px] inline-flex items-center gap-2 text-sm sm:text-base font-extrabold text-zinc-900 dark:text-white transition-colors uppercase tracking-wide group hover:text-[#37baf2] dark:hover:text-[#37baf2]"
                       >
                         <span>{slide.ctaText || "Explore Details"}</span>
-                        <ArrowRight
-                          className={`w-4 h-4 group-hover:translate-x-1 transition-transform ${
-                            slide.id === "banner-1" ||
-                            slide.title?.toLowerCase().includes("white edition") ||
-                            slide.tagColor?.includes("amber")
-                              ? "group-hover:text-amber-400"
-                              : ""
-                          }`}
-                        />
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform group-hover:text-[#37baf2]" />
                       </Link>
 
                       {slide.secondaryCtaText && slide.secondaryCtaLink && (
@@ -339,7 +301,7 @@ export function PromotionalBanners() {
         <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-6 z-20 flex items-center gap-1">
           <button
             onClick={prevSlide}
-            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500 ${
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#37baf2] ${
               isImageSlide
                 ? "text-white/80 hover:text-white"
                 : "text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white"
@@ -361,9 +323,7 @@ export function PromotionalBanners() {
                 <span
                   className={`h-2 rounded-full transition-all duration-300 ${
                     currentSlide === idx
-                      ? isImageSlide
-                        ? "w-6 bg-white"
-                        : "w-6 bg-zinc-900 dark:bg-white"
+                      ? "w-6 bg-[#37baf2]"
                       : isImageSlide
                       ? "w-2 bg-white/40 hover:bg-white/70"
                       : "w-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-500"
@@ -375,7 +335,7 @@ export function PromotionalBanners() {
 
           <button
             onClick={nextSlide}
-            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-emerald-500 ${
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors focus-visible:outline-2 focus-visible:outline-[#37baf2] ${
               isImageSlide
                 ? "text-white/80 hover:text-white"
                 : "text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white"

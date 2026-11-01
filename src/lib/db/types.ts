@@ -10,7 +10,10 @@ export type OrderStatus =
   | "order_received"
   | "order_accepted"
   | "finding_stock"
+  | "ready_for_dispatch"
   | "finding_courier"
+  | "dispatched"
+  | "finished"
   | "on_delivery"
   | "delivery_arrived"
   | "pending_payment"
@@ -129,6 +132,20 @@ export interface ProductSpecs {
   [key: string]: any;
 }
 
+export interface ProductVariation {
+  id: string;
+  productId: string;
+  name: string;
+  sku?: string;
+  price: number;
+  originalPrice?: number;
+  salePrice?: number;
+  stockCount: number;
+  attributes: Record<string, string>;
+  isActive?: boolean;
+  image?: string;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -147,6 +164,7 @@ export interface Product {
   warranty_months: number;
   is_active: boolean;
   pc_builder_slot?: PcBuilderSlot | null;
+  variations?: ProductVariation[];
   created_at?: string;
 }
 

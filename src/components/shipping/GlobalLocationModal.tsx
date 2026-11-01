@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, MapPin, Truck } from "lucide-react";
+import { X, MapPin } from "lucide-react";
 import { useLocationStore } from "../../lib/store/useLocationStore";
 import { DeliveryLocation } from "../../lib/shipping/types";
 import { GoogleMapPicker } from "./GoogleMapPicker";
@@ -31,16 +31,11 @@ export function GlobalLocationModal() {
               <MapPin className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white">
-                  Select Delivery Location
-                </h3>
-                <span className="text-[10px] bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
-                  Google Maps
-                </span>
-              </div>
+              <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white">
+                Select Delivery Location
+              </h3>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
-                Type address to autocomplete or click and drag the pin on the map
+                Search or select your doorstep delivery address
               </p>
             </div>
           </div>
@@ -59,15 +54,6 @@ export function GlobalLocationModal() {
             onLocationSelect={handleLocationSelect}
             onCancel={closeLocationModal}
           />
-        </div>
-
-        {/* Modal Footer */}
-        <div className="bg-slate-50 dark:bg-zinc-950/80 px-5 sm:px-6 py-3 border-t border-slate-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-zinc-400">
-          <div className="flex items-center gap-1.5">
-            <Truck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Multi-courier via Biteship: JNE, J&T, SiCepat, AnterAja, Gojek, Grab</span>
-          </div>
-          <span>Origin Hub: Mangga Dua Mall Lt. 3 No. 36</span>
         </div>
       </div>
     </div>

@@ -74,6 +74,16 @@ import {
   DEFAULT_FEATURED_PREBUILT_IDS,
 } from "@/lib/data/homepageConfig";
 import { PREBUILT_SYSTEMS } from "@/lib/data/mockHardware";
+import { AdminSidebar, AdminTab } from "@/components/admin/AdminSidebar";
+import { AdminHeader } from "@/components/admin/AdminHeader";
+import { FluxOverviewTab } from "@/components/admin/FluxOverviewTab";
+import { FluxOrdersTab } from "@/components/admin/FluxOrdersTab";
+import { FluxProductsTab } from "@/components/admin/FluxProductsTab";
+import { FluxPromotionsTab } from "@/components/admin/FluxPromotionsTab";
+import { FluxCrmTab } from "@/components/admin/FluxCrmTab";
+import { FluxAnalyticsTab } from "@/components/admin/FluxAnalyticsTab";
+import { FluxOrderDrawer } from "@/components/admin/FluxOrderDrawer";
+import { FluxCustomerDrawer } from "@/components/admin/FluxCustomerDrawer";
 
 const HARDWARE_CATEGORIES = [
   { slug: "cpu", name: "Processors (CPUs)", slot: "cpu" },
@@ -91,7 +101,10 @@ export default function AdminPortalPage() {
     useAdminStore();
 
   // Navigation State
-  const [activeTab, setActiveTab] = useState<"orders" | "products" | "promotions" | "crm" | "analytics">("orders");
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [selectedOrderForDrawer, setSelectedOrderForDrawer] = useState<any | null>(null);
+  const [selectedCustomerForDrawer, setSelectedCustomerForDrawer] = useState<CustomerProfileRow | null>(null);
 
   // Login Form State
   const [loginIdentifier, setLoginIdentifier] = useState("");
@@ -1141,6 +1154,9 @@ export default function AdminPortalPage() {
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
         );
+        setSelectedOrderForDrawer((prev: any) =>
+          prev && prev.id === orderId ? { ...prev, status: nextStatus } : prev
+        );
       } else {
         alert(data.error || "Failed to update order stage");
       }
@@ -1329,6 +1345,7 @@ export default function AdminPortalPage() {
       ...prod,
       images,
       sale_price: prod.sale_price ?? null,
+      variations: Array.isArray(prod.variations) ? prod.variations : (prod.specs?.variations || []),
     });
   };
 
@@ -1531,6 +1548,49 @@ export default function AdminPortalPage() {
     }
   };
 
+  const handleDeleteBanner = async (bannerId: string) => {
+    if (!confirm("Are you sure you want to delete this banner?")) return;
+    try {
+      const res = await fetch(`/api/admin/banners?id=${bannerId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBanners((prev) => prev.filter((b) => b.id !== bannerId));
+        showToast("Banner deleted successfully.");
+      } else {
+        alert(data.error || "Failed to delete banner");
+      }
+    } catch (err: any) {
+      alert("Error deleting banner: " + err.message);
+    }
+  };
+
+  const toggleBannerActive = async (bannerId: string, currentActive: boolean) => {
+    try {
+      const res = await fetch("/api/admin/banners", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ id: bannerId, is_active: !currentActive }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBanners((prev) =>
+          prev.map((b) => (b.id === bannerId ? { ...b, is_active: !currentActive } : b))
+        );
+        showToast(`Banner ${!currentActive ? "activated" : "deactivated"} successfully.`);
+      } else {
+        alert(data.error || "Failed to toggle banner status");
+      }
+    } catch (err: any) {
+      alert("Error updating banner: " + err.message);
+    }
+  };
+
   const handleMoveBannerOrder = async (bannerId: string, direction: "up" | "down") => {
     const sorted = [...banners].sort((a, b) => a.display_order - b.display_order);
     const index = sorted.findIndex((b) => b.id === bannerId);
@@ -1588,34 +1648,42 @@ export default function AdminPortalPage() {
   // ==========================================================================
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-1/4 left-1/3 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="min-h-screen bg-[#0A0B0E] text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden selection:bg-[#37baf2]/30 selection:text-white">
+        {/* Ambient Gradient Glows */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[#37baf2]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-[#52E394]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-md w-full relative z-10">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 p-3.5 shadow-xl shadow-cyan-500/20 mb-4 border border-cyan-400/30">
-              <ShieldCheck className="w-9 h-9 text-white" />
+        <div className="max-w-md w-full relative z-10 space-y-6">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#37baf2] to-[#126891] p-0.5 shadow-2xl shadow-[#37baf2]/20 mx-auto">
+              <div className="w-full h-full bg-[#0A0B0E] rounded-[14px] flex items-center justify-center">
+                <ShieldCheck className="w-8 h-8 text-[#37baf2]" />
+              </div>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
-              Tethera Command Center
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Restricted Portal: Administrative & Superadmin Clearance Required
-            </p>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-white flex items-center justify-center gap-2">
+                Incus Control Center
+                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#37baf2]/20 text-[#37baf2] border border-[#37baf2]/30">
+                  Flux
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                Restricted portal for Incus Hardware administrative and store operations.
+              </p>
+            </div>
           </div>
 
-          <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-6 shadow-2xl">
+          <div className="bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-5">
             {loginError && (
-              <div className="mb-5 p-3 rounded-lg bg-red-950/60 border border-red-800/80 text-red-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                 <span>{loginError}</span>
               </div>
             )}
 
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Clearance Identifier / Email
                 </label>
                 <input
@@ -1624,12 +1692,12 @@ export default function AdminPortalPage() {
                   placeholder="admin@tethera.com or superadmin"
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                  className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#37baf2] transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Clearance Password
                 </label>
                 <input
@@ -1638,14 +1706,14 @@ export default function AdminPortalPage() {
                   placeholder="••••••••••••"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                  className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#37baf2] transition"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loginSubmitting}
-                className="w-full mt-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium py-2.5 rounded-xl shadow-lg shadow-cyan-500/25 transition flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+                className="w-full min-h-[44px] mt-2 bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] font-bold py-2.5 rounded-xl shadow-lg shadow-[#37baf2]/25 transition flex items-center justify-center gap-2 text-xs disabled:opacity-50"
               >
                 {loginSubmitting ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1657,38 +1725,38 @@ export default function AdminPortalPage() {
             </form>
 
             {/* Quick Demo Fill Buttons */}
-            <div className="mt-6 pt-5 border-t border-slate-800">
-              <p className="text-xs text-slate-400 text-center font-medium mb-3">
+            <div className="pt-5 border-t border-white/10 space-y-2.5">
+              <p className="text-[11px] text-slate-400 text-center font-medium">
                 Quick-Access Demo Clearance:
               </p>
               <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => quickDemoLogin("admin")}
-                  className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-300 flex items-center justify-center gap-1.5 transition"
+                  className="min-h-[44px] px-3 py-2 rounded-xl bg-[#0A0B0E] hover:bg-white/5 border border-white/10 text-xs text-[#37baf2] font-semibold flex items-center justify-center gap-1.5 transition"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <ShieldCheck className="w-4 h-4 text-[#37baf2]" />
                   <span>Store Admin</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => quickDemoLogin("superadmin")}
-                  className="px-3 py-2 rounded-lg bg-purple-950/50 hover:bg-purple-900/60 border border-purple-800 text-xs text-purple-300 flex items-center justify-center gap-1.5 transition"
+                  className="min-h-[44px] px-3 py-2 rounded-xl bg-[#0A0B0E] hover:bg-white/5 border border-white/10 text-xs text-purple-300 font-semibold flex items-center justify-center gap-1.5 transition"
                 >
-                  <Crown className="w-3.5 h-3.5 text-purple-400" />
+                  <Crown className="w-4 h-4 text-purple-400" />
                   <span>Superadmin</span>
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 text-center">
+          <div className="text-center">
             <Link
               href="/"
-              className="text-xs text-slate-400 hover:text-white transition inline-flex items-center gap-1"
+              className="min-h-[44px] inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition"
             >
-              <span>Return to Public Tethera Storefront</span>
-              <ArrowRight className="w-3 h-3" />
+              <span>Return to Public Incus Storefront</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
@@ -1697,3487 +1765,566 @@ export default function AdminPortalPage() {
   }
 
   // ==========================================================================
-  // RENDER: AUTHENTICATED COMMAND CENTER
+  // RENDER: AUTHENTICATED COMMAND CENTER (FLUX LAYOUT)
   // ==========================================================================
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#0A0B0E] text-slate-100 flex flex-col lg:flex-row antialiased selection:bg-[#37baf2]/30 selection:text-white">
       {/* Toast Alert */}
       {actionNotice && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white border border-cyan-500/50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3">
-          <Sparkles className="w-5 h-5 text-cyan-400 flex-shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[#12141A] text-white border border-[#37baf2]/40 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3">
+          <Sparkles className="w-5 h-5 text-[#37baf2] flex-shrink-0" />
           <span className="text-sm font-medium">{actionNotice}</span>
         </div>
       )}
 
-      {/* Top Header Bar */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-base shadow-sm">
-              T
-            </div>
-            <div>
-              <span className="font-bold tracking-tight text-white text-base">Tethera</span>
-              <span className="ml-1.5 text-xs text-cyan-400 font-mono tracking-wider">COMMAND CENTER</span>
-            </div>
-          </Link>
+      {/* Collapsible Left Sidebar */}
+      <AdminSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        pendingOrdersCount={orders.filter((o) => o.status === "pending" || o.status === "order_received").length}
+        lowStockCount={products.filter((p) => (p.stock_available ?? p.stock_on_hand ?? 0) <= 5).length}
+        user={user}
+        isSuperAdmin={isSuperAdmin}
+        onLogout={logout}
+        isMobileOpen={isMobileSidebarOpen}
+        setIsMobileOpen={setIsMobileSidebarOpen}
+      />
 
-          <div className="hidden sm:flex items-center gap-1.5 ml-3">
-            {isSuperAdmin ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-400">
-                <Crown className="w-3.5 h-3.5 text-purple-400" />
-                <span>Superadmin (Full Access)</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400">
-                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Store Admin</span>
-              </span>
-            )}
-          </div>
-        </div>
+      {/* Main Workspace Column */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header */}
+        <AdminHeader
+          activeTab={activeTab}
+          onRefresh={loadAllDashboardData}
+          loadingData={loadingData}
+          onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+          user={user}
+          isSuperAdmin={isSuperAdmin}
+          onQuickAction={
+            activeTab === "products"
+              ? () => {
+                  setNewProductImageUrl("");
+                  setNewProductImages([]);
+                  setNewProductRetailPrice("");
+                  setNewProductSalePrice("");
+                  setNewProductDiscountPercent("");
+                  setNewProductDiscountEnabled(false);
+                  setNewProductModalOpen(true);
+                }
+              : activeTab === "promotions"
+              ? () => setNewBannerModalOpen(true)
+              : undefined
+          }
+          quickActionLabel={
+            activeTab === "products"
+              ? "New Hardware Item"
+              : activeTab === "promotions"
+              ? "New Hero Banner"
+              : undefined
+          }
+        />
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              setNotificationsDismissed((prev) => !prev);
-              setNotificationsExpanded(true);
-            }}
-            className="min-h-[44px] min-w-[44px] relative px-3 py-2 rounded-lg bg-transparent hover:bg-slate-900 text-slate-300 transition flex items-center justify-center gap-1.5"
-            title="Toggle Actionable Operations Notifications"
-          >
-            <Bell className="w-4 h-4 text-amber-400" />
-            {notificationsData.totalActionCount > 0 && (
-              <span className="font-mono text-xs font-semibold text-amber-400">
-                {notificationsData.totalActionCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={loadAllDashboardData}
-            disabled={loadingData}
-            className="min-h-[44px] min-w-[44px] p-2 rounded-lg bg-transparent hover:bg-slate-900 text-slate-300 transition flex items-center justify-center"
-            title="Refresh All Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loadingData ? "animate-spin text-cyan-400" : ""}`} />
-          </button>
-
-          <div className="text-right hidden md:block">
-            <div className="text-xs font-medium text-white">{user?.name}</div>
-            <div className="text-[11px] text-slate-400 font-mono">{user?.email}</div>
-          </div>
-
-          <button
-            onClick={logout}
-            className="min-h-[44px] flex items-center gap-1.5 px-3 py-2 rounded-lg bg-transparent hover:bg-red-950/40 text-red-400 hover:text-red-300 text-xs font-medium transition"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Container & Navigation Tabs */}
-      <div className="flex-1 flex flex-col w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-6">
-        {/* ==================================================================== */}
-        {/* ACTIONABLE NOTIFICATIONS BAR (ORDERS NEEDING FULFILLMENT & LOW STOCK) */}
-        {/* ==================================================================== */}
-        {notificationsData.totalActionCount > 0 && !notificationsDismissed && (
-          <div className="mb-6 border-b border-amber-500/30 pb-4 transition-all duration-300">
-            {/* Main Bar */}
-            <div className="py-2 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-amber-400" />
-                  <div>
-                    <div className="text-xs font-bold text-white uppercase tracking-wider">
-                      Action Required
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Live store operations need administrative action
+        {/* Content Area */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1920px] w-full mx-auto">
+          {/* Action Required Notification Banner */}
+          {notificationsData.totalActionCount > 0 && !notificationsDismissed && (
+            <div className="bg-[#12141A] border border-amber-500/30 rounded-2xl p-4 transition-all duration-300">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-amber-400" />
+                    <div>
+                      <div className="text-xs font-bold text-white uppercase tracking-wider">
+                        Action Required
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        Live store operations need administrative action
+                      </div>
                     </div>
                   </div>
+
+                  <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
+
+                  {notificationsData.unfulfilledOrders.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("orders");
+                      }}
+                      className="min-h-[44px] inline-flex items-center gap-1.5 text-amber-300 hover:text-amber-200 text-xs font-medium transition group"
+                    >
+                      <Truck className="w-3.5 h-3.5 text-amber-400" />
+                      <span>
+                        <strong className="text-white font-bold">{notificationsData.unfulfilledOrders.length}</strong> Order(s) Awaiting Fulfillment
+                      </span>
+                      <ArrowRight className="w-3 h-3 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
+
+                  {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("products");
+                      }}
+                      className="min-h-[44px] inline-flex items-center gap-1.5 text-rose-300 hover:text-rose-200 text-xs font-medium transition group"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                      <span>
+                        <strong className="text-white font-bold">
+                          {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length}
+                        </strong> Hardware Item(s) Low / Out of Stock
+                      </span>
+                      <ArrowRight className="w-3 h-3 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                  )}
                 </div>
-
-                <div className="h-4 w-[1px] bg-slate-800 hidden sm:block" />
-
-                {/* Orders needing fulfillment badge & action */}
-                {notificationsData.unfulfilledOrders.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("orders");
-                      setOrderStatusFilter("all");
-                    }}
-                    className="min-h-[44px] inline-flex items-center gap-1.5 text-amber-300 hover:text-amber-200 text-xs font-medium transition group"
-                    title="Jump to Orders & Fulfillment Pipeline"
-                  >
-                    <Truck className="w-3.5 h-3.5 text-amber-400" />
-                    <span>
-                      <strong className="text-white font-bold">{notificationsData.unfulfilledOrders.length}</strong> Order(s) Awaiting Fulfillment
-                    </span>
-                    <ArrowRight className="w-3 h-3 text-amber-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                )}
-
-                {/* Low / Out of stock badge & action */}
-                {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("products");
-                      setProductLowStockFilter(true);
-                      setProductCategoryFilter("all");
-                    }}
-                    className="min-h-[44px] inline-flex items-center gap-1.5 text-rose-300 hover:text-rose-200 text-xs font-medium transition group"
-                    title="Filter Product Catalog to Low-Stock items"
-                  >
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                    <span>
-                      <strong className="text-white font-bold">
-                        {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length}
-                      </strong> Hardware Item(s) Low / Out of Stock
-                    </span>
-                    <ArrowRight className="w-3 h-3 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                )}
-              </div>
-
-              {/* Right Controls: View Details Drawer & Dismiss */}
-              <div className="flex items-center gap-2 ml-auto">
-                <button
-                  type="button"
-                  onClick={() => setNotificationsExpanded(!notificationsExpanded)}
-                  className="min-h-[44px] px-3 py-1.5 rounded-lg text-slate-300 hover:text-white text-xs font-medium transition flex items-center gap-1.5"
-                >
-                  <span>{notificationsExpanded ? "Hide Details" : `Inspect Details (${notificationsData.totalActionCount})`}</span>
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 text-cyan-400 transition-transform duration-200 ${
-                      notificationsExpanded ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
 
                 <button
                   type="button"
                   onClick={() => setNotificationsDismissed(true)}
-                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-slate-900 text-slate-500 hover:text-slate-300 transition flex items-center justify-center"
-                  title="Minimize notification bar (Can be reopened from the bell icon in header)"
+                  className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition flex items-center justify-center ml-auto"
+                  title="Dismiss notification bar"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-
-            {/* Expandable Action Drawer */}
-            {notificationsExpanded && (
-              <div className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Column 1: Fulfillment Action Queue */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      <Truck className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Fulfillment Queue ({notificationsData.unfulfilledOrders.length})</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab("orders");
-                        setOrderStatusFilter("all");
-                      }}
-                      className="text-cyan-400 hover:text-cyan-300 text-xs font-medium flex items-center gap-1"
-                    >
-                      <span>Open Pipeline</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  {notificationsData.unfulfilledOrders.length === 0 ? (
-                    <div className="py-4 text-slate-400 text-xs">
-                      All orders have been fulfilled or collected.
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 divide-y divide-slate-800/60">
-                      {notificationsData.unfulfilledOrders.slice(0, 6).map((ord) => {
-                        return (
-                          <div
-                            key={ord.id}
-                            className="pt-2.5 pb-2.5 flex items-center justify-between gap-3 text-xs"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono font-bold text-white">
-                                  #{ord.order_number || ord.id.slice(0, 8)}
-                                </span>
-                                <span className="text-xs font-semibold text-amber-400 uppercase">
-                                  {ord.status.replace(/_/g, " ")}
-                                </span>
-                              </div>
-                              <div className="text-slate-400 text-[11px] truncate mt-0.5">
-                                {ord.customer_name} • <span className="font-mono text-cyan-300">{formatRupiah(ord.total)}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              {ord.status === "order_received" && (
-                                <button
-                                  type="button"
-                                  onClick={() => advanceOrderStage(ord.id, "order_accepted")}
-                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition"
-                                >
-                                  Accept
-                                </button>
-                              )}
-                              {ord.status === "finding_courier" && (
-                                <button
-                                  type="button"
-                                  onClick={() => setDispatchModalOrder(ord)}
-                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
-                                >
-                                  Dispatch
-                                </button>
-                              )}
-                              {ord.status === "ready_for_pickup" && (
-                                <button
-                                  type="button"
-                                  onClick={() => advanceOrderStage(ord.id, "collected")}
-                                  className="min-h-[44px] px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
-                                >
-                                  Handover
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveTab("orders");
-                                  setOrderStatusFilter(ord.status);
-                                }}
-                                className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-slate-900 text-slate-400 hover:text-white transition flex items-center justify-center"
-                                title="View in Orders"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                {/* Column 2: Low-Stock Inventory Alerts */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-                      <span>
-                        Low Stock Alerts ({notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length})
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab("products");
-                        setProductLowStockFilter(true);
-                      }}
-                      className="text-cyan-400 hover:text-cyan-300 text-xs font-medium flex items-center gap-1"
-                    >
-                      <span>View in Catalog</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  {notificationsData.outOfStockProducts.length === 0 && notificationsData.lowStockProducts.length === 0 ? (
-                    <div className="py-4 text-slate-400 text-xs">
-                      Warehouse stock levels are healthy across all categories.
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1 divide-y divide-slate-800/60">
-                      {[...notificationsData.outOfStockProducts, ...notificationsData.lowStockProducts].slice(0, 6).map((prod) => {
-                        const avail = prod.stock_available !== undefined ? prod.stock_available : prod.stock_on_hand;
-                        const isOut = avail <= 0;
-
-                        return (
-                          <div
-                            key={prod.id}
-                            className="pt-2.5 pb-2.5 flex items-center justify-between gap-3 text-xs"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className="w-9 h-9 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                {prod.images?.[0] ? (
-                                  <img src={prod.images[0]} alt={prod.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <Package className="w-4 h-4 text-slate-600" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="font-semibold text-white truncate max-w-[170px]" title={prod.name}>
-                                  {prod.name}
-                                </div>
-                                <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                                  <span className="font-mono text-cyan-400">{prod.sku}</span>
-                                  <span
-                                    className={`font-semibold ${
-                                      isOut ? "text-rose-400" : "text-amber-400"
-                                    }`}
-                                  >
-                                    {isOut ? "Out of Stock" : `${avail} left`}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => openEditProductModal(prod)}
-                                className="min-h-[44px] px-3 py-1.5 rounded-lg text-cyan-300 hover:text-white text-xs font-medium transition flex items-center gap-1"
-                                title="Adjust inventory stock level"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                                <span>Restock</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const itemStats =
-                                    analyticsData.enrichedProducts.find((p: any) => p.id === prod.id) || prod;
-                                  setSelectedItemAnalytics(itemStats);
-                                }}
-                                className="min-h-[44px] min-w-[44px] p-2 rounded-lg hover:bg-slate-900 text-purple-400 transition flex items-center justify-center"
-                                title="View Sales Stats"
-                              >
-                                <BarChart3 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center gap-1 border-b border-slate-800 mb-6">
-          <button
-            onClick={() => setActiveTab("orders")}
-            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
-              activeTab === "orders"
-                ? "border-cyan-400 text-white font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Truck className="w-4 h-4" />
-            <span>Orders & Fulfillment</span>
-            <span className="ml-0.5 text-xs text-slate-400">
-              ({orders.length})
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("products")}
-            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
-              activeTab === "products"
-                ? "border-cyan-400 text-white font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Product Catalog</span>
-            <span className="ml-0.5 text-xs text-slate-400">
-              ({products.length})
-            </span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (!isSuperAdmin) {
-                alert("Superadmin clearance required to access Promotions & Banners.");
-                return;
-              }
-              setActiveTab("promotions");
-            }}
-            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
-              activeTab === "promotions"
-                ? "border-purple-400 text-white font-semibold"
-                : isSuperAdmin
-                ? "border-transparent text-slate-400 hover:text-purple-300"
-                : "border-transparent text-slate-600 cursor-not-allowed"
-            }`}
-          >
-            <Tag className="w-4 h-4" />
-            <span>Promotions & Banners</span>
-            {!isSuperAdmin && <Lock className="w-3 h-3 ml-1 text-slate-600" />}
-          </button>
-
-          <button
-            onClick={() => setActiveTab("crm")}
-            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
-              activeTab === "crm"
-                ? "border-cyan-400 text-white font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Customers & Profiles</span>
-            <span className="ml-0.5 text-xs text-slate-400">
-              ({customers.length})
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("analytics")}
-            className={`min-h-[44px] flex items-center gap-2 px-4 py-2 border-b-2 text-xs font-medium transition ${
-              activeTab === "analytics"
-                ? "border-cyan-400 text-white font-semibold"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span>Sales & Profit Analytics</span>
-            <span className="ml-0.5 text-xs text-emerald-400 font-medium">
-              Live
-            </span>
-          </button>
-        </div>
-
-        {/* ==================================================================== */}
-        {/* TAB 1: ORDERS & FULFILLMENT PIPELINE (WITH REJECT BUTTON)             */}
-        {/* ==================================================================== */}
-        {activeTab === "orders" && (
-          <div className="space-y-6">
-            {/* Filter Stage Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs text-slate-400 font-medium mr-1">Filter Stage:</span>
-                {[
-                  { id: "all", label: "All Orders" },
-                  { id: "order_received", label: "1. Order Received" },
-                  { id: "order_accepted", label: "2. Order Accepted" },
-                  { id: "finding_stock", label: "3. Finding Stock" },
-                  { id: "finding_courier", label: "4. Finding Courier" },
-                  { id: "on_delivery", label: "5. On Delivery" },
-                  { id: "delivery_arrived", label: "6. Delivery Arrived" },
-                  { id: "cancelled", label: "Cancelled / Rejected" },
-                  { id: "ready_for_pickup", label: "Click & Collect" },
-                ].map((st) => (
-                  <button
-                    key={st.id}
-                    onClick={() => setOrderStatusFilter(st.id)}
-                    className={`min-h-[44px] px-3 py-1.5 text-xs font-medium transition ${
-                      orderStatusFilter === st.id
-                        ? "text-cyan-400 font-semibold border-b-2 border-cyan-400"
-                        : "text-slate-400 hover:text-slate-200 border-b-2 border-transparent"
-                    }`}
-                  >
-                    {st.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="text-xs text-slate-400 font-mono">
-                Showing {orders.filter((o) => orderStatusFilter === "all" || o.status === orderStatusFilter).length} orders
-              </div>
-            </div>
-
-            {/* Orders List Rows */}
-            <div className="divide-y divide-slate-800/80">
-              {orders
-                .filter((o) => orderStatusFilter === "all" || o.status === orderStatusFilter)
-                .map((order) => {
-                  const isCnC = order.fulfillment_type === "click_and_collect";
-                  const isDelivered = order.status === "delivery_arrived" || order.status === "collected";
-                  const isOnDelivery = order.status === "on_delivery";
-                  const isCancelled = order.status === "cancelled";
-
-                  return (
-                    <div
-                      key={order.id}
-                      className="py-6 space-y-4"
-                    >
-                      {/* Order Header */}
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-base font-bold text-white">
-                              #{order.order_number}
-                            </span>
-                            {isCancelled ? (
-                              <span className="text-xs font-semibold text-rose-400 flex items-center gap-1">
-                                <Ban className="w-3.5 h-3.5" />
-                                <span>Order Rejected / Cancelled</span>
-                              </span>
-                            ) : isCnC ? (
-                              <span className="text-xs font-semibold text-amber-400">
-                                Click & Collect (Flagship Counter)
-                              </span>
-                            ) : (
-                              <span className="text-xs font-semibold text-emerald-400">
-                                Doorstep Delivery
-                              </span>
-                            )}
-                            <span className="text-xs text-slate-500 font-mono">
-                              {new Date(order.created_at).toLocaleString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-400">
-                            <span className="flex items-center gap-1">
-                              <Users className="w-3.5 h-3.5 text-slate-500" />
-                              <strong className="text-slate-200">{order.customer_name}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3.5 h-3.5 text-slate-500" />
-                              {order.customer_phone}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Mail className="w-3.5 h-3.5 text-slate-500" />
-                              {order.customer_email}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Order Total */}
-                        <div className="text-right">
-                          <div className="text-xs text-slate-400">Total Order Amount</div>
-                          <div className="text-lg font-bold text-cyan-400 font-mono">
-                            {formatRupiah(order.total)}
-                          </div>
-                          <div className="text-[11px] text-slate-500 font-mono">
-                            {order.payment_method} • {order.payment_reference || "PAID"}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* STAGES PROGRESS STEPPER (Only for non-cancelled orders) */}
-                      {!isCancelled && (
-                        <div className="pt-2 pb-1">
-                          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                            Fulfillment Pipeline Stage:
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs">
-                            {[
-                              { key: "order_received", num: 1, label: "Order Received" },
-                              { key: "order_accepted", num: 2, label: "Order Accepted" },
-                              { key: "finding_stock", num: 3, label: "Finding Stock" },
-                              { key: "finding_courier", num: 4, label: "Finding Courier" },
-                              { key: "on_delivery", num: 5, label: "On Delivery" },
-                              { key: "delivery_arrived", num: 6, label: "Arrived" },
-                            ].map((step, idx) => {
-                              const stagesList = [
-                                "order_received",
-                                "order_accepted",
-                                "finding_stock",
-                                "finding_courier",
-                                "on_delivery",
-                                "delivery_arrived",
-                              ];
-                              const currentIdx = stagesList.indexOf(order.status);
-                              const stepIdx = stagesList.indexOf(step.key);
-                              const isPassed = currentIdx >= stepIdx && currentIdx !== -1;
-                              const isCurrent = order.status === step.key;
-
-                              return (
-                                <React.Fragment key={step.key}>
-                                  <div
-                                    className={`flex items-center gap-1.5 transition ${
-                                      isCurrent
-                                        ? "text-cyan-300 font-bold"
-                                        : isPassed
-                                        ? "text-slate-300"
-                                        : "text-slate-600"
-                                    }`}
-                                  >
-                                    {isPassed ? (
-                                      <Check className="w-3.5 h-3.5 text-cyan-400" />
-                                    ) : (
-                                      <span className="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center text-[10px] font-mono">
-                                        {step.num}
-                                      </span>
-                                    )}
-                                    <span className="text-xs">{step.label}</span>
-                                  </div>
-                                  {idx < 5 && (
-                                    <span className="text-slate-700 text-xs hidden sm:inline">→</span>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Rejection Note if Cancelled */}
-                      {isCancelled && order.notes && (
-                        <div className="py-2 text-xs text-rose-300 flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-semibold">Rejection Note: </span>
-                            <span>{order.notes}</span>
-                            <div className="text-[11px] text-rose-400 mt-1 font-mono">
-                              Reserved stock has been automatically released back to warehouse inventory.
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Courier Live Telemetry */}
-                      {order.courier_info && !isCancelled && (
-                        <div className="pt-2 space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-xs text-white ${
-                                  (order.courier_info.courier_company || order.courier_info.provider) === "jne"
-                                    ? "bg-[#003399]"
-                                    : (order.courier_info.courier_company || order.courier_info.provider) === "jnt"
-                                    ? "bg-[#ED1C24]"
-                                    : (order.courier_info.courier_company || order.courier_info.provider) === "sicepat"
-                                    ? "bg-[#D31515]"
-                                    : (order.courier_info.courier_company || order.courier_info.provider) === "anteraja"
-                                    ? "bg-[#E91E63]"
-                                    : (order.courier_info.courier_company || order.courier_info.provider) === "gojek"
-                                    ? "bg-[#00AA13]"
-                                    : (order.courier_info.courier_company || order.courier_info.provider) === "grab"
-                                    ? "bg-[#00B14F]"
-                                    : "bg-cyan-700"
-                                }`}
-                              >
-                                {((order.courier_info.courier_company || order.courier_info.provider) as string)?.toUpperCase()?.slice(0, 3) || "BIT"}
-                              </div>
-
-                              <div>
-                                <div className="text-xs font-semibold text-white flex flex-wrap items-center gap-2">
-                                  <span>{order.courier_info.service_name || "Biteship Multi-Courier"}</span>
-                                  <span className="text-xs font-mono font-semibold text-cyan-400 uppercase">
-                                    {order.courier_info.status || "dispatched"}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-slate-300 mt-0.5 flex flex-wrap items-center gap-2">
-                                  <span>
-                                    Driver: <strong>{order.courier_info.driver_name || "Assigned Driver"}</strong> ({order.courier_info.vehicle_plate || "B 1234 BTE"})
-                                  </span>
-                                  <span>•</span>
-                                  <span>{order.courier_info.driver_phone || "+62 812-0000-0000"}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Waybill / Resi (AWB) */}
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const waybill = order.courier_info.waybill_id || order.courier_info.tracking_id;
-                                  navigator.clipboard.writeText(waybill);
-                                  showToast(`Waybill (Resi) copied: ${waybill}`);
-                                }}
-                                className="min-h-[44px] px-3 py-1.5 text-cyan-300 hover:text-white font-mono text-xs flex items-center gap-1.5 transition group"
-                                title="Click to copy Air Waybill / Resi"
-                              >
-                                <span className="text-[10px] uppercase tracking-wider text-slate-400">AWB:</span>
-                                <span className="font-bold">{order.courier_info.waybill_id || order.courier_info.tracking_id}</span>
-                                <FileText className="w-3.5 h-3.5 text-cyan-400" />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Pickup & Webhook Status Telemetry */}
-                          <div className="pt-1 flex flex-wrap items-center justify-between gap-3 text-xs">
-                            <div className="text-slate-400 flex items-center gap-2">
-                              <span>Pickup: <strong>Mangga Dua Mall Lt. 3 No. 36</strong></span>
-                              {order.courier_info.pickup_scheduled_time && (
-                                <span className="text-xs text-amber-300 font-mono">
-                                  (Scheduled: {new Date(order.courier_info.pickup_scheduled_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Biteship Webhook Simulator Buttons */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[10px] uppercase font-semibold text-slate-500">
-                                Simulate Webhook:
-                              </span>
-                              {[
-                                { st: "allocated", label: "Allocated" },
-                                { st: "picking_up", label: "Picking Up" },
-                                { st: "picked", label: "Picked" },
-                                { st: "in_transit", label: "In Transit" },
-                                { st: "delivered", label: "Delivered" },
-                              ].map((step) => (
-                                <button
-                                  key={step.st}
-                                  type="button"
-                                  disabled={simulatingWebhookOrderId === order.id}
-                                  onClick={() => handleSimulateBiteshipWebhook(order.id, step.st)}
-                                  className={`min-h-[44px] px-2.5 py-1 text-xs transition ${
-                                    order.courier_info.status === step.st
-                                      ? "text-emerald-400 font-semibold"
-                                      : "text-slate-400 hover:text-white"
-                                  }`}
-                                >
-                                  {step.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Items Preview & Address */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-300 pt-2">
-                        <div>
-                          <div className="font-semibold text-slate-400 mb-1">Ordered Items ({order.items?.length || 0}):</div>
-                          <ul className="space-y-1">
-                            {order.items?.map((it: any) => (
-                              <li key={it.id} className="flex justify-between items-center text-slate-300">
-                                <span>
-                                  {it.quantity}x {it.product?.name || "Hardware Component"}
-                                </span>
-                                <span className="font-mono text-slate-400">
-                                  {formatRupiah(it.unit_price * it.quantity)}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <div>
-                          <div className="font-semibold text-slate-400 mb-1">Fulfillment Destination:</div>
-                          {isCnC ? (
-                            <div className="text-slate-300 flex items-start gap-1.5">
-                              <MapPin className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                              <span>
-                                Mangga Dua Mall Flagship Retail Hub • Pickup PIN:{" "}
-                                <strong className="text-amber-300 font-mono">{order.pickup_code || "N/A"}</strong>
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-slate-300 flex items-start gap-1.5">
-                              <MapPin className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                              <span>
-                                {order.shipping_address?.street}, {order.shipping_address?.subdistrict},{" "}
-                                {order.shipping_address?.city} {order.shipping_address?.postalCode}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* STAGE ACTION CONTROLS & REJECT BUTTON */}
-                      {!isCancelled && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
-                          <div className="text-xs text-slate-400">
-                            Current Status: <strong className="text-cyan-300 uppercase font-mono">{order.status.replace(/_/g, " ")}</strong>
-                          </div>
-
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {/* REJECT ORDER BUTTON (Available to Admin and Superadmin) */}
-                            {!isDelivered && (
-                              <button
-                                onClick={() => {
-                                  setRejectModalOrder(order);
-                                  setRejectReason("Out of stock in warehouse");
-                                  setCustomRejectReason("");
-                                }}
-                                className="min-h-[44px] px-3.5 py-1.5 text-rose-400 hover:text-rose-300 text-xs font-semibold transition flex items-center gap-1.5"
-                                title="Reject order due to zero stock or other reasons"
-                              >
-                                <Ban className="w-3.5 h-3.5" />
-                                <span>Reject Order</span>
-                              </button>
-                            )}
-
-                            {/* 1. Received -> Accepted */}
-                            {order.status === "order_received" && (
-                              <button
-                                onClick={() => advanceOrderStage(order.id, "order_accepted")}
-                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition flex items-center gap-1.5"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                                <span>Accept Order</span>
-                              </button>
-                            )}
-
-                            {/* 2. Accepted -> Finding Stock */}
-                            {order.status === "order_accepted" && (
-                              <button
-                                onClick={() => advanceOrderStage(order.id, "finding_stock")}
-                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition flex items-center gap-1.5"
-                              >
-                                <Layers className="w-3.5 h-3.5" />
-                                <span>Find & Pick Stock</span>
-                              </button>
-                            )}
-
-                            {/* 3. Finding Stock -> Finding Courier */}
-                            {order.status === "finding_stock" && (
-                              <button
-                                onClick={() => advanceOrderStage(order.id, "finding_courier")}
-                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition flex items-center gap-1.5"
-                              >
-                                <Truck className="w-3.5 h-3.5" />
-                                <span>Stock Ready • Request Courier</span>
-                              </button>
-                            )}
-
-                            {/* 4. Finding Courier -> Dispatch On Delivery */}
-                            {order.status === "finding_courier" && (
-                              <button
-                                onClick={() => setDispatchModalOrder(order)}
-                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5"
-                              >
-                                <Truck className="w-3.5 h-3.5" />
-                                <span>Dispatch Courier (Biteship API)</span>
-                              </button>
-                            )}
-
-                            {/* Click & Collect specific transitions */}
-                            {isCnC && order.status === "order_accepted" && (
-                              <button
-                                onClick={() => advanceOrderStage(order.id, "ready_for_pickup")}
-                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition"
-                              >
-                                Mark Ready for Pickup
-                              </button>
-                            )}
-                            {isCnC && order.status === "ready_for_pickup" && (
-                              <button
-                                onClick={() => advanceOrderStage(order.id, "collected")}
-                                className="min-h-[44px] px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition"
-                              >
-                                Complete Counter Handover
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        )}
-
-        {/* ==================================================================== */}
-        {/* TAB 2: PRODUCT CATALOG & IMAGE MANAGEMENT (RESIZABLE & ARRANGEABLE)  */}
-        {/* ==================================================================== */}
-        {activeTab === "products" && (() => {
-          const filteredProducts = products.filter((p) => {
-            const matchesSearch =
-              !productSearch ||
-              p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-              p.brand.toLowerCase().includes(productSearch.toLowerCase()) ||
-              p.sku.toLowerCase().includes(productSearch.toLowerCase());
-            const matchesCat =
-              productCategoryFilter === "all" ||
-              p.category_slug === productCategoryFilter ||
-              p.pc_builder_slot === productCategoryFilter;
-            const avail = p.stock_available !== undefined ? p.stock_available : p.stock_on_hand;
-            const matchesLowStock = !productLowStockFilter || avail <= 3;
-            return matchesSearch && matchesCat && matchesLowStock;
-          });
-
-          return (
-            <div className="space-y-6">
-              {/* Product Toolbar */}
-              <div className="space-y-3 pb-4 border-b border-slate-800">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 flex-1 min-w-[280px] flex-wrap">
-                    {/* Search */}
-                    <div className="relative flex-1 min-w-[220px]">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        placeholder="Search by hardware name, brand, or SKU..."
-                        value={productSearch}
-                        onChange={(e) => setProductSearch(e.target.value)}
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-
-                    {/* Category Filter */}
-                    <select
-                      value={productCategoryFilter}
-                      onChange={(e) => setProductCategoryFilter(e.target.value)}
-                      className="min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500"
-                    >
-                      <option value="all">All Categories ({products.length})</option>
-                      {HARDWARE_CATEGORIES.map((c) => (
-                        <option key={c.slug} value={c.slug}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Low Stock Toggle Filter */}
-                    <button
-                      type="button"
-                      onClick={() => setProductLowStockFilter(!productLowStockFilter)}
-                      className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
-                        productLowStockFilter
-                          ? "text-rose-300 font-semibold border-b-2 border-rose-500"
-                          : "text-slate-400 hover:text-slate-200 border-b-2 border-transparent"
-                      }`}
-                      title="Filter table to only show low stock and out-of-stock hardware"
-                    >
-                      <AlertTriangle className={`w-3.5 h-3.5 ${productLowStockFilter ? "text-rose-400" : "text-slate-400"}`} />
-                      <span>{productLowStockFilter ? "Low Stock Active" : "Filter Low Stock"}</span>
-                      {notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length > 0 && (
-                        <span className="text-xs text-rose-400 font-mono">
-                          ({notificationsData.outOfStockProducts.length + notificationsData.lowStockProducts.length})
-                        </span>
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Reset Column Layout Button */}
-                    <button
-                      type="button"
-                      onClick={resetProductTableLayout}
-                      className="min-h-[44px] px-3.5 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-medium transition flex items-center gap-1.5"
-                      title="Reset table column widths and order to default layout"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Reset Layout</span>
-                    </button>
-
-                    {/* Add Product Button (Superadmin) */}
-                    {isSuperAdmin && (
-                      <button
-                        onClick={() => setNewProductModalOpen(true)}
-                        className="min-h-[44px] px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Add New Hardware Product</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Sub-bar with count and arrangeable/resizable guidance */}
-                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-1">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                    <span>
-                      Showing <strong className="text-white">{filteredProducts.length}</strong> of{" "}
-                      <strong className="text-white">{products.length}</strong> products
-                      {productLowStockFilter && " (Filtered to Low Stock)"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-slate-400">
-                    <GripVertical className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>
-                      <strong>Arrangeable &amp; Resizable:</strong> Drag headers to reorder columns • Drag borders to resize widths.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Resizable & Arrangeable Table Container */}
-              <div className="overflow-x-auto">
-                <table
-                  style={{
-                    width: `${productColOrder.reduce((acc, colKey) => acc + (productColWidths[colKey] || 120), 0)}px`,
-                    minWidth: "100%",
-                  }}
-                  className="table-fixed border-collapse divide-y divide-slate-800 text-left text-xs"
-                >
-                  <thead className="bg-transparent text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800 select-none">
-                    <tr>
-                      {productColOrder.map((colKey, index) => {
-                        const isDragging = draggedProductCol === colKey;
-                        const isDragOver = dragOverProductCol === colKey;
-                        const isActions = colKey === "actions";
-
-                        return (
-                          <th
-                            key={colKey}
-                            draggable={!isProductResizing}
-                            onDragStart={(e) => handleProductColDragStart(colKey, e)}
-                            onDragOver={(e) => handleProductColDragOver(colKey, e)}
-                            onDragLeave={() => setDragOverProductCol(null)}
-                            onDrop={(e) => handleProductColDrop(colKey, e)}
-                            style={{
-                              width: `${productColWidths[colKey]}px`,
-                              minWidth: `${productColWidths[colKey]}px`,
-                            }}
-                            className={`py-3.5 px-3 relative group transition-colors ${
-                              isDragging ? "opacity-40 bg-slate-800" : ""
-                            } ${
-                              isDragOver ? "border-l-2 border-cyan-400 bg-cyan-950/40" : ""
-                            } ${isActions ? "text-right" : "text-left"}`}
-                          >
-                            <div className={`flex items-center gap-1.5 ${isActions ? "justify-end" : "justify-between"}`}>
-                              <div
-                                className="flex items-center gap-1 min-w-0 cursor-grab active:cursor-grabbing hover:text-white transition-colors"
-                                title="Drag header to rearrange column position"
-                              >
-                                {!isActions && (
-                                  <GripVertical className="w-3.5 h-3.5 text-slate-600 group-hover:text-cyan-400 flex-shrink-0" />
-                                )}
-                                <span className="truncate">{PRODUCT_COL_LABELS[colKey] || colKey}</span>
-                              </div>
-
-                              {/* Left / Right Move Arrows for click accessibility */}
-                              {!isActions && (
-                                <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
-                                  {index > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        moveProductCol(index, index - 1);
-                                      }}
-                                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
-                                      title="Move column left"
-                                    >
-                                      <ChevronLeft className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                  {index < productColOrder.length - 1 && productColOrder[index + 1] !== "actions" && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        moveProductCol(index, index + 1);
-                                      }}
-                                      className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-cyan-300"
-                                      title="Move column right"
-                                    >
-                                      <ChevronRight className="w-3 h-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Draggable resize handle on right border */}
-                            <div
-                              onMouseDown={(e) => handleProductColResizeStart(colKey, e)}
-                              className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                              title="Drag to resize column width"
-                            >
-                              <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                            </div>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
-                    {filteredProducts.length === 0 ? (
-                      <tr>
-                        <td colSpan={productColOrder.length} className="py-12 text-center text-slate-400">
-                          <Package className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                          <div className="font-medium text-slate-300">No hardware items match your filter criteria</div>
-                          <div className="text-xs text-slate-500 mt-1">
-                            {productLowStockFilter
-                              ? "No products are currently low on stock."
-                              : "Try clearing your search query or selecting All Categories."}
-                          </div>
-                          {productLowStockFilter && (
-                            <button
-                              type="button"
-                              onClick={() => setProductLowStockFilter(false)}
-                              className="mt-3 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-medium"
-                            >
-                              Show All Products
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredProducts.map((prod) => {
-                        const catObj = HARDWARE_CATEGORIES.find(
-                          (c) => c.slug === prod.category_slug || c.slot === prod.pc_builder_slot
-                        );
-
-                        return (
-                          <tr key={prod.id} className="hover:bg-slate-900/40 transition">
-                            {productColOrder.map((colKey) => {
-                              switch (colKey) {
-                                case "product":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3">
-                                      <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-lg bg-slate-900 border border-slate-800 overflow-hidden flex-shrink-0 relative">
-                                          {prod.images?.[0] ? (
-                                            <img
-                                              src={prod.images[0]}
-                                              alt={prod.name}
-                                              className="w-full h-full object-cover"
-                                            />
-                                          ) : (
-                                            <Package className="w-6 h-6 text-slate-600 m-auto" />
-                                          )}
-                                        </div>
-                                        <div className="min-w-0">
-                                          <div className="font-semibold text-white truncate max-w-xs" title={prod.name}>
-                                            {prod.name}
-                                          </div>
-                                          <div className="text-[11px] text-slate-400">{prod.brand}</div>
-                                        </div>
-                                      </div>
-                                    </td>
-                                  );
-
-                                case "category":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3">
-                                      <span className="text-xs text-slate-300 truncate inline-block">
-                                        {catObj?.name || prod.category_slug || "Hardware"}
-                                      </span>
-                                    </td>
-                                  );
-
-                                case "sku":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3">
-                                      <div className="font-mono text-cyan-400 text-xs">{prod.sku}</div>
-                                      <div className="text-[11px] text-slate-400">{prod.brand}</div>
-                                    </td>
-                                  );
-
-                                case "price":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3 font-mono font-bold text-white">
-                                      {prod.sale_price && prod.sale_price < prod.retail_price ? (
-                                        <div className="space-y-0.5">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="text-emerald-400 font-bold">{formatRupiah(prod.sale_price)}</span>
-                                            <span className="text-xs font-semibold text-rose-400">
-                                              -{Math.round(((prod.retail_price - prod.sale_price) / prod.retail_price) * 100)}%
-                                            </span>
-                                          </div>
-                                          <span className="text-slate-400 line-through text-[11px] block">
-                                            {formatRupiah(prod.retail_price)}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <span>{formatRupiah(prod.retail_price)}</span>
-                                      )}
-                                    </td>
-                                  );
-
-                                case "stock_on_hand":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3">
-                                      <span className="font-mono font-semibold text-slate-200">
-                                        {prod.stock_on_hand}
-                                      </span>
-                                      <span className="text-[10px] text-slate-500 block">units in store</span>
-                                    </td>
-                                  );
-
-                                case "stock_available":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3">
-                                      <span
-                                        className={`text-xs font-medium ${
-                                          prod.stock_available > 3
-                                            ? "text-emerald-400"
-                                            : prod.stock_available > 0
-                                            ? "text-amber-400"
-                                            : "text-rose-400"
-                                        }`}
-                                      >
-                                        {prod.stock_available} available
-                                      </span>
-                                    </td>
-                                  );
-
-                                case "pictures":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3">
-                                      <span className="text-slate-400 text-xs">
-                                        {prod.images?.length || 0} picture(s)
-                                      </span>
-                                    </td>
-                                  );
-
-                                case "actions":
-                                  return (
-                                    <td key={colKey} className="py-3.5 px-3 text-right">
-                                      <div className="inline-flex items-center gap-1.5">
-                                        <button
-                                          onClick={() => {
-                                            const itemStats =
-                                              analyticsData.enrichedProducts.find((p: any) => p.id === prod.id) || prod;
-                                            setSelectedItemAnalytics(itemStats);
-                                          }}
-                                          className="min-h-[44px] px-3 py-1.5 text-purple-300 hover:text-purple-200 transition flex items-center gap-1 text-xs font-medium"
-                                          title="View detailed sales statistics and profit dashboard"
-                                        >
-                                          <BarChart3 className="w-3.5 h-3.5" />
-                                          <span>Stats</span>
-                                        </button>
-
-                                        <button
-                                          onClick={() => openEditProductModal(prod)}
-                                          className="min-h-[44px] px-3 py-1.5 text-cyan-300 hover:text-cyan-200 transition flex items-center gap-1 text-xs font-medium"
-                                          title="Edit category, price, stock &amp; pictures"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5" />
-                                          <span>Edit</span>
-                                        </button>
-
-                                        {isSuperAdmin && (
-                                          <button
-                                            onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                                            className="min-h-[44px] min-w-[44px] p-2 text-rose-400 hover:text-rose-300 transition flex items-center justify-center"
-                                            title="Delete Product (Superadmin)"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </td>
-                                  );
-
-                                default:
-                                  return null;
-                              }
-                            })}
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ==================================================================== */}
-        {/* TAB 3: PROMOTIONS & BANNERS (SUPERADMIN ONLY - REORDERING & UPLOAD)   */}
-        {/* ==================================================================== */}
-        {activeTab === "promotions" && isSuperAdmin && (
-          <div className="space-y-8">
-            {/* ============================================================= */}
-            {/* 1. HOMEPAGE SECTION LAYOUT MODULES (DRAG & DROP REORDERING)   */}
-            {/* ============================================================= */}
-            {/* ============================================================= */}
-            {/* 1. HOMEPAGE SECTION LAYOUT MODULES (DRAG & DROP REORDERING)   */}
-            {/* ============================================================= */}
-            <div className="space-y-4 pb-6 border-b border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Layers className="w-5 h-5 text-cyan-400" />
-                    <span>Homepage Section Layout (Draggable &amp; Reorderable Modules)</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Drag modules up and down or use the arrow buttons to arrange storefront sections. Toggle visibility to hide or show modules.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={handleResetHomepageModules}
-                    type="button"
-                    className="min-h-[44px] px-3.5 py-2 text-slate-400 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Reset Layout</span>
-                  </button>
-                  <button
-                    onClick={handleSaveHomepageModules}
-                    disabled={savingModules}
-                    type="button"
-                    className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
-                  >
-                    {savingModules ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    <span>{savingModules ? "Saving Layout..." : "Save Layout Order"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Modules Draggable List */}
-              <div className="divide-y divide-slate-800/60">
-                {homepageModules.map((module, idx) => (
-                  <div
-                    key={module.id}
-                    draggable
-                    onDragStart={(e) => handleModuleDragStart(e, idx)}
-                    onDragOver={(e) => handleModuleDragOver(e, idx)}
-                    onDrop={(e) => handleModuleDrop(e, idx)}
-                    onDragEnd={() => {
-                      setDraggedModuleIdx(null);
-                      setDragOverModuleIdx(null);
-                    }}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between py-3.5 transition-colors gap-3 cursor-grab active:cursor-grabbing select-none ${
-                      draggedModuleIdx === idx
-                        ? "opacity-40 bg-slate-900/50"
-                        : dragOverModuleIdx === idx
-                        ? "border-l-2 border-cyan-400 pl-2 bg-slate-900/30"
-                        : module.enabled
-                        ? "hover:bg-slate-900/30"
-                        : "opacity-60"
-                    }`}
-                  >
-                    {/* Left: Drag Handle, Position Index, Name & Details */}
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 text-slate-500 hover:text-slate-300 touch-none shrink-0" title="Drag to reorder">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-
-                      <span className="font-mono text-xs font-bold text-cyan-400 shrink-0">
-                        #{idx + 1}
-                      </span>
-
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-sm font-bold text-white">{module.name}</h4>
-                          <span
-                            className={`text-xs font-semibold uppercase ${
-                              module.enabled ? "text-emerald-400" : "text-slate-500"
-                            }`}
-                          >
-                            {module.enabled ? "Visible" : "Hidden"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{module.description}</p>
-                      </div>
-                    </div>
-
-                    {/* Right: Controls (Visibility Toggle + Move Up + Move Down) */}
-                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                      <button
-                        onClick={() => handleToggleModule(module.id)}
-                        type="button"
-                        className={`min-h-[44px] px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 transition ${
-                          module.enabled
-                            ? "text-slate-400 hover:text-white"
-                            : "text-emerald-400 hover:text-emerald-300"
-                        }`}
-                        title={module.enabled ? "Hide section from storefront" : "Show section on storefront"}
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>{module.enabled ? "Hide Section" : "Show Section"}</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleMoveModule(idx, "up")}
-                        disabled={idx === 0}
-                        type="button"
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-                        title="Move Up"
-                        aria-label={`Move ${module.name} Up`}
-                      >
-                        <ArrowUp className="w-4 h-4" />
-                      </button>
-
-                      <button
-                        onClick={() => handleMoveModule(idx, "down")}
-                        disabled={idx === homepageModules.length - 1}
-                        type="button"
-                        className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-                        title="Move Down"
-                        aria-label={`Move ${module.name} Down`}
-                      >
-                        <ArrowDown className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ============================================================= */}
-            {/* 2. CUSTOM DESKTOP PCS SHOWCASE BANNER EDITOR (TEXT & PICTURE) */}
-            {/* ============================================================= */}
-            <div className="space-y-6 pb-6 border-b border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-emerald-400" />
-                    <span>Custom Desktop PCs Showcase Banner Editor</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Edit copy, CTAs, guarantees, and the custom rig showcase photograph displayed on the live storefront.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleSaveCustomPcHero}
-                    disabled={savingCustomPcHero}
-                    type="button"
-                    className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
-                  >
-                    {savingCustomPcHero ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    <span>{savingCustomPcHero ? "Saving Banner..." : "Save Custom PC Banner"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Live Preview Container */}
-              <div className="space-y-2 pb-4 border-b border-slate-800">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  Live Banner Preview (Exact Storefront Appearance)
-                </span>
-                <div className="p-4 sm:p-6 overflow-hidden">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    {/* Left preview content */}
-                    <div className="lg:col-span-7 space-y-4">
-                      {customPcHeroConfig.topBadge && (
-                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                          <span>{customPcHeroConfig.topBadge}</span>
-                          {customPcHeroConfig.badgeHighlight && (
-                            <>
-                              <span>•</span>
-                              <span className="text-emerald-400 font-bold">
-                                {customPcHeroConfig.badgeHighlight}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                      <h3 className="text-2xl sm:text-4xl font-black tracking-tight text-white leading-tight">
-                        {customPcHeroConfig.title} <br />
-                        <span className="text-slate-400 font-normal">{customPcHeroConfig.subtitle}</span>
-                      </h3>
-
-                      <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-                        {customPcHeroConfig.description}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-3 pt-2">
-                        <span className="min-h-[44px] px-5 py-2.5 bg-zinc-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 uppercase tracking-wide border border-zinc-700">
-                          <Cpu className="w-4 h-4 text-emerald-400" />
-                          <span>{customPcHeroConfig.primaryCtaText || "Open PC Builder"}</span>
-                        </span>
-
-                        <span className="min-h-[44px] px-4 py-2.5 bg-slate-900 text-zinc-200 border border-slate-700 rounded-xl text-xs font-bold flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-emerald-400" />
-                          <span>{customPcHeroConfig.secondaryCtaText || "Chat with Technician"}</span>
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-4 border-t border-slate-800 text-xs text-slate-400">
-                        <div className="flex items-center gap-1.5">
-                          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <span className="truncate">{customPcHeroConfig.guarantee1}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <span className="truncate">{customPcHeroConfig.guarantee2}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Store className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <span className="truncate">{customPcHeroConfig.guarantee3}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right preview rig showcase */}
-                    <div className="lg:col-span-5">
-                      <div className="relative overflow-hidden">
-                        <div className="relative h-64 sm:h-72 w-full rounded-xl overflow-hidden bg-slate-900">
-                          {customPcHeroConfig.imageUrl ? (
-                            <img
-                              src={customPcHeroConfig.imageUrl}
-                              alt={customPcHeroConfig.imageTitle || "Tethera Custom Architecture"}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">
-                              No image selected
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/85 via-transparent to-transparent pointer-events-none" />
-                          <div className="absolute bottom-3 left-3 right-3 text-white">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
-                                {customPcHeroConfig.imageBadge || "Flagship Hub"}
-                              </span>
-                              <span className="text-xs text-slate-200 font-medium">
-                                {customPcHeroConfig.imageSubBadge || "Click & Collect Ready"}
-                              </span>
-                            </div>
-                            <h4 className="text-sm font-bold text-white mt-1">
-                              {customPcHeroConfig.imageTitle || "Tethera Custom Architecture"}
-                            </h4>
-                            <p className="text-[11px] text-slate-300 line-clamp-1">
-                              {customPcHeroConfig.imageDescription}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Input Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                {/* 1. Header Badges & Typography */}
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>Headline &amp; Body Copy</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Top Location Label</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.topBadge}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, topBadge: e.target.value }))
-                        }
-                        placeholder="Jakarta Flagship Store"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Label Highlight</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.badgeHighlight}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, badgeHighlight: e.target.value }))
-                        }
-                        placeholder="Same-Day Click & Collect"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Main Heading Title</label>
-                    <input
-                      type="text"
-                      value={customPcHeroConfig.title}
-                      onChange={(e) =>
-                        setCustomPcHeroConfig((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      placeholder="Custom Desktop PCs."
-                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-bold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Subtitle / Second Line</label>
-                    <input
-                      type="text"
-                      value={customPcHeroConfig.subtitle}
-                      onChange={(e) =>
-                        setCustomPcHeroConfig((prev) => ({ ...prev, subtitle: e.target.value }))
-                      }
-                      placeholder="Built & Benchmarked in Jakarta."
-                      className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">Description Paragraph</label>
-                    <textarea
-                      rows={4}
-                      value={customPcHeroConfig.description}
-                      onChange={(e) =>
-                        setCustomPcHeroConfig((prev) => ({ ...prev, description: e.target.value }))
-                      }
-                      placeholder="Configure high-performance desktop computers..."
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 leading-relaxed"
-                    />
-                  </div>
-                </div>
-
-                {/* 2. CTAs, Guarantees & Rig Photo */}
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5" />
-                    <span>Rig Picture &amp; Action Links</span>
-                  </h4>
-
-                  {/* Photo Uploader */}
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                      Showcase Rig Photograph
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        ref={customPcHeroFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleUploadFileFromPC(file, "custom_pc_hero");
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => customPcHeroFileInputRef.current?.click()}
-                        disabled={uploadingImage}
-                        className="min-h-[44px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-2 shrink-0"
-                      >
-                        <Upload className="w-4 h-4 text-cyan-400" />
-                        <span>{uploadingImage ? "Uploading..." : "Upload from PC"}</span>
-                      </button>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.imageUrl}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, imageUrl: e.target.value }))
-                        }
-                        placeholder="Or enter public image URL (https://...)"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Image Overlay Labels */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Tag Label</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.imageBadge}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, imageBadge: e.target.value }))
-                        }
-                        placeholder="Flagship Hub"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Sub-Label</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.imageSubBadge}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, imageSubBadge: e.target.value }))
-                        }
-                        placeholder="Click & Collect Ready"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Caption Title</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.imageTitle}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, imageTitle: e.target.value }))
-                        }
-                        placeholder="Tethera Custom Architecture"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Image Caption Subtitle</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.imageDescription}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, imageDescription: e.target.value }))
-                        }
-                        placeholder="Individually stress-tested rigs"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Primary & Secondary CTA */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Primary CTA Button</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.primaryCtaText}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, primaryCtaText: e.target.value }))
-                        }
-                        placeholder="Open PC Builder"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Primary CTA Link</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.primaryCtaLink}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, primaryCtaLink: e.target.value }))
-                        }
-                        placeholder="/builder"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Secondary CTA Button</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.secondaryCtaText}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, secondaryCtaText: e.target.value }))
-                        }
-                        placeholder="Chat with Technician"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Secondary CTA Link</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.secondaryCtaLink}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, secondaryCtaLink: e.target.value }))
-                        }
-                        placeholder="https://wa.me/..."
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3 Guarantees */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Guarantee 1</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.guarantee1}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, guarantee1: e.target.value }))
-                        }
-                        placeholder="2-Yr Return-to-Base Warranty"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Guarantee 2</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.guarantee2}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, guarantee2: e.target.value }))
-                        }
-                        placeholder="24h Prime95 Burn-In Test"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-300 mb-1">Guarantee 3</label>
-                      <input
-                        type="text"
-                        value={customPcHeroConfig.guarantee3}
-                        onChange={(e) =>
-                          setCustomPcHeroConfig((prev) => ({ ...prev, guarantee3: e.target.value }))
-                        }
-                        placeholder="Flagship Counter Pickup"
-                        className="w-full min-h-[44px] bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Save Action */}
-              <div className="flex justify-end pt-3 border-t border-slate-800">
-                <button
-                  onClick={handleSaveCustomPcHero}
-                  disabled={savingCustomPcHero}
-                  type="button"
-                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
-                >
-                  {savingCustomPcHero ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                  <span>{savingCustomPcHero ? "Saving Banner..." : "Save Custom PC Banner"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* ============================================================= */}
-            {/* 3. FEATURED PREBUILT SYSTEMS (HOMEPAGE SHOWCASE SLOTS)        */}
-            {/* ============================================================= */}
-            <div className="space-y-6 pb-6 border-b border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Cpu className="w-5 h-5 text-emerald-400" />
-                    <span>Featured Prebuilt Systems (Homepage Showcase)</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Select and rank 4 prebuilt PCs to feature on the storefront row. Rigs 1 and 2 appear across all devices. Rigs 3 and 4 appear on Desktop and Ultrawide displays.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    onClick={handleResetFeaturedPrebuilts}
-                    type="button"
-                    className="min-h-[44px] px-3.5 py-2 text-slate-400 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Reset to Defaults</span>
-                  </button>
-                  <button
-                    onClick={handleSaveFeaturedPrebuilts}
-                    disabled={savingFeaturedPrebuilts}
-                    type="button"
-                    className="min-h-[44px] px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition disabled:opacity-50"
-                  >
-                    {savingFeaturedPrebuilts ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    <span>
-                      {savingFeaturedPrebuilts
-                        ? "Saving Featured Systems..."
-                        : "Save Featured Systems"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Active Slots Ranking List */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Active Showcase Slots ({featuredPrebuiltIds.length} of 4 Selected)
-                  </h3>
-                  <span className="text-[11px] text-slate-400">
-                    Use Up and Down controls to change storefront priority order
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[0, 1, 2, 3].map((slotIndex) => {
-                    const rigId = featuredPrebuiltIds[slotIndex];
-                    const rig = PREBUILT_SYSTEMS.find((p) => p.id === rigId);
-
-                    const slotLabels = [
-                      "1st Rig: All Devices (Mobile, Tablet, Desktop, Ultrawide)",
-                      "2nd Rig: All Devices (Mobile, Tablet, Desktop, Ultrawide)",
-                      "3rd Rig: Desktop and Ultrawide Only",
-                      "4th Rig: Desktop and Ultrawide Only",
-                    ];
-
-                    const slotBadgeStyles = [
-                      "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-                      "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
-                      "bg-amber-500/10 text-amber-400 border-amber-500/30",
-                      "bg-purple-500/10 text-purple-400 border-purple-500/30",
-                    ];
-
-                    if (!rig) {
-                      return (
-                        <div
-                          key={`empty-slot-${slotIndex}`}
-                          className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-5 flex flex-col items-center justify-center text-center min-h-[220px]"
-                        >
-                          <span
-                            className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border mb-3 ${slotBadgeStyles[slotIndex]}`}
-                          >
-                            {slotLabels[slotIndex]}
-                          </span>
-                          <p className="text-xs text-slate-500">Empty Slot</p>
-                          <p className="text-[11px] text-slate-600 mt-1">
-                            Select a system from the catalog below to assign to this position
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    const rigThumb = rig.image || rig.images?.[0] || "";
-
-                    return (
-                      <div
-                        key={rig.id}
-                        className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 flex flex-col justify-between space-y-4 hover:border-slate-700 transition"
-                      >
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${slotBadgeStyles[slotIndex]}`}
-                            >
-                              {slotLabels[slotIndex]}
-                            </span>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-950 shrink-0 border border-slate-800">
-                              {rigThumb ? (
-                                <img
-                                  src={rigThumb}
-                                  alt={rig.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-600">
-                                  <Cpu className="w-6 h-6" />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-xs font-bold text-white truncate" title={rig.name}>
-                                {rig.name}
-                              </h4>
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                                {rig.cpu}
-                              </p>
-                              <p className="text-[11px] text-slate-400 truncate">
-                                {rig.gpu}
-                              </p>
-                              <div className="mt-1 text-xs font-bold text-cyan-400 font-mono">
-                                {formatRupiah(rig.price)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Order & Remove Controls */}
-                        <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 gap-2">
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleMoveFeaturedPrebuilt(slotIndex, "up")}
-                              disabled={slotIndex === 0}
-                              className="min-h-[44px] min-w-[44px] px-2.5 py-2 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-                              title="Move Rig Up in Homepage Rank"
-                            >
-                              <ArrowUp className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMoveFeaturedPrebuilt(slotIndex, "down")}
-                              disabled={slotIndex === featuredPrebuiltIds.length - 1}
-                              className="min-h-[44px] min-w-[44px] px-2.5 py-2 rounded-lg bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white transition disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-                              title="Move Rig Down in Homepage Rank"
-                            >
-                              <ArrowDown className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleFeaturedPrebuilt(rig.id)}
-                            className="min-h-[44px] px-3 py-2 text-rose-400 hover:text-rose-300 text-xs font-medium rounded-lg hover:bg-rose-500/10 transition flex items-center gap-1.5"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Remove</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* All Prebuilts Selection Grid */}
-              <div className="space-y-3 pt-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                      Available Prebuilt Systems Catalog
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      Toggle systems to add or replace featured storefront placements. Exactly 4 rigs should be selected.
-                    </p>
-                  </div>
-                  <span className="text-xs font-semibold text-slate-400">
-                    {PREBUILT_SYSTEMS.length} Systems Available
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {PREBUILT_SYSTEMS.map((system) => {
-                    const isSelected = featuredPrebuiltIds.includes(system.id);
-                    const slotIndex = featuredPrebuiltIds.indexOf(system.id);
-                    const thumb = system.image || system.images?.[0] || "";
-
-                    return (
-                      <div
-                        key={system.id}
-                        className={`rounded-2xl border p-4 flex flex-col justify-between space-y-3 transition ${
-                          isSelected
-                            ? "border-emerald-500/40 bg-emerald-950/10"
-                            : "border-slate-800 bg-slate-900/40 hover:border-slate-700"
-                        }`}
-                      >
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
-                              {system.sku}
-                            </span>
-                            {isSelected ? (
-                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                Slot #{slotIndex + 1}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] font-medium text-slate-500 px-2 py-0.5 rounded-full bg-slate-800/50">
-                                Not Featured
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-950 shrink-0 border border-slate-800">
-                              {thumb ? (
-                                <img
-                                  src={thumb}
-                                  alt={system.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-600">
-                                  <Cpu className="w-6 h-6" />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-xs font-bold text-white truncate" title={system.name}>
-                                {system.name}
-                              </h4>
-                              <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                                {system.cpu}
-                              </p>
-                              <p className="text-[11px] text-slate-400 truncate">
-                                {system.gpu}
-                              </p>
-                              <div className="mt-1 text-xs font-bold text-emerald-400 font-mono">
-                                {formatRupiah(system.price)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action Toggle Button */}
-                        <div className="pt-2 border-t border-slate-800/60">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleFeaturedPrebuilt(system.id)}
-                            className={`w-full min-h-[44px] px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition ${
-                              isSelected
-                                ? "bg-rose-900/30 text-rose-300 hover:bg-rose-900/50 border border-rose-700/40"
-                                : featuredPrebuiltIds.length >= 3
-                                ? "bg-slate-800/50 text-slate-400 hover:bg-slate-800 border border-slate-700/50"
-                                : "bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/40"
-                            }`}
-                          >
-                            {isSelected ? (
-                              <>
-                                <X className="w-3.5 h-3.5" />
-                                <span>Remove from Showcase</span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>
-                                  {featuredPrebuiltIds.length >= 3
-                                    ? "Replace / Add (Max 3 Selected)"
-                                    : "Add to Featured Showcase"}
-                                </span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* ============================================================= */}
-            {/* 4. ACTIVE PROMOTIONAL DISCOUNT CODES                          */}
-            {/* ============================================================= */}
-            <div className="space-y-4 pb-6 border-b border-slate-800">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Tag className="w-5 h-5 text-purple-400" />
-                    <span>Active Promotional Discount Codes</span>
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Create and manage discount vouchers applicable across Checkout and Custom Rig configurations.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setNewPromoModalOpen(true)}
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Create Promo Code</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {promotions.map((promo) => (
-                  <div
-                    key={promo.id}
-                    className={`p-4 space-y-3 transition border-b border-slate-800/80 ${
-                      promo.is_active ? "text-white" : "opacity-60"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <span className="font-mono text-base font-bold tracking-wider text-purple-300">
-                          {promo.code}
-                        </span>
-                        <div className="font-semibold text-white text-sm mt-1">{promo.title}</div>
-                      </div>
-                      <button
-                        onClick={() => handleTogglePromo(promo)}
-                        className={`min-h-[44px] px-2 py-1 text-xs font-semibold ${
-                          promo.is_active ? "text-emerald-400" : "text-slate-500"
-                        }`}
-                      >
-                        {promo.is_active ? "Active" : "Paused"}
-                      </button>
-                    </div>
-
-                    <p className="text-xs text-slate-400">{promo.description}</p>
-
-                    <div className="text-xs text-slate-400 border-t border-slate-800/60 pt-2 flex justify-between items-center">
-                      <div>
-                        Discount:{" "}
-                        <strong className="text-white font-mono">
-                          {promo.discount_type === "percentage"
-                            ? `${promo.discount_value}% OFF`
-                            : formatRupiah(promo.discount_value)}
-                        </strong>
-                      </div>
-                      <div className="text-[11px] text-slate-500">
-                        {promo.usage_count} uses {promo.usage_limit ? `/ ${promo.usage_limit}` : ""}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-1">
-                      <button
-                        onClick={() => handleDeletePromo(promo.id)}
-                        className="min-h-[44px] text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ============================================================= */}
-            {/* 4. HOMEPAGE ROTATING BANNERS                                  */}
-            {/* ============================================================= */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-cyan-400" />
-                    <span>Homepage Rotating Banners (Dynamic Order)</span>
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Upload pictures, configure headline writing on top, and click Move Up / Move Down to change the rotation order on the main screen.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setNewBannerModalOpen(true)}
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs flex items-center gap-1.5 transition"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Banner Slide</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {banners
-                  .sort((a, b) => a.display_order - b.display_order)
-                  .map((slide, idx) => (
-                    <div
-                      key={slide.id}
-                      className="border-b border-slate-800/80 pb-4 flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Picture with Writing on Top */}
-                        <div className="h-44 w-full bg-slate-900 rounded-xl relative overflow-hidden">
-                          {slide.image_url ? (
-                            <img
-                              src={slide.image_url}
-                              alt={slide.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-slate-900" />
-                          )}
-
-                          {/* Writing Overlaid on top of picture */}
-                          {!slide.hide_overlay && (
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/30 p-3.5 flex flex-col justify-between">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-mono font-bold text-cyan-400 uppercase">
-                                  {slide.badge || "FEATURED"}
-                                </span>
-                                <span className="text-xs text-white font-mono font-bold">
-                                  Position #{idx + 1}
-                                </span>
-                              </div>
-
-                              <div>
-                                <h4 className="text-white font-black text-sm line-clamp-1">{slide.title}</h4>
-                                <p className="text-cyan-300 text-[11px] font-medium line-clamp-1">{slide.highlight}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Banner Description & Details */}
-                        <div className="pt-3 space-y-1.5 text-xs">
-                          <div className="font-semibold text-white text-sm">{slide.title}</div>
-                          <p className="text-slate-400 line-clamp-2 text-[11px]">{slide.description}</p>
-                          {slide.perk && (
-                            <div className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span>{slide.perk}</span>
-                            </div>
-                          )}
-                          <div className="text-[11px] text-cyan-400 font-mono">CTA Link: {slide.cta_link}</div>
-                        </div>
-                      </div>
-
-                      {/* Reorder Buttons (Move Up / Down) & Remove */}
-                      <div className="pt-3 flex items-center justify-between border-t border-slate-800/60 mt-3">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[11px] text-slate-500 mr-1 font-mono">Order:</span>
-                          <button
-                            onClick={() => handleMoveBannerOrder(slide.id, "up")}
-                            disabled={idx === 0}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="Move Earlier in Rotation"
-                          >
-                            <ArrowUp className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleMoveBannerOrder(slide.id, "down")}
-                            disabled={idx === banners.length - 1}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="Move Later in Rotation"
-                          >
-                            <ArrowDown className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        <button
-                          onClick={async () => {
-                            if (!confirm("Delete this banner slide?")) return;
-                            await fetch(`/api/admin/banners?id=${slide.id}`, {
-                              method: "DELETE",
-                              headers: token ? { Authorization: `Bearer ${token}` } : {},
-                            });
-                            setBanners((prev) => prev.filter((b) => b.id !== slide.id));
-                            showToast("Banner deleted.");
-                          }}
-                          className="min-h-[44px] text-rose-400 hover:text-rose-300 text-xs flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Remove</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ==================================================================== */}
-        {/* TAB 4: CUSTOMER DIRECTORY & DETAILED PROFILES                         */}
-        {/* ==================================================================== */}
-        {activeTab === "crm" && (
-          <div className="space-y-6">
-            {crmStats && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pb-6 border-b border-slate-800/80">
-                <div>
-                  <div className="text-xs text-slate-400">Total Registered Customers</div>
-                  <div className="text-2xl font-bold text-white mt-1">{crmStats.totalLeads}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">Marketing Opt-In Rate</div>
-                  <div className="text-2xl font-bold text-emerald-400 mt-1">{crmStats.optInRate}%</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">Cumulative GMV Spent</div>
-                  <div className="text-xl font-bold text-cyan-400 mt-1 font-mono">
-                    {formatRupiah(crmStats.totalRevenueGenerated)}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Filter and Search Bar (Invisible Container) */}
-            <div className="space-y-3 pb-4 border-b border-slate-800/80">
-              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                <div className="relative w-full sm:w-80">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={customerSearchTerm}
-                    onChange={(e) => setCustomerSearchTerm(e.target.value)}
-                    placeholder="Search name, email, phone, city, or source..."
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  <select
-                    value={customerSegmentFilter}
-                    onChange={(e) => setCustomerSegmentFilter(e.target.value)}
-                    className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cyan-500"
-                  >
-                    <option value="all">All Segments</option>
-                    <option value="gamer">Gamer</option>
-                    <option value="pc_builder">PC Builder</option>
-                    <option value="creator">Content Creator</option>
-                    <option value="enterprise">Enterprise</option>
-                    <option value="general">General</option>
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={() => setCustomerOptInOnly(!customerOptInOnly)}
-                    className={`min-h-[44px] px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${
-                      customerOptInOnly
-                        ? "bg-emerald-500/20 border-emerald-500/60 text-emerald-300 font-semibold"
-                        : "bg-slate-950 border-slate-800 text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    {customerOptInOnly ? "Opt-In Only (Active)" : "Opt-In Only"}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Customers Table (Invisible Container) */}
-            <div className="space-y-4">
-              <div className="pb-4 border-b border-slate-800/80 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-white text-sm">Registered Customer Directory</h3>
-                  <p className="text-xs text-slate-400">
-                    Comprehensive customer profiles, contact numbers, delivery addresses, and attribution details.
-                  </p>
-                </div>
-                <span className="text-xs text-slate-400 font-mono">
-                  {
-                    customers.filter((c) => {
-                      if (customerOptInOnly && !c.marketing_opt_in) return false;
-                      if (customerSegmentFilter !== "all" && c.customer_segment !== customerSegmentFilter) return false;
-                      if (customerSearchTerm.trim()) {
-                        const q = customerSearchTerm.toLowerCase();
-                        const matchName = c.full_name?.toLowerCase().includes(q);
-                        const matchEmail = c.email?.toLowerCase().includes(q);
-                        const matchPhone = c.phone?.includes(q);
-                        const matchCity = c.city?.toLowerCase().includes(q);
-                        const matchSource = c.lead_source?.toLowerCase().includes(q);
-                        if (!matchName && !matchEmail && !matchPhone && !matchCity && !matchSource) return false;
-                      }
-                      return true;
-                    }).length
-                  }{" "}
-                  of {customers.length} records
-                </span>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950 text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
-                    <tr>
-                      <th className="py-3 px-4">Customer</th>
-                      <th className="py-3 px-4">Phone & Location</th>
-                      <th className="py-3 px-4">Discovery Source</th>
-                      <th className="py-3 px-4">Segment</th>
-                      <th className="py-3 px-4">Orders &amp; Spend</th>
-                      <th className="py-3 px-4">Marketing</th>
-                      <th className="py-3 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
-                    {customers
-                      .filter((c) => {
-                        if (customerOptInOnly && !c.marketing_opt_in) return false;
-                        if (customerSegmentFilter !== "all" && c.customer_segment !== customerSegmentFilter) return false;
-                        if (customerSearchTerm.trim()) {
-                          const q = customerSearchTerm.toLowerCase();
-                          const matchName = c.full_name?.toLowerCase().includes(q);
-                          const matchEmail = c.email?.toLowerCase().includes(q);
-                          const matchPhone = c.phone?.includes(q);
-                          const matchCity = c.city?.toLowerCase().includes(q);
-                          const matchSource = c.lead_source?.toLowerCase().includes(q);
-                          if (!matchName && !matchEmail && !matchPhone && !matchCity && !matchSource) return false;
-                        }
-                        return true;
-                      })
-                      .map((c) => (
-                        <tr
-                          key={c.id}
-                          onClick={() => setSelectedCustomer(c)}
-                          className="hover:bg-slate-800/50 cursor-pointer transition-colors"
-                        >
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-white">{c.full_name}</div>
-                            <div className="text-[11px] text-slate-400 font-mono">{c.email}</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-mono text-slate-200">{c.phone || "No phone"}</div>
-                            <div className="text-[11px] text-slate-400">
-                              {c.city}
-                              {c.subdistrict ? `, ${c.subdistrict}` : ""}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-cyan-400 capitalize">
-                              {c.lead_source ? c.lead_source.replace(/_/g, " ") : "Direct"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-300 uppercase font-mono">
-                              {c.customer_segment || "general"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-mono">
-                            <div className="font-bold text-cyan-400">{formatRupiah(c.total_spent || 0)}</div>
-                            <div className="text-[10px] text-slate-400">{c.total_orders || 0} orders</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            {c.marketing_opt_in ? (
-                              <span className="text-emerald-400 font-medium">Opted-in</span>
-                            ) : (
-                              <span className="text-slate-500">No</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedCustomer(c);
-                              }}
-                              className="min-h-[44px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-medium inline-flex items-center gap-1.5 transition-colors"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Details</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ==================================================================== */}
-        {/* TAB 5: SALES & PROFIT ANALYTICS (WITH DRAGGABLE RESIZABLE TABLE)     */}
-        {/* ==================================================================== */}
-        {activeTab === "analytics" && (
-          <div className="space-y-6">
-            {/* Top Overview & Action Bar (Invisible Container) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-800/80">
-              <div>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-cyan-400" />
-                  <h2 className="text-lg font-bold text-white tracking-tight">Sales &amp; Profit Intelligence</h2>
-                  <span className="text-xs font-semibold text-emerald-400">Live Telemetry</span>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Storewide sales velocity, unit economics, gross margins, and draggable resizable data grid.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={resetColWidths}
-                  className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition flex items-center gap-1.5"
-                  title="Reset table column widths to default layout"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Reset Column Widths</span>
-                </button>
-
-                <div className="min-h-[44px] px-3.5 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400 flex items-center gap-1.5">
-                  <Package className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>
-                    <strong className="text-white font-medium">{products.length}</strong> items tracked
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Overall Sales Statistics Headline Metrics (Flat Borderless Row) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-6 border-b border-slate-800/80">
-              {/* Card 1: Weekly Gross Profit */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Weekly Gross Profit (7D)
-                  </span>
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="text-2xl font-black text-emerald-400 tracking-tight font-mono">
-                  {formatRupiah(analyticsData.weeklyGrossProfit)}
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
-                  <span className="text-slate-400">
-                    Gross Margin: <strong className="text-emerald-300 font-semibold">{analyticsData.weeklyMarginPct}%</strong>
-                  </span>
-                  {analyticsData.profitGrowthPct !== 0 && (
-                    <span
-                      className={`inline-flex items-center gap-0.5 font-medium ${
-                        analyticsData.profitGrowthPct >= 0 ? "text-emerald-400" : "text-red-400"
-                      }`}
-                    >
-                      {analyticsData.profitGrowthPct >= 0 ? "+" : ""}
-                      {analyticsData.profitGrowthPct}% vs prior 7D
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Card 2: Sales in a Week (Revenue) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Sales in a Week (7D)
-                  </span>
-                  <DollarSign className="w-4 h-4 text-cyan-400" />
-                </div>
-                <div className="text-2xl font-black text-cyan-400 tracking-tight font-mono">
-                  {formatRupiah(analyticsData.weeklySales)}
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
-                  <span className="text-slate-400">
-                    Orders: <strong className="text-white font-medium">{analyticsData.weeklyOrdersCount}</strong>
-                  </span>
-                  <span className="text-slate-400">
-                    AOV: <strong className="text-cyan-300 font-mono">{formatRupiah(analyticsData.weeklyAov)}</strong>
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 3: Weekly Units & Run-Rate */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Weekly Volume Sold
-                  </span>
-                  <ShoppingBag className="w-4 h-4 text-purple-400" />
-                </div>
-                <div className="text-2xl font-black text-purple-300 tracking-tight font-mono">
-                  {analyticsData.weeklyUnits.toLocaleString()}{" "}
-                  <span className="text-sm font-normal text-slate-400">units</span>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
-                  <span className="text-slate-400">Daily Velocity:</span>
-                  <span className="text-purple-300 font-medium font-mono">
-                    {(analyticsData.weeklyUnits / 7).toFixed(1)} units / day
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 4: Store Lifetime Totals */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                    Store Lifetime Profit
-                  </span>
-                  <Sparkles className="w-4 h-4 text-blue-400" />
-                </div>
-                <div className="text-2xl font-black text-blue-300 tracking-tight font-mono">
-                  {formatRupiah(analyticsData.lifetimeGrossProfit)}
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
-                  <span className="text-slate-400">
-                    Revenue: <strong className="text-slate-300 font-mono">{formatRupiah(analyticsData.lifetimeSales)}</strong>
-                  </span>
-                  <span className="text-slate-400">
-                    <strong className="text-white font-medium">{analyticsData.lifetimeOrdersCount}</strong> orders
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 7-Day Daily Breakdown Bar & Flow (Invisible Container) */}
-            <div className="space-y-4 pb-6 border-b border-slate-800/80">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-cyan-400" />
-                    <span>7-Day Daily Revenue &amp; Gross Profit Breakdown</span>
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Day-by-day sales pacing and profit margins over the trailing 7 days.
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-slate-400">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded bg-cyan-500/80" />
-                    <span>Revenue</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 rounded bg-emerald-500/80" />
-                    <span>Gross Profit</span>
-                  </div>
-                </div>
-              </div>
-
-              {(() => {
-                const maxDayRev = Math.max(...analyticsData.dailyBreakdown.map((d) => d.revenue), 1);
-                return (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-3">
-                    {analyticsData.dailyBreakdown.map((day) => {
-                      const revPct = Math.round((day.revenue / maxDayRev) * 100);
-                      const profitPct = Math.round((day.profit / maxDayRev) * 100);
-
-                      return (
-                        <div
-                          key={day.dateStr}
-                          className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 flex flex-col justify-between hover:border-slate-700 transition"
-                        >
-                          <div>
-                            <div className="text-xs font-semibold text-slate-300">{day.label}</div>
-                            <div className="text-[10px] text-slate-500 font-mono">{day.dateStr}</div>
-                          </div>
-
-                          <div className="my-3 space-y-1.5">
-                            {/* Revenue Bar */}
-                            <div>
-                              <div className="flex justify-between text-[11px] font-mono text-cyan-300 mb-0.5">
-                                <span>Rev</span>
-                                <span>{formatRupiah(day.revenue)}</span>
-                              </div>
-                              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className="bg-cyan-500 h-full rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.max(revPct, day.revenue > 0 ? 6 : 0)}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Profit Bar */}
-                            <div>
-                              <div className="flex justify-between text-[11px] font-mono text-emerald-400 mb-0.5">
-                                <span>Profit</span>
-                                <span>{formatRupiah(day.profit)}</span>
-                              </div>
-                              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.max(profitPct, day.profit > 0 ? 6 : 0)}%` }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="text-[10px] text-slate-400 pt-2 border-t border-slate-800/60 flex items-center justify-between">
-                            <span>{day.orders} order(s)</span>
-                            <span className="font-mono">{day.units} unit(s)</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Draggable Table Toolbar & Filter Controls (Invisible Container) */}
-            <div className="space-y-3 pb-4 border-b border-slate-800/80">
-              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                {/* Search Bar */}
-                <div className="relative flex-1 min-w-[240px]">
-                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by product title, brand, or SKU code..."
-                    value={analyticsSearch}
-                    onChange={(e) => setAnalyticsSearch(e.target.value)}
-                    className="w-full min-h-[44px] bg-slate-950/80 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
-                  />
-                  {analyticsSearch && (
-                    <button
-                      onClick={() => setAnalyticsSearch("")}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Category Filter */}
-                <div className="flex items-center gap-2">
-                  <select
-                    value={analyticsCategoryFilter}
-                    onChange={(e) => setAnalyticsCategoryFilter(e.target.value)}
-                    className="min-h-[44px] bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
-                  >
-                    <option value="all">All Categories ({products.length})</option>
-                    {HARDWARE_CATEGORIES.map((c) => (
-                      <option key={c.slug} value={c.slug}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Sort Selection */}
-                  <select
-                    value={analyticsSortBy}
-                    onChange={(e) => setAnalyticsSortBy(e.target.value)}
-                    className="min-h-[44px] bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition"
-                  >
-                    <option value="weeklyGrossProfit">Sort by 7D Gross Profit</option>
-                    <option value="weeklyRevenue">Sort by 7D Revenue</option>
-                    <option value="weeklyUnits">Sort by 7D Units Sold</option>
-                    <option value="lifetimeGrossProfit">Sort by Lifetime Profit</option>
-                    <option value="lifetimeRevenue">Sort by Lifetime Revenue</option>
-                    <option value="lifetimeUnits">Sort by Lifetime Units</option>
-                    <option value="retail_price">Sort by Retail Price</option>
-                    <option value="marginPct">Sort by Gross Margin %</option>
-                    <option value="stock_on_hand">Sort by Stock On Hand</option>
-                    <option value="name">Sort by Product Name</option>
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={() => setAnalyticsSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-                    className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition"
-                    title={`Sort Direction: ${analyticsSortOrder === "asc" ? "Ascending" : "Descending"}`}
-                  >
-                    {analyticsSortOrder === "asc" ? (
-                      <ArrowUp className="w-4 h-4 text-cyan-400" />
-                    ) : (
-                      <ArrowDown className="w-4 h-4 text-cyan-400" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Helper Bar & Tip */}
-              <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-cyan-400" />
-                  <span>
-                    Showing <strong className="text-white">{sortedAndFilteredProducts.length}</strong> of{" "}
-                    <strong className="text-white">{products.length}</strong> items
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-400">
-                  <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>
-                    <strong>Draggable columns active:</strong> Drag the border handle between any two columns to resize.
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Draggable Resizable Table (Invisible Container) */}
-            <div className="overflow-x-auto">
-              <table
-                style={{
-                  width: `${Object.values(colWidths).reduce((acc, w) => acc + w, 0)}px`,
-                  minWidth: "100%",
-                }}
-                className="table-fixed border-collapse divide-y divide-slate-800 text-left text-xs"
-              >
-                <thead className="bg-slate-950 text-slate-300 font-semibold tracking-wider text-[11px] uppercase sticky top-0 z-10 select-none">
-                  <tr>
-                    {/* 1. Product Name */}
-                    <th
-                      style={{ width: `${colWidths.product}px`, minWidth: `${colWidths.product}px` }}
-                      className="py-3.5 px-4 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("name");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "name" && prev === "asc" ? "desc" : "asc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>Product Elements</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("product", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 2. SKU */}
-                    <th
-                      style={{ width: `${colWidths.sku}px`, minWidth: `${colWidths.sku}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>SKU</span>
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("sku", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 3. Category */}
-                    <th
-                      style={{ width: `${colWidths.category}px`, minWidth: `${colWidths.category}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>Category</span>
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("category", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 4. Retail Price */}
-                    <th
-                      style={{ width: `${colWidths.price}px`, minWidth: `${colWidths.price}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("retail_price");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "retail_price" && prev === "desc" ? "asc" : "desc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>Retail Price</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("price", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 5. Unit Cost (COGS) */}
-                    <th
-                      style={{ width: `${colWidths.cost}px`, minWidth: `${colWidths.cost}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>Est. Cost (COGS)</span>
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("cost", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 6. Units Sold (7D) */}
-                    <th
-                      style={{ width: `${colWidths.unitsWeek}px`, minWidth: `${colWidths.unitsWeek}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("weeklyUnits");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "weeklyUnits" && prev === "desc" ? "asc" : "desc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>7D Units</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("unitsWeek", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 7. Lifetime Units */}
-                    <th
-                      style={{ width: `${colWidths.unitsLifetime}px`, minWidth: `${colWidths.unitsLifetime}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("lifetimeUnits");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "lifetimeUnits" && prev === "desc" ? "asc" : "desc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>Total Units</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("unitsLifetime", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 8. 7D Revenue */}
-                    <th
-                      style={{ width: `${colWidths.revWeek}px`, minWidth: `${colWidths.revWeek}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("weeklyRevenue");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "weeklyRevenue" && prev === "desc" ? "asc" : "desc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>7D Revenue</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("revWeek", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 9. 7D Gross Profit */}
-                    <th
-                      style={{ width: `${colWidths.profitWeek}px`, minWidth: `${colWidths.profitWeek}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("weeklyGrossProfit");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "weeklyGrossProfit" && prev === "desc" ? "asc" : "desc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>7D Profit</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("profitWeek", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 10. Margin % */}
-                    <th
-                      style={{ width: `${colWidths.margin}px`, minWidth: `${colWidths.margin}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("marginPct");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "marginPct" && prev === "desc" ? "asc" : "desc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>Margin %</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("margin", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 11. Stock on Hand */}
-                    <th
-                      style={{ width: `${colWidths.stock}px`, minWidth: `${colWidths.stock}px` }}
-                      className="py-3.5 px-3 relative group"
-                    >
-                      <div
-                        onClick={() => {
-                          setAnalyticsSortBy("stock_on_hand");
-                          setAnalyticsSortOrder((prev) => (analyticsSortBy === "stock_on_hand" && prev === "desc" ? "asc" : "desc"));
-                        }}
-                        className="flex items-center justify-between cursor-pointer hover:text-white"
-                      >
-                        <span>Stock</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-500 group-hover:text-cyan-400" />
-                      </div>
-                      <div
-                        onMouseDown={(e) => handleColResizeStart("stock", e)}
-                        className="absolute top-0 right-0 h-full w-4 cursor-col-resize flex items-center justify-center hover:bg-cyan-500/20 active:bg-cyan-500/40 z-20 group"
-                        title="Drag to resize column"
-                      >
-                        <div className="w-[2px] h-4 bg-slate-700 group-hover:bg-cyan-400 group-active:bg-cyan-300 transition-colors rounded-full" />
-                      </div>
-                    </th>
-
-                    {/* 12. Actions */}
-                    <th
-                      style={{ width: `${colWidths.actions}px`, minWidth: `${colWidths.actions}px` }}
-                      className="py-3.5 px-4 text-right"
-                    >
-                      <span>Dashboard</span>
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-800/80">
-                  {sortedAndFilteredProducts.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} className="py-12 text-center text-slate-400">
-                        <Package className="w-8 h-8 mx-auto mb-2 text-slate-600" />
-                        <div className="font-medium text-slate-300">No products found</div>
-                        <div className="text-xs text-slate-500 mt-1">Try adjusting your search criteria or category filter.</div>
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedAndFilteredProducts.map((p) => {
-                      const hasImage = p.images && p.images.length > 0;
-                      return (
-                        <tr
-                          key={p.id}
-                          className="hover:bg-slate-800/40 transition-colors cursor-pointer group"
-                          onClick={() => setSelectedItemAnalytics(p)}
-                        >
-                          {/* Product Info */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex-shrink-0 relative overflow-hidden flex items-center justify-center">
-                                {hasImage ? (
-                                  <Image
-                                    src={p.images[0]}
-                                    alt={p.name}
-                                    fill
-                                    className="object-cover"
-                                    sizes="40px"
-                                  />
-                                ) : (
-                                  <Package className="w-5 h-5 text-slate-500" />
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-[11px] font-semibold text-cyan-400 uppercase tracking-wider truncate">
-                                  {p.brand}
-                                </div>
-                                <div className="text-xs font-medium text-white truncate max-w-[200px]" title={p.name}>
-                                  {p.name}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* SKU */}
-                          <td className="py-3 px-3">
-                            <span className="font-mono text-xs text-cyan-400 truncate block">
-                              {p.sku}
-                            </span>
-                          </td>
-
-                          {/* Category */}
-                          <td className="py-3 px-3">
-                            <span className="text-xs text-slate-300 uppercase truncate block">
-                              {p.category_slug}
-                            </span>
-                          </td>
-
-                          {/* Retail Price */}
-                          <td className="py-3 px-3 font-mono text-xs text-white font-medium">
-                            {formatRupiah(p.retail_price)}
-                          </td>
-
-                          {/* Cost (COGS) */}
-                          <td className="py-3 px-3 font-mono text-xs text-slate-400">
-                            {formatRupiah(p.cost_price)}
-                          </td>
-
-                          {/* 7D Units */}
-                          <td className="py-3 px-3 font-mono text-xs">
-                            <span
-                              className={`font-semibold ${
-                                p.weeklyUnits > 0 ? "text-cyan-300" : "text-slate-500"
-                              }`}
-                            >
-                              {p.weeklyUnits}
-                            </span>
-                          </td>
-
-                          {/* Total Units */}
-                          <td className="py-3 px-3 font-mono text-xs text-slate-300">
-                            {p.lifetimeUnits}
-                          </td>
-
-                          {/* 7D Revenue */}
-                          <td className="py-3 px-3 font-mono text-xs text-cyan-400 font-medium">
-                            {formatRupiah(p.weeklyRevenue)}
-                          </td>
-
-                          {/* 7D Gross Profit */}
-                          <td className="py-3 px-3 font-mono text-xs text-emerald-400 font-bold">
-                            {formatRupiah(p.weeklyGrossProfit)}
-                          </td>
-
-                          {/* Margin % */}
-                          <td className="py-3 px-3">
-                            <span
-                              className={`font-mono text-xs font-bold ${
-                                p.marginPct >= 20
-                                  ? "text-emerald-400"
-                                  : p.marginPct >= 12
-                                  ? "text-cyan-400"
-                                  : "text-amber-400"
-                              }`}
-                            >
-                              {p.marginPct}%
-                            </span>
-                          </td>
-
-                          {/* Stock & Velocity */}
-                          <td className="py-3 px-3">
-                            <div className="font-mono text-xs text-white">
-                              {p.stock_on_hand}{" "}
-                              <span className="text-[10px] text-slate-400 font-sans">left</span>
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              {p.daysOfSupply === 999 ? "Ample supply" : `${p.daysOfSupply}d supply`}
-                            </div>
-                          </td>
-
-                          {/* Action Button */}
-                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedItemAnalytics(p)}
-                              className="min-h-[44px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-medium inline-flex items-center gap-1.5 transition ml-auto"
-                              title="Open full item sales dashboard"
-                            >
-                              <BarChart3 className="w-3.5 h-3.5" />
-                              <span>Dashboard</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          )}
+
+          {/* Tab 0: Overview */}
+          {activeTab === "overview" && (
+            <FluxOverviewTab
+              orders={orders}
+              products={products}
+              customers={customers}
+              user={user}
+              analyticsData={analyticsData}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onInspectOrder={(ord) => setSelectedOrderForDrawer(ord)}
+              onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
+              onOpenNewProductModal={() => {
+                setNewProductImageUrl("");
+                setNewProductImages([]);
+                setNewProductRetailPrice("");
+                setNewProductSalePrice("");
+                setNewProductDiscountPercent("");
+                setNewProductDiscountEnabled(false);
+                setNewProductModalOpen(true);
+              }}
+            />
+          )}
+
+          {/* Tab 1: Orders */}
+          {activeTab === "orders" && (
+            <FluxOrdersTab
+              orders={orders}
+              onInspectOrder={(ord) => setSelectedOrderForDrawer(ord)}
+              onOpenDispatchModal={(ord) => setDispatchModalOrder(ord)}
+              onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
+              onOpenRejectModal={(ord) => {
+                setRejectModalOrder(ord);
+                setRejectReason("Out of stock in warehouse");
+                setCustomRejectReason("");
+              }}
+            />
+          )}
+
+          {/* Tab 2: Products */}
+          {activeTab === "products" && (
+            <FluxProductsTab
+              products={products}
+              onOpenNewProductModal={() => {
+                setNewProductImageUrl("");
+                setNewProductImages([]);
+                setNewProductRetailPrice("");
+                setNewProductSalePrice("");
+                setNewProductDiscountPercent("");
+                setNewProductDiscountEnabled(false);
+                setNewProductModalOpen(true);
+              }}
+              onEditProduct={(p) => openEditProductModal(p)}
+              onDeleteProduct={(id) => {
+                const prod = products.find((x) => x.id === id);
+                handleDeleteProduct(id, prod?.name || "Product");
+              }}
+            />
+          )}
+
+          {/* Tab 3: Promotions & Featured Prebuilt Systems (Homepage Showcase) */}
+          {activeTab === "promotions" && (
+            <FluxPromotionsTab
+              banners={banners}
+              homepageModules={homepageModules}
+              setHomepageModules={setHomepageModules}
+              customPcHeroConfig={customPcHeroConfig}
+              setCustomPcHeroConfig={setCustomPcHeroConfig}
+              featuredPrebuiltIds={featuredPrebuiltIds}
+              setFeaturedPrebuiltIds={setFeaturedPrebuiltIds}
+              promotions={promotions}
+              handleResetHomepageModules={handleResetHomepageModules}
+              handleSaveHomepageModules={handleSaveHomepageModules}
+              savingModules={savingModules}
+              handleSaveCustomPcHero={handleSaveCustomPcHero}
+              savingCustomPcHero={savingCustomPcHero}
+              handleResetFeaturedPrebuilts={handleResetFeaturedPrebuilts}
+              handleSaveFeaturedPrebuilts={handleSaveFeaturedPrebuilts}
+              savingFeaturedPrebuilts={savingFeaturedPrebuilts}
+              handleMoveFeaturedPrebuilt={handleMoveFeaturedPrebuilt}
+              handleToggleFeaturedPrebuilt={handleToggleFeaturedPrebuilt}
+              onOpenNewBannerModal={() => setNewBannerModalOpen(true)}
+              onDeleteBanner={(id) => handleDeleteBanner(id)}
+              onToggleBannerActive={(id, curr) => toggleBannerActive(id, curr)}
+              onOpenNewPromoModal={() => setNewPromoModalOpen(true)}
+            />
+          )}
+
+          {/* Tab 4: CRM & Customer Intelligence */}
+          {activeTab === "crm" && (
+            <FluxCrmTab
+              customers={customers}
+              orders={orders}
+              onInspectCustomer={(c) => setSelectedCustomerForDrawer(c)}
+            />
+          )}
+
+          {/* Tab 5: Sales & Profit Intelligence */}
+          {activeTab === "analytics" && (
+            <FluxAnalyticsTab
+              products={products}
+              analyticsData={analyticsData}
+              sortedAndFilteredProducts={sortedAndFilteredProducts}
+              colWidths={colWidths}
+              handleColResizeStart={handleColResizeStart}
+              resetColWidths={resetColWidths}
+              analyticsSearch={analyticsSearch}
+              setAnalyticsSearch={setAnalyticsSearch}
+              analyticsCategoryFilter={analyticsCategoryFilter}
+              setAnalyticsCategoryFilter={setAnalyticsCategoryFilter}
+              analyticsSortBy={analyticsSortBy}
+              setAnalyticsSortBy={setAnalyticsSortBy}
+              analyticsSortOrder={analyticsSortOrder}
+              setAnalyticsSortOrder={setAnalyticsSortOrder}
+              setSelectedItemAnalytics={setSelectedItemAnalytics}
+              formatRupiah={formatRupiah}
+              categories={HARDWARE_CATEGORIES}
+            />
+          )}
+        </main>
       </div>
+
+      {/* Slide-over Right Drawers */}
+      <FluxOrderDrawer
+        order={selectedOrderForDrawer}
+        onClose={() => setSelectedOrderForDrawer(null)}
+        onOpenDispatchModal={(ord) => setDispatchModalOrder(ord)}
+        onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
+      />
+
+      <FluxCustomerDrawer
+        customer={selectedCustomerForDrawer}
+        orders={orders}
+        onClose={() => setSelectedCustomerForDrawer(null)}
+        onInspectOrder={(ord) => {
+          setSelectedCustomerForDrawer(null);
+          setSelectedOrderForDrawer(ord);
+        }}
+      />
 
       {/* ====================================================================== */}
       {/* MODAL 1: EDIT PRODUCT (CATEGORY SELECTOR & PC IMAGE UPLOAD)            */}
       {/* ====================================================================== */}
       {editingProduct && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-5 my-8">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-hidden">
+          <div className="bg-[#0F1117] border border-white/10 rounded-2xl sm:rounded-3xl max-w-5xl xl:max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 sm:px-8 py-5 border-b border-white/10 bg-[#12141A] flex items-center justify-between shrink-0">
               <div>
-                <h3 className="font-bold text-white text-base">Edit Product Elements</h3>
-                <p className="text-xs text-slate-400">
-                  Modify name, category, price, stock, specs, and picture gallery.
+                <h3 className="font-bold text-white text-lg sm:text-xl tracking-tight">Edit Hardware Product</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Update details, hardware category, pricing, inventory, rich overview, images, and variations.
                 </p>
               </div>
               <button
                 onClick={() => setEditingProduct(null)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors border border-white/10"
+                aria-label="Close edit product modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-              {/* Product Name & Brand */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Product Name</label>
-                  <input
-                    type="text"
-                    value={editingProduct.name}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Brand</label>
-                  <input
-                    type="text"
-                    value={editingProduct.brand}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white"
-                  />
-                </div>
-              </div>
-
-              {/* CATEGORY SELECTOR & SKU */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-cyan-400 mb-1">
-                    Product Category (Hardware Slot)
-                  </label>
-                  <select
-                    value={editingProduct.category_slug || "cpu"}
-                    onChange={(e) => {
-                      const newSlug = e.target.value;
-                      const matched = HARDWARE_CATEGORIES.find((c) => c.slug === newSlug);
-                      setEditingProduct({
-                        ...editingProduct,
-                        category_slug: newSlug,
-                        pc_builder_slot: matched?.slot || editingProduct.pc_builder_slot,
-                      });
-                    }}
-                    className="w-full min-h-[44px] bg-slate-950 border border-cyan-600/70 rounded-xl px-3 py-2 text-xs text-white font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                  >
-                    {HARDWARE_CATEGORIES.map((c) => (
-                      <option key={c.slug} value={c.slug}>
-                        {c.name} (Slot: {c.slot})
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    Assigned Builder Slot: <strong className="text-cyan-300 font-mono">{editingProduct.pc_builder_slot || "none"}</strong>
-                  </span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">SKU</label>
-                  <input
-                    type="text"
-                    value={editingProduct.sku}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Pricing & Stock on Hand + Promotional Discount Controls */}
-              <div className="space-y-3 pt-3 border-t border-slate-800/80">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Retail Price (Original MSRP)
-                    </label>
-                    <input
-                      type="number"
-                      value={editingProduct.retail_price}
-                      onChange={(e) => {
-                        const newRetail = Number(e.target.value);
-                        setEditingProduct({
-                          ...editingProduct,
-                          retail_price: newRetail,
-                        });
-                      }}
-                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Store Stock on Hand (Inventory)
-                    </label>
-                    <input
-                      type="number"
-                      value={editingProduct.stock_on_hand}
-                      onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, stock_on_hand: Number(e.target.value) })
-                      }
-                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Promotional Discount Fields */}
-                <div className="pt-2.5 border-t border-slate-800/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5" />
-                      <span>Promotional Discount / Sale Price</span>
-                    </span>
-                    {editingProduct.sale_price ? (
-                      <button
-                        type="button"
-                        onClick={() => setEditingProduct({ ...editingProduct, sale_price: null })}
-                        className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold min-h-[44px] inline-flex items-center"
-                      >
-                        Remove Discount
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">
-                        Discounted Sale Price (IDR)
-                      </label>
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-6 sm:px-8 lg:px-10 py-6 sm:py-8 space-y-8 bg-[#0A0B0E]">
+              {/* Section 1: General Information */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  General Information
+                </span>
+                <div className="bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-7 space-y-6">
+                  {/* Product Name & Brand */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">Product Name</label>
                       <input
-                        type="number"
-                        placeholder="Leave empty for regular price"
-                        value={editingProduct.sale_price ?? ""}
+                        type="text"
+                        value={editingProduct.name}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">Brand</label>
+                      <input
+                        type="text"
+                        value={editingProduct.brand}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Category Selector & SKU */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                        Product Category (Hardware Slot)
+                      </label>
+                      <select
+                        value={editingProduct.category_slug || "cpu"}
                         onChange={(e) => {
-                          const val = e.target.value ? Number(e.target.value) : null;
+                          const newSlug = e.target.value;
+                          const matched = HARDWARE_CATEGORIES.find((c) => c.slug === newSlug);
                           setEditingProduct({
                             ...editingProduct,
-                            sale_price: val,
+                            category_slug: newSlug,
+                            pc_builder_slot: matched?.slot || editingProduct.pc_builder_slot,
                           });
                         }}
-                        className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-zinc-400 transition-colors"
+                      >
+                        {HARDWARE_CATEGORIES.map((c) => (
+                          <option key={c.slug} value={c.slug}>
+                            {c.name} (Slot: {c.slot})
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-xs text-zinc-500 mt-2 block">
+                        Assigned Builder Slot: <strong className="text-zinc-300 font-medium">{editingProduct.pc_builder_slot || "none"}</strong>
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">SKU</label>
+                      <input
+                        type="text"
+                        value={editingProduct.sku}
+                        onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
                       />
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Pricing & Inventory */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  Pricing and Inventory
+                </span>
+                <div className="bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-7 space-y-6">
+                  {/* Retail Price and Stock on Hand */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">
-                        Discount Percentage (%)
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                        Retail Price (Original MSRP)
                       </label>
                       <input
                         type="number"
-                        min="1"
-                        max="99"
-                        placeholder="e.g. 15"
-                        value={
-                          editingProduct.sale_price && editingProduct.retail_price && editingProduct.sale_price < editingProduct.retail_price
-                            ? Math.round(((editingProduct.retail_price - editingProduct.sale_price) / editingProduct.retail_price) * 100)
-                            : ""
-                        }
+                        value={editingProduct.retail_price}
                         onChange={(e) => {
-                          const percent = Number(e.target.value);
-                          if (percent > 0 && percent < 100 && editingProduct.retail_price) {
-                            const computedSale = Math.round(editingProduct.retail_price * (1 - percent / 100));
-                            setEditingProduct({
-                              ...editingProduct,
-                              sale_price: computedSale,
-                            });
-                          } else if (!e.target.value) {
-                            setEditingProduct({
-                              ...editingProduct,
-                              sale_price: null,
-                            });
-                          }
+                          const newRetail = Number(e.target.value);
+                          setEditingProduct({
+                            ...editingProduct,
+                            retail_price: newRetail,
+                          });
                         }}
-                        className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono placeholder-slate-600 focus:border-amber-400"
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                        Store Stock on Hand (Inventory)
+                      </label>
+                      <input
+                        type="number"
+                        value={editingProduct.stock_on_hand}
+                        onChange={(e) =>
+                          setEditingProduct({ ...editingProduct, stock_on_hand: Number(e.target.value) })
+                        }
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
                       />
                     </div>
                   </div>
 
-                  {/* Live Discount Preview Text */}
-                  {editingProduct.sale_price && editingProduct.retail_price && editingProduct.sale_price < editingProduct.retail_price && (
-                    <div className="flex items-center justify-between py-2 text-xs border-t border-slate-800/60">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white font-mono">
-                          {formatRupiah(editingProduct.sale_price)}
-                        </span>
-                        <span className="text-slate-400 line-through font-mono text-[11px]">
-                          {formatRupiah(editingProduct.retail_price)}
-                        </span>
-                        <span className="text-rose-400 font-bold text-xs font-mono">
-                          -{Math.round(((editingProduct.retail_price - editingProduct.sale_price) / editingProduct.retail_price) * 100)}% OFF
+                  {/* Promotional Discount Fields */}
+                  <div className="pt-6 border-t border-white/10 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-zinc-400 flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Promotional Discount and Sale Pricing</span>
+                      </span>
+                      {editingProduct.sale_price ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditingProduct({ ...editingProduct, sale_price: null })}
+                          className="text-xs text-zinc-400 hover:text-rose-400 font-medium min-h-[44px] inline-flex items-center px-3 py-1.5 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
+                        >
+                          Remove Discount
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                          Discounted Sale Price (IDR)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="Leave empty for regular price"
+                          value={editingProduct.sale_price ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : null;
+                            setEditingProduct({
+                              ...editingProduct,
+                              sale_price: val,
+                            });
+                          }}
+                          className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                          Discount Percentage (%)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          placeholder="e.g. 15"
+                          value={
+                            editingProduct.sale_price && editingProduct.retail_price && editingProduct.sale_price < editingProduct.retail_price
+                              ? Math.round(((editingProduct.retail_price - editingProduct.sale_price) / editingProduct.retail_price) * 100)
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const percent = Number(e.target.value);
+                            if (percent > 0 && percent < 100 && editingProduct.retail_price) {
+                              const computedSale = Math.round(editingProduct.retail_price * (1 - percent / 100));
+                              setEditingProduct({
+                                ...editingProduct,
+                                sale_price: computedSale,
+                              });
+                            } else if (!e.target.value) {
+                              setEditingProduct({
+                                ...editingProduct,
+                                sale_price: null,
+                              });
+                            }
+                          }}
+                          className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Discount Preview Text */}
+                    {editingProduct.sale_price && editingProduct.retail_price && editingProduct.sale_price < editingProduct.retail_price && (
+                      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl bg-[#0A0B0E] border border-white/10 text-xs">
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-white text-sm">
+                            {formatRupiah(editingProduct.sale_price)}
+                          </span>
+                          <span className="text-zinc-400 line-through text-xs">
+                            {formatRupiah(editingProduct.retail_price)}
+                          </span>
+                          <span className="text-zinc-200 font-semibold px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-xs">
+                            -{Math.round(((editingProduct.retail_price - editingProduct.sale_price) / editingProduct.retail_price) * 100)}% OFF
+                          </span>
+                        </div>
+                        <span className="text-zinc-400 font-medium">
+                          Customer saves {formatRupiah(editingProduct.retail_price - editingProduct.sale_price)}
                         </span>
                       </div>
-                      <span className="text-emerald-400 font-semibold text-[11px]">
-                        Save {formatRupiah(editingProduct.retail_price - editingProduct.sale_price)}
-                      </span>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Rich Description (Formatting & In-text Pictures) */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Rich Product Description (Formatting &amp; In-text Pictures)</span>
-                </label>
-                <RichTextEditor
-                  value={editingProduct.description || ""}
-                  onChange={(val) => setEditingProduct({ ...editingProduct, description: val })}
-                  availableImages={editingProduct.images || []}
+              {/* Section 3: Rich Description */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  Rich Product Description
+                </span>
+                <div className="bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-7 space-y-4">
+                  <RichTextEditor
+                    value={editingProduct.description || ""}
+                    onChange={(val) => setEditingProduct({ ...editingProduct, description: val })}
+                    availableImages={editingProduct.images || []}
+                    token={token}
+                    minHeight="260px"
+                  />
+                </div>
+              </div>
+
+              {/* Section 4: Product Gallery Manager */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  Media and Images
+                </span>
+                <ProductGalleryManager
+                  images={editingProduct.images || []}
+                  onChange={(newImgs) => setEditingProduct({ ...editingProduct, images: newImgs })}
                   token={token}
+                  onUploadSuccess={(msg) => showToast(msg)}
                 />
               </div>
 
-              {/* Product Gallery Manager with Rearrange, Delete, Upload */}
-              <ProductGalleryManager
-                images={editingProduct.images || []}
-                onChange={(newImgs) => setEditingProduct({ ...editingProduct, images: newImgs })}
-                token={token}
-                onUploadSuccess={(msg) => showToast(msg)}
-              />
-
-              {/* Product Variations Manager (Two-dimensional attributes, custom pricing & stock) */}
-              <ProductVariationsManager
-                productId={editingProduct.id}
-                variations={editingProduct.variations || []}
-                parentImages={editingProduct.images || (editingProduct.image ? [editingProduct.image] : [])}
-                onChange={(newVars) => setEditingProduct({ ...editingProduct, variations: newVars })}
-              />
+              {/* Section 5: Product Variations Manager */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  Product Variations
+                </span>
+                <ProductVariationsManager
+                  productId={editingProduct.id}
+                  variations={editingProduct.variations || []}
+                  parentImages={editingProduct.images || (editingProduct.image ? [editingProduct.image] : [])}
+                  onChange={(newVars) => setEditingProduct({ ...editingProduct, variations: newVars })}
+                />
+              </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-3">
-              <button
-                type="button"
-                onClick={() => setEditingProduct(null)}
-                className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveProductEdit}
-                className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold"
-              >
-                Save All Elements
-              </button>
+            {/* Modal Footer */}
+            <div className="px-6 sm:px-8 py-5 border-t border-white/10 bg-[#12141A] flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+              <span className="text-xs text-zinc-400">
+                Changes will only take effect on the store once saved.
+              </span>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-zinc-300 text-xs font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveProductEdit}
+                  className="min-h-[44px] px-7 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-bold transition-all shadow-md"
+                >
+                  Save All Changes
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -5203,7 +2350,7 @@ export default function AdminPortalPage() {
             </div>
 
             <div className="text-xs text-slate-300">
-              You are rejecting Order <strong className="text-white font-mono">#{rejectModalOrder.order_number}</strong> placed by <strong className="text-white">{rejectModalOrder.customer_name}</strong> ({formatRupiah(rejectModalOrder.total)}).
+              You are rejecting Order <strong className="text-white">#{rejectModalOrder.order_number}</strong> placed by <strong className="text-white">{rejectModalOrder.customer_name}</strong> ({formatRupiah(rejectModalOrder.total)}).
             </div>
 
             {/* Predefined Rejection Reasons */}
@@ -5496,215 +2643,242 @@ export default function AdminPortalPage() {
       {/* MODAL 4: ADD NEW HARDWARE ITEM (SUPERADMIN ONLY - WITH PC UPLOAD)      */}
       {/* ====================================================================== */}
       {newProductModalOpen && isSuperAdmin && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full p-6 space-y-4 my-8">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-purple-400" />
-                <h3 className="font-bold text-white text-base">Add New Hardware Item (Superadmin)</h3>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 lg:p-8 overflow-hidden">
+          <div className="bg-[#0F1117] border border-white/10 rounded-2xl sm:rounded-3xl max-w-5xl xl:max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden font-sans">
+            {/* Modal Header */}
+            <div className="px-6 sm:px-8 py-5 border-b border-white/10 bg-[#12141A] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <Crown className="w-5 h-5 text-zinc-400" />
+                <div>
+                  <h3 className="font-bold text-white text-lg sm:text-xl tracking-tight">Add New Hardware Item</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">Create a new component or rig in the database.</p>
+                </div>
               </div>
               <button
                 onClick={() => setNewProductModalOpen(false)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors border border-white/10"
+                aria-label="Close add hardware modal"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateProduct} className="space-y-4 text-xs max-h-[75vh] overflow-y-auto pr-1">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Product Name</label>
-                  <input
-                    name="name"
-                    required
-                    placeholder="e.g. AMD Ryzen 9 9950X"
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Brand</label>
-                  <input
-                    name="brand"
-                    required
-                    placeholder="e.g. AMD / ASUS / Corsair"
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">SKU</label>
-                  <input
-                    name="sku"
-                    required
-                    placeholder="e.g. AMD-100-9950X"
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Category & Builder Slot</label>
-                  <select
-                    name="category_slug"
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                  >
-                    {HARDWARE_CATEGORIES.map((c) => (
-                      <option key={c.slug} value={c.slug}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Pricing & Promotional Discount */}
-              <div className="space-y-3 pt-3 border-t border-slate-800/80">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Retail Price (IDR)</label>
-                    <input
-                      name="retail_price"
-                      type="number"
-                      required
-                      placeholder="e.g. 10999000"
-                      value={newProductRetailPrice}
-                      onChange={(e) => setNewProductRetailPrice(Number(e.target.value))}
-                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Initial Stock on Hand</label>
-                    <input
-                      name="initial_stock"
-                      type="number"
-                      defaultValue={10}
-                      className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Promotional Discount Inputs */}
-                <div className="pt-2 border-t border-slate-800/80 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
+            <form onSubmit={handleCreateProduct} className="flex-1 overflow-y-auto px-6 sm:px-8 lg:px-10 py-6 sm:py-8 space-y-8 bg-[#0A0B0E]">
+              {/* Section 1: General Details */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  General Information
+                </span>
+                <div className="bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-7 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">Product Name</label>
                       <input
-                        type="checkbox"
-                        checked={newProductDiscountEnabled}
-                        onChange={(e) => setNewProductDiscountEnabled(e.target.checked)}
-                        className="rounded bg-slate-900 border-slate-700 text-amber-500 focus:ring-0"
+                        name="name"
+                        required
+                        placeholder="e.g. AMD Ryzen 9 9950X"
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
                       />
-                      <span className="font-bold text-amber-400 flex items-center gap-1.5">
-                        <Tag className="w-3.5 h-3.5" />
-                        <span>Apply Promotional Discount / Slashed Price</span>
-                      </span>
-                    </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">Brand</label>
+                      <input
+                        name="brand"
+                        required
+                        placeholder="e.g. AMD / ASUS / Corsair"
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
+                      />
+                    </div>
                   </div>
 
-                  {newProductDiscountEnabled && (
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">
-                          Discounted Sale Price (IDR)
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="e.g. 9499000"
-                          value={newProductSalePrice}
-                          onChange={(e) => {
-                            const val = e.target.value ? Number(e.target.value) : "";
-                            setNewProductSalePrice(val);
-                            if (val && typeof newProductRetailPrice === "number" && newProductRetailPrice > 0) {
-                              setNewProductDiscountPercent(
-                                Math.round(((newProductRetailPrice - Number(val)) / newProductRetailPrice) * 100)
-                              );
-                            }
-                          }}
-                          className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">
-                          Discount Percentage (%)
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="99"
-                          placeholder="e.g. 15"
-                          value={newProductDiscountPercent}
-                          onChange={(e) => {
-                            const pct = e.target.value ? Number(e.target.value) : "";
-                            setNewProductDiscountPercent(pct);
-                            if (pct && typeof newProductRetailPrice === "number" && newProductRetailPrice > 0) {
-                              setNewProductSalePrice(
-                                Math.round(newProductRetailPrice * (1 - Number(pct) / 100))
-                              );
-                            }
-                          }}
-                          className="w-full min-h-[44px] bg-slate-950 border border-amber-600/50 rounded-xl px-3 py-2 text-xs text-amber-200 font-mono"
-                        />
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">Category &amp; Builder Slot</label>
+                      <select
+                        name="category_slug"
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-zinc-400 transition-colors"
+                      >
+                        {HARDWARE_CATEGORIES.map((c) => (
+                          <option key={c.slug} value={c.slug}>
+                            {c.name} (Slot: {c.slot})
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  )}
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">SKU</label>
+                      <input
+                        name="sku"
+                        required
+                        placeholder="e.g. AMD-100-9950X"
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                  {newProductDiscountEnabled &&
-                    typeof newProductSalePrice === "number" &&
-                    typeof newProductRetailPrice === "number" &&
-                    newProductSalePrice > 0 &&
-                    newProductSalePrice < newProductRetailPrice && (
-                      <div className="flex items-center justify-between py-2 text-xs border-t border-slate-800/60">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white font-mono">
-                            {formatRupiah(newProductSalePrice)}
-                          </span>
-                          <span className="text-slate-400 line-through font-mono text-[11px]">
-                            {formatRupiah(newProductRetailPrice)}
-                          </span>
-                          <span className="text-rose-400 font-bold text-xs font-mono">
-                            -{Math.round(((newProductRetailPrice - newProductSalePrice) / newProductRetailPrice) * 100)}% OFF
-                          </span>
-                        </div>
-                        <span className="text-emerald-400 font-semibold text-[11px]">
-                          Save {formatRupiah(newProductRetailPrice - newProductSalePrice)}
+              {/* Section 2: Pricing & Stock */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  Pricing and Inventory
+                </span>
+                <div className="bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-7 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">Retail Price (IDR)</label>
+                      <input
+                        name="retail_price"
+                        type="number"
+                        required
+                        placeholder="e.g. 10999000"
+                        value={newProductRetailPrice}
+                        onChange={(e) => setNewProductRetailPrice(Number(e.target.value))}
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-400 mb-2">Initial Stock on Hand</label>
+                      <input
+                        name="initial_stock"
+                        type="number"
+                        defaultValue={10}
+                        className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-400 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Promotional Discount Inputs */}
+                  <div className="pt-6 border-t border-white/10 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newProductDiscountEnabled}
+                          onChange={(e) => setNewProductDiscountEnabled(e.target.checked)}
+                          className="rounded bg-[#0A0B0E] border-white/20 text-white focus:ring-0"
+                        />
+                        <span className="text-xs font-semibold text-zinc-400 flex items-center gap-2">
+                          <Tag className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Apply Promotional Discount and Slashed Price</span>
                         </span>
+                      </label>
+                    </div>
+
+                    {newProductDiscountEnabled && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                            Discounted Sale Price (IDR)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 9499000"
+                            value={newProductSalePrice}
+                            onChange={(e) => {
+                              const val = e.target.value ? Number(e.target.value) : "";
+                              setNewProductSalePrice(val);
+                              if (val && typeof newProductRetailPrice === "number" && newProductRetailPrice > 0) {
+                                setNewProductDiscountPercent(
+                                  Math.round(((newProductRetailPrice - Number(val)) / newProductRetailPrice) * 100)
+                                );
+                              }
+                            }}
+                            className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-zinc-400 mb-2">
+                            Discount Percentage (%)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            placeholder="e.g. 15"
+                            value={newProductDiscountPercent}
+                            onChange={(e) => {
+                              const pct = e.target.value ? Number(e.target.value) : "";
+                              setNewProductDiscountPercent(pct);
+                              if (pct && typeof newProductRetailPrice === "number" && newProductRetailPrice > 0) {
+                                setNewProductSalePrice(
+                                  Math.round(newProductRetailPrice * (1 - Number(pct) / 100))
+                                );
+                              }
+                            }}
+                            className="w-full min-h-[44px] bg-[#0A0B0E] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-zinc-400 transition-colors"
+                          />
+                        </div>
                       </div>
                     )}
+
+                    {newProductDiscountEnabled &&
+                      typeof newProductSalePrice === "number" &&
+                      typeof newProductRetailPrice === "number" &&
+                      newProductSalePrice > 0 &&
+                      newProductSalePrice < newProductRetailPrice && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl bg-[#0A0B0E] border border-white/10 text-xs">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-white text-sm">
+                              {formatRupiah(newProductSalePrice)}
+                            </span>
+                            <span className="text-zinc-400 line-through text-xs">
+                              {formatRupiah(newProductRetailPrice)}
+                            </span>
+                            <span className="text-zinc-200 font-semibold px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-xs">
+                              -{Math.round(((newProductRetailPrice - newProductSalePrice) / newProductRetailPrice) * 100)}% OFF
+                            </span>
+                          </div>
+                          <span className="text-zinc-400 font-medium">
+                            Customer saves {formatRupiah(newProductRetailPrice - newProductSalePrice)}
+                          </span>
+                        </div>
+                      )}
+                  </div>
                 </div>
               </div>
 
-              {/* Rich Product Description with Formatting & Image Inserter */}
-              <div className="space-y-1.5">
-                <label className="block font-semibold text-slate-300">
-                  Product Description (Headers, Bold, Italics &amp; In-text Pictures)
-                </label>
-                <RichTextEditor
-                  value={newProductDescription}
-                  onChange={setNewProductDescription}
-                  availableImages={newProductImages}
+              {/* Section 3: Rich Description */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  Product Description
+                </span>
+                <div className="bg-[#12141A] border border-white/10 rounded-2xl p-6 sm:p-7 space-y-4">
+                  <RichTextEditor
+                    value={newProductDescription}
+                    onChange={setNewProductDescription}
+                    availableImages={newProductImages}
+                    token={token}
+                    minHeight="260px"
+                  />
+                </div>
+              </div>
+
+              {/* Section 4: Product Gallery */}
+              <div>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
+                  Media and Images
+                </span>
+                <ProductGalleryManager
+                  images={newProductImages}
+                  onChange={setNewProductImages}
                   token={token}
+                  onUploadSuccess={(msg) => showToast(msg)}
                 />
               </div>
 
-              {/* Product Gallery Manager (Multi-upload & Rearrange) */}
-              <ProductGalleryManager
-                images={newProductImages}
-                onChange={setNewProductImages}
-                token={token}
-                onUploadSuccess={(msg) => showToast(msg)}
-              />
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              {/* Footer Actions */}
+              <div className="px-6 sm:px-8 py-5 border-t border-white/10 bg-[#12141A] -mx-6 sm:-mx-8 lg:-mx-10 -mb-6 sm:-mb-8 flex items-center justify-end gap-3 sticky bottom-0">
                 <button
                   type="button"
                   onClick={() => setNewProductModalOpen(false)}
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-medium"
+                  className="min-h-[44px] px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-zinc-300 text-xs font-medium transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
+                  className="min-h-[44px] px-7 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 text-xs font-bold transition-all shadow-md"
                 >
                   Create Product in Database
                 </button>
@@ -5752,10 +2926,10 @@ export default function AdminPortalPage() {
                   {!newBannerForm.hide_overlay && (
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20 p-4 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-cyan-400 uppercase font-mono">
+                        <span className="text-xs font-bold text-cyan-400 uppercase ">
                           {newBannerForm.badge || "FEATURED"}
                         </span>
-                        <span className="text-xs text-slate-400 font-mono">
+                        <span className="text-xs text-slate-400 ">
                           Order #{newBannerForm.display_order}
                         </span>
                       </div>
@@ -5809,7 +2983,7 @@ export default function AdminPortalPage() {
                     placeholder="Or paste background image URL..."
                     value={newBannerForm.image_url}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, image_url: e.target.value })}
-                    className="flex-1 min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-xs"
+                    className="flex-1 min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white  text-xs"
                   />
                 </div>
               </div>
@@ -5853,7 +3027,7 @@ export default function AdminPortalPage() {
                     type="number"
                     value={newBannerForm.display_order}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, display_order: Number(e.target.value) })}
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white "
                   />
                 </div>
               </div>
@@ -5892,7 +3066,7 @@ export default function AdminPortalPage() {
                       value={newBannerForm.cta_link}
                       onChange={(e) => setNewBannerForm({ ...newBannerForm, cta_link: e.target.value })}
                       placeholder="/components/gpu"
-                      className="w-1/2 min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                      className="w-1/2 min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white "
                     />
                   </div>
                 </div>
@@ -5954,7 +3128,7 @@ export default function AdminPortalPage() {
                   name="code"
                   required
                   placeholder="e.g. FLASHDEAL20"
-                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono uppercase"
+                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white  uppercase"
                 />
               </div>
 
@@ -5986,7 +3160,7 @@ export default function AdminPortalPage() {
                     type="number"
                     required
                     placeholder="e.g. 15 or 500000"
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white "
                   />
                 </div>
               </div>
@@ -6033,11 +3207,11 @@ export default function AdminPortalPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-white text-lg">{selectedCustomer.full_name}</h3>
-                    <span className="text-xs text-slate-400 uppercase font-mono">
+                    <span className="text-xs text-slate-400 uppercase ">
                       ({selectedCustomer.customer_segment || "general"})
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400 font-mono mt-0.5">
+                  <div className="text-xs text-slate-400  mt-0.5">
                     Customer ID: {selectedCustomer.id}
                   </div>
                 </div>
@@ -6069,7 +3243,7 @@ export default function AdminPortalPage() {
                       <span className="text-slate-400 block text-[11px]">Primary Email</span>
                       <a
                         href={`mailto:${selectedCustomer.email}`}
-                        className="text-cyan-400 hover:underline font-mono"
+                        className="text-cyan-400 hover:underline "
                       >
                         {selectedCustomer.email}
                       </a>
@@ -6078,7 +3252,7 @@ export default function AdminPortalPage() {
                     <div>
                       <span className="text-slate-400 block text-[11px]">Mobile Phone</span>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-white font-mono">{selectedCustomer.phone || "Not provided"}</span>
+                        <span className="text-white ">{selectedCustomer.phone || "Not provided"}</span>
                         {selectedCustomer.phone && (
                           <a
                             href={`https://wa.me/${selectedCustomer.phone.replace(/[^0-9]/g, "")}`}
@@ -6094,7 +3268,7 @@ export default function AdminPortalPage() {
 
                     <div>
                       <span className="text-slate-400 block text-[11px]">Registered Date</span>
-                      <span className="text-slate-300 font-mono">
+                      <span className="text-slate-300 ">
                         {selectedCustomer.created_at
                           ? new Date(selectedCustomer.created_at).toLocaleString("en-US", {
                               dateStyle: "medium",
@@ -6114,7 +3288,7 @@ export default function AdminPortalPage() {
                       <span>Primary Delivery Address</span>
                     </div>
                     {selectedCustomer.address_label && (
-                      <span className="text-xs text-slate-400 font-mono">
+                      <span className="text-xs text-slate-400 ">
                         ({selectedCustomer.address_label})
                       </span>
                     )}
@@ -6137,7 +3311,7 @@ export default function AdminPortalPage() {
                         .filter(Boolean)
                         .join(", ")}
                     </div>
-                    <div className="text-slate-400 font-mono text-[11px]">
+                    <div className="text-slate-400  text-[11px]">
                       {selectedCustomer.country || "Indonesia"}
                     </div>
 
@@ -6172,7 +3346,7 @@ export default function AdminPortalPage() {
 
                     <div>
                       <span className="text-slate-400 block text-[11px]">Hardware Architecture Preference</span>
-                      <span className="text-slate-200 uppercase font-mono mt-0.5 block">
+                      <span className="text-slate-200 uppercase  mt-0.5 block">
                         {selectedCustomer.hardware_preference || "All Vendors"}
                       </span>
                     </div>
@@ -6180,7 +3354,7 @@ export default function AdminPortalPage() {
                     {selectedCustomer.tags && selectedCustomer.tags.length > 0 && (
                       <div>
                         <span className="text-slate-400 block text-[11px] mb-1">Customer Tags</span>
-                        <div className="flex flex-wrap gap-2 text-xs text-slate-400 font-mono">
+                        <div className="flex flex-wrap gap-2 text-xs text-slate-400 ">
                           {selectedCustomer.tags.map((tag) => (
                             <span key={tag}>
                               #{tag}
@@ -6217,7 +3391,7 @@ export default function AdminPortalPage() {
 
                     <div>
                       <span className="text-slate-400 block text-[11px]">Dispatch Frequency</span>
-                      <span className="text-slate-200 capitalize font-mono mt-0.5 block">
+                      <span className="text-slate-200 capitalize  mt-0.5 block">
                         {selectedCustomer.newsletter_frequency || "Weekly"}
                       </span>
                     </div>
@@ -6232,7 +3406,7 @@ export default function AdminPortalPage() {
                     <ShoppingBag className="w-4 h-4 text-cyan-400" />
                     <span>Purchase History &amp; Orders</span>
                   </div>
-                  <div className="flex items-center gap-3 font-mono text-xs">
+                  <div className="flex items-center gap-3  text-xs">
                     <span className="text-slate-400">Total: {selectedCustomer.total_orders || 0} orders</span>
                     <span className="text-cyan-400 font-bold">
                       {formatRupiah(selectedCustomer.total_spent || 0)}
@@ -6269,7 +3443,7 @@ export default function AdminPortalPage() {
                   return (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="text-slate-400 uppercase font-mono tracking-wider border-b border-slate-800">
+                        <thead className="text-slate-400 uppercase  tracking-wider border-b border-slate-800">
                           <tr>
                             <th className="py-2.5 px-3">Order ID</th>
                             <th className="py-2.5 px-3">Date</th>
@@ -6281,7 +3455,7 @@ export default function AdminPortalPage() {
                         <tbody className="divide-y divide-slate-800 text-slate-300">
                           {customerOrders.map((ord) => (
                             <tr key={ord.id} className="hover:bg-slate-800/30">
-                              <td className="py-2.5 px-3 font-mono text-white font-semibold">{ord.id}</td>
+                              <td className="py-2.5 px-3  text-white font-semibold">{ord.id}</td>
                               <td className="py-2.5 px-3 text-slate-400">
                                 {ord.created_at
                                   ? new Date(ord.created_at).toLocaleDateString("en-US", {
@@ -6292,11 +3466,11 @@ export default function AdminPortalPage() {
                                   : "N/A"}
                               </td>
                               <td className="py-2.5 px-3">
-                                <span className="text-xs uppercase font-mono text-slate-300">
+                                <span className="text-xs uppercase  text-slate-300">
                                   {ord.status}
                                 </span>
                               </td>
-                              <td className="py-2.5 px-3 font-mono text-cyan-400 font-bold">
+                              <td className="py-2.5 px-3  text-cyan-400 font-bold">
                                 {formatRupiah(ord.total || 0)}
                               </td>
                               <td className="py-2.5 px-3 text-right">
@@ -6364,11 +3538,11 @@ export default function AdminPortalPage() {
                       {selectedItemAnalytics.brand}
                     </span>
                     <span className="text-slate-600">•</span>
-                    <span className="font-mono text-xs text-slate-400">
+                    <span className=" text-xs text-slate-400">
                       SKU: {selectedItemAnalytics.sku}
                     </span>
                     <span className="text-slate-600">•</span>
-                    <span className="text-xs text-slate-400 uppercase font-mono">
+                    <span className="text-xs text-slate-400 uppercase ">
                       {selectedItemAnalytics.category_slug}
                     </span>
                   </div>
@@ -6400,7 +3574,7 @@ export default function AdminPortalPage() {
                     <Package className="w-3.5 h-3.5 text-cyan-400" />
                     <span>Current Warehouse Stock</span>
                   </div>
-                  <div className="text-base font-bold text-white font-mono">
+                  <div className="text-base font-bold text-white ">
                     {selectedItemAnalytics.stock_on_hand} units available
                   </div>
                 </div>
@@ -6410,7 +3584,7 @@ export default function AdminPortalPage() {
                     <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
                     <span>Weekly Run Rate</span>
                   </div>
-                  <div className="text-base font-bold text-purple-300 font-mono">
+                  <div className="text-base font-bold text-purple-300 ">
                     {selectedItemAnalytics.weeklyUnits} units/wk ({(selectedItemAnalytics.weeklyUnits / 7).toFixed(2)}/day)
                   </div>
                 </div>
@@ -6420,7 +3594,7 @@ export default function AdminPortalPage() {
                     <Clock className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Estimated Days of Supply</span>
                   </div>
-                  <div className="text-base font-bold text-emerald-400 font-mono">
+                  <div className="text-base font-bold text-emerald-400 ">
                     {selectedItemAnalytics.daysOfSupply === 999
                       ? "Ample Supply"
                       : `${selectedItemAnalytics.daysOfSupply} days remaining`}
@@ -6438,7 +3612,7 @@ export default function AdminPortalPage() {
                   {/* Retail Price */}
                   <div>
                     <span className="text-xs text-slate-400">Retail Selling Price</span>
-                    <div className="text-base font-bold text-white font-mono mt-1">
+                    <div className="text-base font-bold text-white  mt-1">
                       {formatRupiah(selectedItemAnalytics.retail_price)}
                     </div>
                     <span className="text-[11px] text-slate-500 mt-0.5 block">Active SRP</span>
@@ -6447,7 +3621,7 @@ export default function AdminPortalPage() {
                   {/* Estimated Cost (COGS) */}
                   <div>
                     <span className="text-xs text-slate-400">Wholesale Cost (COGS)</span>
-                    <div className="text-base font-bold text-slate-300 font-mono mt-1">
+                    <div className="text-base font-bold text-slate-300  mt-1">
                       {formatRupiah(selectedItemAnalytics.cost_price)}
                     </div>
                     <span className="text-[11px] text-slate-500 mt-0.5 block">Distributor base</span>
@@ -6456,7 +3630,7 @@ export default function AdminPortalPage() {
                   {/* Gross Profit per Unit */}
                   <div>
                     <span className="text-xs text-slate-400">Profit Per Unit</span>
-                    <div className="text-base font-bold text-emerald-400 font-mono mt-1">
+                    <div className="text-base font-bold text-emerald-400  mt-1">
                       {formatRupiah(selectedItemAnalytics.unitGrossProfit)}
                     </div>
                     <span className="text-[11px] text-emerald-500/80 mt-0.5 block">Per-sale margin</span>
@@ -6465,7 +3639,7 @@ export default function AdminPortalPage() {
                   {/* Gross Margin % */}
                   <div>
                     <span className="text-xs text-slate-400">Gross Margin %</span>
-                    <div className="text-base font-bold text-cyan-400 font-mono mt-1">
+                    <div className="text-base font-bold text-cyan-400  mt-1">
                       {selectedItemAnalytics.marginPct}%
                     </div>
                     <span className="text-[11px] text-cyan-500/80 mt-0.5 block">Return on sales</span>
@@ -6483,7 +3657,7 @@ export default function AdminPortalPage() {
                   {/* 7D Revenue */}
                   <div>
                     <span className="text-xs text-slate-400">7D Gross Revenue</span>
-                    <div className="text-base font-bold text-cyan-400 font-mono mt-1">
+                    <div className="text-base font-bold text-cyan-400  mt-1">
                       {formatRupiah(selectedItemAnalytics.weeklyRevenue)}
                     </div>
                     <span className="text-[11px] text-slate-400 mt-0.5 block">
@@ -6494,7 +3668,7 @@ export default function AdminPortalPage() {
                   {/* 7D Gross Profit */}
                   <div>
                     <span className="text-xs text-slate-400">7D Gross Profit</span>
-                    <div className="text-base font-bold text-emerald-400 font-mono mt-1">
+                    <div className="text-base font-bold text-emerald-400  mt-1">
                       {formatRupiah(selectedItemAnalytics.weeklyGrossProfit)}
                     </div>
                     <span className="text-[11px] text-emerald-500/80 mt-0.5 block">Weekly net profit contribution</span>
@@ -6503,7 +3677,7 @@ export default function AdminPortalPage() {
                   {/* Lifetime Revenue */}
                   <div>
                     <span className="text-xs text-slate-400">Lifetime Revenue</span>
-                    <div className="text-base font-bold text-slate-200 font-mono mt-1">
+                    <div className="text-base font-bold text-slate-200  mt-1">
                       {formatRupiah(selectedItemAnalytics.lifetimeRevenue)}
                     </div>
                     <span className="text-[11px] text-slate-400 mt-0.5 block">
@@ -6514,7 +3688,7 @@ export default function AdminPortalPage() {
                   {/* Lifetime Gross Profit */}
                   <div>
                     <span className="text-xs text-slate-400">Lifetime Gross Profit</span>
-                    <div className="text-base font-bold text-emerald-400 font-mono mt-1">
+                    <div className="text-base font-bold text-emerald-400  mt-1">
                       {formatRupiah(selectedItemAnalytics.lifetimeGrossProfit)}
                     </div>
                     <span className="text-[11px] text-emerald-500/80 mt-0.5 block">Total historical profit</span>
@@ -6539,7 +3713,7 @@ export default function AdminPortalPage() {
                         <th className="py-2.5 px-3">Pacing Visual</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/80 font-mono text-[11px]">
+                    <tbody className="divide-y divide-slate-800/80  text-[11px]">
                       {analyticsData.dailyBreakdown.map((d) => {
                         const dayData = selectedItemAnalytics.dailySales7D?.[d.dateStr] || {
                           units: 0,
@@ -6629,7 +3803,7 @@ export default function AdminPortalPage() {
                           <th className="py-2 px-3 text-right">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/80 font-mono text-[11px]">
+                      <tbody className="divide-y divide-slate-800/80  text-[11px]">
                         {selectedItemAnalytics.orders.map((record: any, idx: number) => {
                           const ord = record.order;
                           const it = record.item;
@@ -6662,7 +3836,7 @@ export default function AdminPortalPage() {
                               <td className="py-2 px-3 text-cyan-300 font-medium">{formatRupiah(lineRev)}</td>
                               <td className="py-2 px-3 text-emerald-400 font-bold">{formatRupiah(lineProfit)}</td>
                               <td className="py-2.5 px-3 font-sans">
-                                <span className="text-xs uppercase font-mono text-slate-300">
+                                <span className="text-xs uppercase  text-slate-300">
                                   {ord.status}
                                 </span>
                               </td>

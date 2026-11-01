@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useCartStore } from "../../lib/store/useCartStore";
 
 interface FloatingWhatsAppWidgetProps {
@@ -12,8 +13,14 @@ export function FloatingWhatsAppWidget({
   storePhone = "6281234567890",
   storeName = "Tethera Tech Support Desk"
 }: FloatingWhatsAppWidgetProps) {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const isCartOpen = useCartStore((state) => state.isCartOpen);
+
+  // Hide floating widget when inside administrative dashboard
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   const quickOptions = [
     {

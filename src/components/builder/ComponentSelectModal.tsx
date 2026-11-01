@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { X, Search, Check, AlertCircle, Plus, ShieldCheck, Filter, Eye, EyeOff } from "lucide-react";
-import { MOCK_COMPONENTS, ComponentItem } from "../../lib/data/mockHardware";
+import { MOCK_COMPONENTS, ComponentItem, getExpandedCatalogItems } from "../../lib/data/mockHardware";
 import { BuilderSlotKey, useBuilderStore } from "../../lib/store/useBuilderStore";
 import { formatRupiah } from "../../lib/utils/currency";
 
@@ -17,10 +17,13 @@ export function ComponentSelectModal({ slot, onClose }: ComponentSelectModalProp
   const [showIncompatible, setShowIncompatible] = useState(false);
   const { slots, selectSlotItem } = useBuilderStore();
 
-  if (!slot) return null;
+  const candidateItems = React.useMemo(() => {
+    if (!slot) return [];
+    const rawSlotItems = MOCK_COMPONENTS.filter((item) => item.slot === slot);
+    return getExpandedCatalogItems(rawSlotItems);
+  }, [slot]);
 
-  // Filter items for this slot
-  const candidateItems = MOCK_COMPONENTS.filter((item) => item.slot === slot);
+  if (!slot) return null;
 
   // Active compatibility constraints description
   let activeConstraint: { title: string; detail: string } | null = null;
@@ -334,7 +337,7 @@ export function ComponentSelectModal({ slot, onClose }: ComponentSelectModalProp
                         onClose();
                       }}
                       disabled={!compCheck.compatible}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs tactile-btn active:scale-95 ${
+                      className={`px-4 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs tactile-btn active:scale-95 ${
                         isSelected
                           ? "bg-emerald-600 dark:bg-emerald-500 text-white"
                           : !compCheck.compatible

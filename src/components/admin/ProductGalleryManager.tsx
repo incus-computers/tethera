@@ -141,17 +141,17 @@ export function ProductGalleryManager({
   };
 
   return (
-    <div className="space-y-3 rounded-xl border border-slate-700 bg-slate-900/50 p-3.5 text-xs">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+    <div className="space-y-4 rounded-2xl border border-white/10 bg-[#0A0B0E] p-5 sm:p-6 text-xs font-sans">
+      <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <div>
-          <div className="flex items-center gap-1.5 font-bold text-white">
-            <ImageIcon className="w-4 h-4 text-cyan-400" />
-            <span>Product Pictures Gallery</span>
-            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-cyan-300 font-mono">
+          <div className="flex items-center gap-2 font-semibold text-zinc-200">
+            <ImageIcon className="w-4 h-4 text-zinc-400" />
+            <span className="text-sm font-semibold text-zinc-200">Product Pictures Gallery</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-xs text-zinc-400">
               {images.length} photos
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-xs text-zinc-400 mt-1">
             Drag to rearrange or use arrow buttons. The first picture is the main cover shown on the store catalog.
           </p>
         </div>
@@ -159,13 +159,13 @@ export function ProductGalleryManager({
 
       {/* Pictures Grid with Rearranging Controls */}
       {images.length === 0 ? (
-        <div className="py-8 text-center bg-slate-950/60 rounded-xl border border-dashed border-slate-800 p-4 space-y-2">
-          <ImageIcon className="w-8 h-8 text-slate-600 mx-auto" />
-          <p className="text-slate-400 font-medium">No pictures added for this product yet.</p>
-          <p className="text-[11px] text-slate-500">Upload pictures below or paste a direct image URL.</p>
+        <div className="py-10 text-center bg-[#12141A] rounded-xl border border-dashed border-white/10 p-6 space-y-2">
+          <ImageIcon className="w-8 h-8 text-zinc-500 mx-auto" />
+          <p className="text-zinc-400 font-medium text-xs">No pictures added for this product yet.</p>
+          <p className="text-xs text-zinc-500">Upload pictures below or paste a direct image URL.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
           {images.map((imgUrl, idx) => {
             const isCover = idx === 0;
             const isDragging = draggedIndex === idx;
@@ -177,19 +177,19 @@ export function ProductGalleryManager({
                 onDragStart={(e) => handleDragStart(e, idx)}
                 onDragOver={(e) => handleDragOver(e, idx)}
                 onDrop={(e) => handleDrop(e, idx)}
-                className={`relative group rounded-xl border overflow-hidden flex flex-col justify-between bg-slate-950 transition-all ${
+                className={`relative group rounded-xl border overflow-hidden flex flex-col justify-between bg-[#12141A] transition-all ${
                   isCover
-                    ? "border-cyan-500 ring-2 ring-cyan-500/20 shadow-md"
-                    : "border-slate-700 hover:border-slate-500 shadow-2xs"
-                } ${isDragging ? "opacity-40 scale-95 border-dashed border-cyan-400" : ""}`}
+                    ? "border-zinc-300 ring-1 ring-white/20 shadow-md"
+                    : "border-white/10 hover:border-white/25 shadow-xs"
+                } ${isDragging ? "opacity-40 scale-95 border-dashed border-zinc-400" : ""}`}
               >
                 {/* Photo Top Badge */}
-                <div className="absolute top-1.5 left-1.5 right-1.5 z-10 flex items-center justify-between pointer-events-none">
+                <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between pointer-events-none">
                   <span
-                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs ${
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs ${
                       isCover
-                        ? "bg-cyan-500 text-slate-950 font-black"
-                        : "bg-slate-900/90 text-slate-300 border border-slate-700 font-mono"
+                        ? "bg-white text-zinc-950 font-bold"
+                        : "bg-black/70 text-zinc-300 border border-white/10"
                     }`}
                   >
                     {isCover ? (
@@ -202,13 +202,13 @@ export function ProductGalleryManager({
                     )}
                   </span>
 
-                  <span className="p-1 rounded bg-slate-900/80 text-slate-400 opacity-0 group-hover:opacity-100 transition">
+                  <span className="p-1 rounded bg-black/60 text-zinc-400 opacity-0 group-hover:opacity-100 transition">
                     <GripVertical className="w-3 h-3 cursor-grab" />
                   </span>
                 </div>
 
                 {/* Picture Image Thumbnail */}
-                <div className="relative aspect-square w-full bg-slate-900 overflow-hidden flex items-center justify-center p-2">
+                <div className="relative aspect-square w-full bg-[#0A0B0E] overflow-hidden flex items-center justify-center p-3">
                   <img
                     src={imgUrl}
                     alt={`Product photo ${idx + 1}`}
@@ -217,16 +217,16 @@ export function ProductGalleryManager({
                 </div>
 
                 {/* Action Controls Bar */}
-                <div className="p-1.5 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between gap-1">
+                <div className="p-2 bg-[#12141A] border-t border-white/10 flex items-center justify-between gap-1">
                   {/* Left / Up button */}
                   <button
                     type="button"
                     disabled={idx === 0}
                     onClick={() => handleMove(idx, -1)}
-                    className="p-1 rounded hover:bg-slate-800 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed"
+                    className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg hover:bg-white/10 text-zinc-300 disabled:opacity-25 disabled:cursor-not-allowed"
                     title="Move Earlier (Left)"
                   >
-                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
 
                   {/* Make Cover Button */}
@@ -234,7 +234,7 @@ export function ProductGalleryManager({
                     <button
                       type="button"
                       onClick={() => handleSetCover(idx)}
-                      className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-cyan-950 hover:text-cyan-300 text-slate-400 text-[10px] font-semibold flex items-center gap-1 transition"
+                      className="px-2 py-1 rounded-md bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white text-[11px] font-medium flex items-center gap-1 transition"
                       title="Set as Main Cover"
                     >
                       <Star className="w-2.5 h-2.5" />
@@ -247,20 +247,20 @@ export function ProductGalleryManager({
                     type="button"
                     disabled={idx === images.length - 1}
                     onClick={() => handleMove(idx, 1)}
-                    className="p-1 rounded hover:bg-slate-800 text-slate-300 disabled:opacity-25 disabled:cursor-not-allowed"
+                    className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg hover:bg-white/10 text-zinc-300 disabled:opacity-25 disabled:cursor-not-allowed"
                     title="Move Later (Right)"
                   >
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
 
                   {/* Delete button */}
                   <button
                     type="button"
                     onClick={() => handleRemove(idx)}
-                    className="p-1 rounded hover:bg-red-950/80 text-red-400 hover:text-red-300 transition"
+                    className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg hover:bg-red-500/20 text-zinc-400 hover:text-rose-400 transition"
                     title="Delete Photo"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export function ProductGalleryManager({
       )}
 
       {/* Upload and URL input row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/10">
         {/* Upload from PC */}
         <div>
           <input
@@ -288,16 +288,16 @@ export function ProductGalleryManager({
             type="button"
             disabled={uploading}
             onClick={() => fileInputRef.current?.click()}
-            className="w-full h-9 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50"
+            className="w-full min-h-[44px] rounded-xl bg-white/10 hover:bg-white/15 text-zinc-100 font-medium text-xs flex items-center justify-center gap-2 border border-white/15 transition disabled:opacity-50"
           >
             {uploading ? (
               <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <RefreshCw className="w-4 h-4 animate-spin text-zinc-300" />
                 <span>Uploading Picture(s)...</span>
               </>
             ) : (
               <>
-                <Upload className="w-3.5 h-3.5" />
+                <Upload className="w-4 h-4 text-zinc-300" />
                 <span>Upload Picture from Computer</span>
               </>
             )}
@@ -305,18 +305,18 @@ export function ProductGalleryManager({
         </div>
 
         {/* Add from URL */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <input
             type="url"
             placeholder="Or paste external image URL..."
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
-            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 h-9"
+            className="flex-1 bg-[#12141A] border border-white/10 rounded-xl px-4 py-2 text-xs text-zinc-100 placeholder-zinc-500 min-h-[44px] focus:outline-none focus:border-zinc-400 transition-colors"
           />
           <button
             type="button"
             onClick={handleAddUrl}
-            className="px-3 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition whitespace-nowrap"
+            className="px-4 min-h-[44px] rounded-xl bg-white/10 hover:bg-white/15 text-zinc-200 font-medium text-xs transition whitespace-nowrap border border-white/15"
           >
             Add URL
           </button>
