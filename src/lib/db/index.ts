@@ -21,6 +21,8 @@ export * from "./repositories/adminAudit.repository";
 export * from "./repositories/fulfillment.repository";
 export * from "./repositories/rma.repository";
 export * from "./repositories/inventoryLedger.repository";
+export * from "./repositories/reviews.repository";
+export * from "./repositories/wishlist.repository";
 
 // Consolidated `db` Accessor Object
 import { productsRepository } from "./repositories/products.repository";
@@ -45,6 +47,8 @@ import {
   refundsRepository,
 } from "./repositories/rma.repository";
 import { inventoryLedgerRepository } from "./repositories/inventoryLedger.repository";
+import { reviewsRepository } from "./repositories/reviews.repository";
+import { wishlistRepository } from "./repositories/wishlist.repository";
 
 export const db = {
   products: productsRepository,
@@ -65,6 +69,8 @@ export const db = {
   returnRequests: returnRequestsRepository,
   refunds: refundsRepository,
   inventoryLedger: inventoryLedgerRepository,
+  reviews: reviewsRepository,
+  wishlist: wishlistRepository,
 };
 
 export default db;

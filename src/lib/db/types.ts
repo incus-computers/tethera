@@ -531,3 +531,28 @@ export interface DynamicBannerSlide {
   created_at?: string;
 }
 
+// 15. Product Reviews Table (CUST-06)
+export interface ProductReviewRow {
+  id: string;
+  product_id: string;
+  user_id?: string | null;
+  customer_name: string;
+  customer_email: string;
+  rating: number; // 1 to 5
+  title: string;
+  content: string;
+  verified_purchase: boolean;
+  helpful_votes?: number;
+  created_at?: string;
+}
+
+// 16. Customer Wishlist Table (CUST-06)
+export interface WishlistItemRow {
+  id: string;
+  user_id?: string | null;
+  anonymous_session_token?: string | null;
+  product_id: string;
+  created_at?: string;
+}
+
+
