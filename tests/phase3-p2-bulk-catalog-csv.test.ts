@@ -210,4 +210,103 @@ CPU-AMD-9800X3D,,AMD Ryzen 7 9800X3D,,AMD,CPU,8999000,,7200000,25,,ACTIVE,"High 
       expect(text).toContain("spec_socket");
     });
   });
+
+  describe("Bulk Import API Endpoint (/api/admin/products/bulk/import)", () => {
+    it("blocks SUPPORT_AGENT lacking products:write with 403 Forbidden", async () => {
+      const { POST: importPOST } = await import("@/app/api/admin/products/bulk/import/route");
+      const { NextRequest } = await import("next/server");
+      const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/import", {
+        method: "POST",
+        headers: { authorization: "Bearer support" },
+        body: JSON.stringify({ csvContent: "sku,name,category,retail_price\nCPU-TEST,Test,CPU,1000\n" }),
+      });
+      const res = await importPOST(req);
+      expect(res.status).toBe(403);
+    });
+
+    it("halts entire batch with 422 and commits 0 changes if any row has validation errors", async () => {
+      const { POST: importPOST } = await import("@/app/api/admin/products/bulk/import/route");
+      const { NextRequest } = await import("next/server");
+      const { db } = await import("@/lib/db");
+
+      // Batch with 1 good row and 1 invalid row
+      const badCsv = `sku,name,category,retail_price,stock_on_hand
+NEW-GOOD-ITEM-1,Good Item 1,CPU,5000000,10
+BAD-ROW-ITEM-2,Bad Item 2,UnknownCategory,-9999,5
+`;
+      const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/import", {
+        method: "POST",
+        headers: { authorization: "Bearer catalog" },
+        body: JSON.stringify({ csvContent: badCsv }),
+      });
+
+      const res = await importPOST(req);
+      expect(res.status).toBe(422);
+      const json = await res.json();
+      expect(json.success).toBe(false);
+      expect(json.errors.length).toBeGreaterThan(0);
+
+      // Verify that even the good item was NOT created
+      const goodProduct = await db.products.findOne({ sku: "NEW-GOOD-ITEM-1" });
+      expect(goodProduct).toBeNull();
+    });
+
+    it("atomically creates new products and updates existing inventory with ledger tracking", async () => {
+      const { POST: importPOST } = await import("@/app/api/admin/products/bulk/import/route");
+      const { NextRequest } = await import("next/server");
+      const { db } = await import("@/lib/db");
+
+      const testSkuNew = `CPU-BULK-NEW-${Date.now()}`;
+      const testSkuExisting = "AMD-100-100000910WOF"; // existing 7800X3D
+
+      const initialInv = await db.inventory.getByProductAndStore("cpu-1");
+      const initialStock = initialInv?.stock_on_hand || 14;
+
+      const validCsv = `sku,parent_sku,name,variant_name,brand,category,retail_price,sale_price,cost_price,stock_on_hand,stock_delta,status,description,spec_socket,spec_cores
+${testSkuNew},,NextGen Flagship CPU,,AMD,CPU,9999000,,7999000,30,,ACTIVE,Brand new processor from CSV batch,AM5,16 Cores
+${testSkuExisting},,AMD Ryzen 7 7800X3D 8-Core 16-Thread Processor,,AMD,CPU,7199000,,,,+10,ACTIVE,Stock adjustment via CSV delta,,,
+`;
+
+      const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/import", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer catalog",
+          "x-forwarded-for": "10.0.4.88",
+          "user-agent": "StaffBulkUploader/2.0",
+        },
+        body: JSON.stringify({ csvContent: validCsv }),
+      });
+
+      const res = await importPOST(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.summary.created).toBe(1);
+      expect(json.summary.updated).toBe(1);
+
+      // Verify new product was created with specs
+      const newProduct = await db.products.findOne({ sku: testSkuNew });
+      expect(newProduct).toBeDefined();
+      expect(newProduct?.name).toBe("NextGen Flagship CPU");
+      expect(newProduct?.specs?.socket).toBe("AM5");
+      expect(newProduct?.specs?.cores).toBe("16 Cores");
+
+      // Verify existing product stock delta (+10) was applied
+      const updatedInv = await db.inventory.getByProductAndStore("cpu-1");
+      expect(updatedInv?.stock_on_hand).toBe(initialStock + 10);
+
+      // Verify inventory adjustment ledger recorded RESTOCK entry
+      const ledgerMovements = await db.inventoryLedger.getMovementsByProduct("cpu-1");
+      const restockEntry = ledgerMovements.find((m) => m.delta_quantity === 10);
+      expect(restockEntry).toBeDefined();
+      expect(restockEntry?.reason_code).toBe("RESTOCK");
+
+      // Verify audit log entry was written
+      const auditLogs = await db.auditLogs.getRecentLogs(10, "catalog");
+      const bulkLog = auditLogs.find((l) => l.action === "BULK_CATALOG_IMPORT");
+      expect(bulkLog).toBeDefined();
+      expect(bulkLog?.actor_name).toBe("Catalog Lead");
+      expect(bulkLog?.after_state?.summary?.created).toBe(1);
+    });
+  });
 });
