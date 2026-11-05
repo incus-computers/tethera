@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       return unprocessableEntityProblem(msg, {
         instance: req.nextUrl.pathname,
         invalid_params: validation.errors.map((e) => ({
-          name: `row_${e.row}_${e.field}`,
+          name: `row_${e.rowNumber}_${e.field}`,
           reason: e.message,
         })),
         extensions: {
