@@ -493,22 +493,67 @@ export interface MarketplaceSyncLog {
   created_at?: string;
 }
 
-// 13. Promotions Table
+// 13. Promotions Table (ADMIN-05)
+export type PromotionDiscountType =
+  | "percentage"
+  | "fixed_amount"
+  | "free_shipping"
+  | "buy_x_get_y";
+
 export interface Promotion {
   id: string;
   code: string;
   title: string;
   description: string;
-  discount_type: "percentage" | "fixed_amount";
+  discount_type: PromotionDiscountType;
   discount_value: number; // e.g. 15 for 15% or 500000 for Rp 500.000
   min_spend?: number;
   max_discount?: number;
   is_active: boolean;
-  start_date: string;
-  end_date: string;
+  start_date?: string;
+  end_date?: string;
+  starts_at?: string;
+  ends_at?: string;
   usage_count: number;
   usage_limit?: number;
+  max_global_uses?: number;
+  max_uses_per_user?: number;
+  total_discount_given?: number;
+  eligible_categories?: string[];
+  eligible_product_ids?: string[];
+  buy_x_get_y?: {
+    buy_sku: string;
+    buy_quantity: number;
+    get_sku: string;
+    get_discount_percent: number;
+  };
   created_at?: string;
+  updated_at?: string;
+}
+
+export interface PromotionValidationParams {
+  subtotal: number;
+  shippingFee?: number;
+  items?: Array<{
+    id?: string;
+    product_id?: string;
+    category?: string;
+    category_slug?: string;
+    quantity?: number;
+    price?: number;
+    unit_price?: number;
+  }>;
+  customerEmail?: string;
+  customerId?: string;
+}
+
+export interface PromotionValidationResult {
+  valid: boolean;
+  discountAmount: number;
+  discountType?: PromotionDiscountType;
+  message?: string;
+  code?: string;
+  promotion?: Promotion;
 }
 
 // 14. Promotional Banners Table
