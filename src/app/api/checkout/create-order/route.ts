@@ -158,23 +158,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Server-verify promo discount
-    let serverDiscountAmount = Math.max(0, Number(clientDiscountAmount || 0));
-    if (promoCode && typeof promoCode === "string") {
+    // 4. Server-verify promo discount using rules engine
+    let serverDiscountAmount = 0;
+    let validatedPromo: any = null;
+    if (promoCode && typeof promoCode === "string" && promoCode.trim().length > 0) {
       try {
-        const promo = await db.promotions.findByCode(promoCode.trim());
-        if (promo && promo.is_active) {
-          if (promo.discount_type === "percentage") {
-            serverDiscountAmount = Math.round(
-              (serverSubtotal * Math.min(100, promo.discount_value)) / 100
-            );
-          } else if (promo.discount_type === "fixed_amount") {
-            serverDiscountAmount = Math.min(serverSubtotal, promo.discount_value);
-          }
+        const valRes = await db.promotions.validatePromotion(promoCode.trim(), {
+          subtotal: serverSubtotal,
+          shippingFee: serverShippingFee,
+          items: orderItems,
+          customerEmail: customer?.email,
+          customerId: customer?.customerId,
+        });
+        if (valRes.valid) {
+          serverDiscountAmount = valRes.discountAmount;
+          validatedPromo = valRes.promotion;
+        } else {
+          console.warn("[PROMO VERIFICATION] Invalid promo code rejected:", valRes.message);
         }
       } catch (err) {
-        console.warn("[PROMO VERIFICATION] Could not lookup promo code:", err);
+        console.warn("[PROMO VERIFICATION] Error checking promo code:", err);
       }
+    } else if (clientDiscountAmount && !promoCode) {
+      serverDiscountAmount = 0;
     }
 
     // Calculate final verified total
@@ -226,6 +232,7 @@ export async function POST(req: NextRequest) {
       shipping_fee: serverShippingFee,
       assembly_fee: serverAssemblyFee,
       discount_amount: serverDiscountAmount,
+      promo_code: validatedPromo ? validatedPromo.code : promoCode || null,
       total: serverTotal,
       dpp_amount: calculateInclusiveTax(serverSubtotal, DEFAULT_PPN_RATE).dpp,
       tax_amount: calculateInclusiveTax(serverSubtotal, DEFAULT_PPN_RATE).taxAmount,
@@ -238,6 +245,15 @@ export async function POST(req: NextRequest) {
     };
 
     const { order } = await db.orders.createOrderWithItems(orderData, orderItems);
+
+    // Record promotion usage if applicable
+    if (validatedPromo && serverDiscountAmount > 0) {
+      try {
+        await db.promotions.recordUsage(validatedPromo.id, serverDiscountAmount);
+      } catch (err) {
+        console.warn("[PROMO USAGE RECORD] Failed to record usage:", err);
+      }
+    }
     const orderTax = calculateInclusiveTax(order.subtotal, DEFAULT_PPN_RATE);
 
     return NextResponse.json({

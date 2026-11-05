@@ -225,6 +225,8 @@ export interface Order {
   subtotal: number;
   shipping_fee: number;
   assembly_fee: number;
+  discount_amount?: number;
+  promo_code?: string | null;
   total: number;
   tax_amount?: number;
   tax_rate?: number;
