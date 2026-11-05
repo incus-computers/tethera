@@ -1,9 +1,12 @@
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
+import { NextRequest } from "next/server";
 
 vi.mock("server-only", () => ({}));
 
 import { db } from "@/lib/db";
+import { GET as getProductsRoute } from "@/app/api/products/route";
+import { POST as notifyStockRoute } from "@/app/api/products/[id]/notify-stock/route";
 
 describe("CUST-01 Faceted Catalog Query Engine & Stock Notifications Repository", () => {
   describe("productsRepository.getFacetedCatalog", () => {
@@ -95,6 +98,103 @@ describe("CUST-01 Faceted Catalog Query Engine & Stock Notifications Repository"
 
       const pending = await db.stockNotifications.getPendingNotifications("gpu-1");
       expect(pending.some((n) => n.email === email)).toBe(true);
+    });
+  });
+
+  describe("API Route: GET /api/products (Faceted Search)", () => {
+    it("returns faceted catalog results including dynamic facet counts and pagination", async () => {
+      const req = new NextRequest(
+        "http://localhost:3000/api/products?category=processors&brand=AMD,Intel&minPrice=1000000&maxPrice=15000000&sort=price-asc"
+      );
+      const res = await getProductsRoute(req);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(Array.isArray(json.products)).toBe(true);
+      expect(json.facets).toBeDefined();
+      expect(Array.isArray(json.facets.brands)).toBe(true);
+      expect(json.facets.priceRange).toBeDefined();
+      expect(json.pagination).toBeDefined();
+      expect(json.pagination.page).toBe(1);
+    });
+
+    it("supports search keyword and inStock filtering via query params", async () => {
+      const req = new NextRequest(
+        "http://localhost:3000/api/products?search=GeForce&inStock=true"
+      );
+      const res = await getProductsRoute(req);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.products.length).toBeGreaterThan(0);
+      for (const prod of json.products) {
+        expect(prod.name.toLowerCase()).toContain("geforce");
+      }
+    });
+  });
+
+  describe("API Route: POST /api/products/[id]/notify-stock", () => {
+    it("returns 404 Problem Details when product ID is invalid", async () => {
+      const req = new NextRequest(
+        "http://localhost:3000/api/products/non-existent-product-id/notify-stock",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: "buyer@example.com" }),
+        }
+      );
+      const res = await notifyStockRoute(req, { params: { id: "non-existent-product-id" } });
+      expect(res.status).toBe(404);
+
+      const contentType = res.headers.get("content-type");
+      expect(contentType).toContain("application/problem+json");
+
+      const json = await res.json();
+      expect(json.type).toContain("not-found");
+      expect(json.status).toBe(404);
+    });
+
+    it("returns 400 Problem Details when neither valid email nor phone is provided", async () => {
+      const req = new NextRequest(
+        "http://localhost:3000/api/products/gpu-1/notify-stock",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: "not-an-email" }),
+        }
+      );
+      const res = await notifyStockRoute(req, { params: { id: "gpu-1" } });
+      expect(res.status).toBe(400);
+
+      const contentType = res.headers.get("content-type");
+      expect(contentType).toContain("application/problem+json");
+
+      const json = await res.json();
+      expect(json.type).toContain("bad-request");
+      expect(json.status).toBe(400);
+    });
+
+    it("returns 201 Created and persists notification request when valid input is provided", async () => {
+      const email = `stock-notify-${Date.now()}@example.com`;
+      const phone = "+62 813-8888-7777";
+      const req = new NextRequest(
+        "http://localhost:3000/api/products/gpu-1/notify-stock",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email, phone }),
+        }
+      );
+      const res = await notifyStockRoute(req, { params: { id: "gpu-1" } });
+      expect(res.status).toBe(201);
+
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.notification).toBeDefined();
+      expect(json.notification.product_id).toBe("gpu-1");
+      expect(json.notification.email).toBe(email);
     });
   });
 });
