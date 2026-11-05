@@ -335,7 +335,7 @@ export function generateCatalogCsv(
  * Strict All-or-Nothing pre-flight validator for bulk product CSV rows
  */
 export function validateBulkCsvRows(
-  rows: Record<string, string>[],
+  rows: Record<string, any>[],
   existingSkus: Set<string>
 ): {
   isValid: boolean;

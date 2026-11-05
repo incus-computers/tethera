@@ -115,17 +115,17 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
           payment_method: "BCA Virtual Account",
           status: "pending_payment",
           subtotal: 5000000,
-          tax: 550000,
-          delivery_fee: 30000,
+          shipping_fee: 30000,
+          assembly_fee: 0,
           total: 5580000,
         },
         [
           {
             product_id: "ram-1",
-            name: "Corsair Vengeance 32GB DDR5",
+            product_title_snapshot: "Corsair Vengeance 32GB DDR5",
             quantity: 2,
-            price: 2500000,
-            subtotal: 5000000,
+            unit_price: 2500000,
+            is_custom_build: false,
           },
         ]
       );
@@ -158,19 +158,19 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
           customer_phone: "+62 812-9999-0002",
           fulfillment_type: "delivery",
           payment_method: "QRIS",
-          status: "delivered",
+          status: "delivery_arrived",
           subtotal: 3000000,
-          tax: 330000,
-          delivery_fee: 25000,
+          shipping_fee: 25000,
+          assembly_fee: 0,
           total: 3355000,
         },
         [
           {
             product_id: "psu-1",
-            name: "Corsair RM750e 750W",
+            product_title_snapshot: "Corsair RM750e 750W",
             quantity: 1,
-            price: 3000000,
-            subtotal: 3000000,
+            unit_price: 3000000,
+            is_custom_build: false,
           },
         ]
       );
@@ -213,20 +213,20 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
           customer_phone: "+62 812-9999-0003",
           fulfillment_type: "delivery",
           payment_method: "GoPay",
-          status: "paid",
+          status: "payment_received",
           paid_at: new Date().toISOString(),
           subtotal: 4000000,
-          tax: 440000,
-          delivery_fee: 20000,
+          shipping_fee: 20000,
+          assembly_fee: 0,
           total: 4460000,
         },
         [
           {
             product_id: "cas-1",
-            name: "NZXT H5 Flow Case",
+            product_title_snapshot: "NZXT H5 Flow Case",
             quantity: 1,
-            price: 4000000,
-            subtotal: 4000000,
+            unit_price: 4000000,
+            is_custom_build: false,
           },
         ]
       );
