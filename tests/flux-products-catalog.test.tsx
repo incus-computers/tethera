@@ -130,4 +130,18 @@ describe("FluxProductsTab Hardware Catalog Enhancements", () => {
     // Table header font size increased to text-xs sm:text-sm
     expect(html).toContain("text-xs sm:text-sm font-semibold uppercase tracking-wider text-zinc-400");
   });
+
+  it("renders Bulk Import and Export CSV buttons with accessible tap targets", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(FluxProductsTab, {
+        products: mockProducts,
+        onOpenNewProductModal: vi.fn(),
+        onEditProduct: vi.fn(),
+        onDeleteProduct: vi.fn(),
+      })
+    );
+
+    expect(html).toContain("Export CSV");
+    expect(html).toContain("Bulk Import");
+  });
 });

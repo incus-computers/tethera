@@ -16,8 +16,11 @@ import {
   RotateCcw,
   CheckCircle2,
   Layers,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import { formatRupiah } from "@/lib/utils/currency";
+import { FluxBulkCsvModal } from "./FluxBulkCsvModal";
 
 interface FluxProductsTabProps {
   products: any[];
@@ -102,6 +105,7 @@ export function FluxProductsTab({
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState<"all" | "in-stock" | "low-stock" | "out-of-stock">("all");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [isBulkCsvModalOpen, setIsBulkCsvModalOpen] = useState(false);
 
   // Column Resizing State
   const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(DEFAULT_COLUMN_WIDTHS);
@@ -323,6 +327,28 @@ export function FluxProductsTab({
                 <Columns3 className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Export CSV Button */}
+            <button
+              type="button"
+              onClick={() => window.open("/api/admin/products/bulk/export", "_blank")}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-semibold inline-flex items-center gap-1.5 transition-colors flux-interactive-btn"
+              title="Download full catalog CSV"
+            >
+              <Download className="w-4 h-4 text-[#37baf2]" />
+              <span>Export CSV</span>
+            </button>
+
+            {/* Bulk Import Button */}
+            <button
+              type="button"
+              onClick={() => setIsBulkCsvModalOpen(true)}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-semibold inline-flex items-center gap-1.5 transition-colors flux-interactive-btn"
+              title="Bulk upload or update products via CSV"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Bulk Import</span>
+            </button>
 
             {/* Add Product Button */}
             <button
@@ -727,6 +753,19 @@ export function FluxProductsTab({
           })}
         </div>
       )}
+
+      {/* Bulk Catalog CSV Modal */}
+      <FluxBulkCsvModal
+        isOpen={isBulkCsvModalOpen}
+        onClose={() => setIsBulkCsvModalOpen(false)}
+        onSuccess={() => {
+          setIsBulkCsvModalOpen(false);
+          if (typeof window !== "undefined") {
+            window.location.reload();
+          }
+        }}
+        existingSkus={products.map((p: any) => p.sku || "")}
+      />
     </div>
   );
 }
