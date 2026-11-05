@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef, Suspense } from "react";
+import React, { useState, useMemo, useEffect, useRef, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
@@ -22,6 +22,8 @@ import {
   Check,
 } from "lucide-react";
 import { ProductItemTileImage } from "../../components/products/ProductItemTileImage";
+
+export const dynamic = "force-dynamic";
 
 const CATEGORIES = [
   "All",
@@ -61,27 +63,46 @@ function normalizeCategory(param: string | null): string {
   return found || param;
 }
 
-function ComponentsCatalogContent() {
-  const router = useRouter();
+interface ParsedUrlParams {
+  category: string;
+  brand: string;
+  search: string;
+  minPrice: string;
+  maxPrice: string;
+  inStock: boolean;
+  sort: "featured" | "price-asc" | "price-desc" | "newest";
+}
+
+function UrlSyncWatcher({ onSync }: { onSync: (params: ParsedUrlParams) => void }) {
   const searchParams = useSearchParams();
-  const pathname = usePathname();
 
-  // Read initial values from URL search params
-  const initialCategory = normalizeCategory(searchParams.get("category"));
-  const initialBrand = searchParams.get("brand") || "All";
-  const initialSearch = searchParams.get("search") || "";
-  const initialMinPrice = searchParams.get("minPrice") || "";
-  const initialMaxPrice = searchParams.get("maxPrice") || "";
-  const initialInStock = searchParams.get("inStock") === "true" || searchParams.get("inStock") === "1";
-  const initialSort = (searchParams.get("sort") as "featured" | "price-asc" | "price-desc" | "newest") || "featured";
+  useEffect(() => {
+    if (!searchParams) return;
+    onSync({
+      category: normalizeCategory(searchParams.get("category")),
+      brand: searchParams.get("brand") || "All",
+      search: searchParams.get("search") || "",
+      minPrice: searchParams.get("minPrice") || "",
+      maxPrice: searchParams.get("maxPrice") || "",
+      inStock: searchParams.get("inStock") === "true" || searchParams.get("inStock") === "1",
+      sort: ((searchParams.get("sort") as any) || "featured"),
+    });
+  }, [searchParams, onSync]);
 
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
-  const [selectedBrand, setSelectedBrand] = useState(initialBrand);
-  const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [minPriceInput, setMinPriceInput] = useState(initialMinPrice);
-  const [maxPriceInput, setMaxPriceInput] = useState(initialMaxPrice);
-  const [inStockOnly, setInStockOnly] = useState(initialInStock);
-  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc" | "newest">(initialSort);
+  return null;
+}
+
+export default function ComponentsCatalogPage() {
+  const router = useRouter();
+  const pathname = typeof usePathname === "function" ? usePathname() : "/components";
+
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [selectedBrand, setSelectedBrand] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [minPriceInput, setMinPriceInput] = useState("");
+  const [maxPriceInput, setMaxPriceInput] = useState("");
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc" | "newest">("featured");
 
   const INITIAL_BATCH = 24;
   const BATCH_INCREMENT = 12;
@@ -112,16 +133,15 @@ function ComponentsCatalogContent() {
     };
   }, [allComponents]);
 
-  // Synchronize state with URL parameters when user navigates (back / forward)
-  useEffect(() => {
-    setActiveCategory(normalizeCategory(searchParams.get("category")));
-    setSelectedBrand(searchParams.get("brand") || "All");
-    setSearchQuery(searchParams.get("search") || "");
-    setMinPriceInput(searchParams.get("minPrice") || "");
-    setMaxPriceInput(searchParams.get("maxPrice") || "");
-    setInStockOnly(searchParams.get("inStock") === "true" || searchParams.get("inStock") === "1");
-    setSortBy((searchParams.get("sort") as any) || "featured");
-  }, [searchParams]);
+  const handleUrlSync = useCallback((params: ParsedUrlParams) => {
+    setActiveCategory(params.category);
+    setSelectedBrand(params.brand);
+    setSearchQuery(params.search);
+    setMinPriceInput(params.minPrice);
+    setMaxPriceInput(params.maxPrice);
+    setInStockOnly(params.inStock);
+    setSortBy(params.sort);
+  }, []);
 
   // Synchronize URL parameters when filters change
   const updateUrlParams = (updates: {
@@ -133,6 +153,8 @@ function ComponentsCatalogContent() {
     inStock?: boolean;
     sort?: string;
   }) => {
+    if (typeof window === "undefined") return;
+
     const params = new URLSearchParams();
 
     const category = updates.category !== undefined ? updates.category : activeCategory;
@@ -222,7 +244,9 @@ function ComponentsCatalogContent() {
     setInStockOnly(false);
     setSortBy("featured");
     setVisibleCount(INITIAL_BATCH);
-    router.replace(pathname, { scroll: false });
+    if (typeof window !== "undefined") {
+      router.replace(pathname, { scroll: false });
+    }
   };
 
   // Multi-criteria filtering
@@ -319,6 +343,10 @@ function ComponentsCatalogContent() {
 
   return (
     <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 space-y-8">
+      <Suspense fallback={null}>
+        <UrlSyncWatcher onSync={handleUrlSync} />
+      </Suspense>
+
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-6 border-b border-slate-300 dark:border-white/40 gap-4">
         <div>
@@ -699,19 +727,5 @@ function ComponentsCatalogContent() {
         </div>
       )}
     </div>
-  );
-}
-
-export default function ComponentsCatalogPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="w-full max-w-[1920px] mx-auto px-4 py-16 text-center text-xs text-zinc-400">
-          Loading hardware catalog...
-        </div>
-      }
-    >
-      <ComponentsCatalogContent />
-    </Suspense>
   );
 }

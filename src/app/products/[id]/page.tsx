@@ -1813,7 +1813,7 @@ function ProductDetailContent() {
         variantId={activeVariation?.id}
         variantName={
           activeVariation
-            ? formatVariationTitle(activeVariation.attributes)
+            ? Object.values(activeVariation.attributes || {}).join(", ") || activeVariation.name
             : undefined
         }
       />

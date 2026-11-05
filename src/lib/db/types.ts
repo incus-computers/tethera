@@ -560,7 +560,7 @@ export interface StockNotificationRow {
   id: string;
   product_id: string;
   variant_id?: string | null;
-  email: string;
+  email?: string | null;
   phone?: string | null;
   notified_at?: string | null;
   created_at?: string;

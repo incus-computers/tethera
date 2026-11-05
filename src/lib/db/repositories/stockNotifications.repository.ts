@@ -14,18 +14,18 @@ export class StockNotificationsRepository extends BaseRepository<StockNotificati
   async requestNotification(params: {
     productId: string;
     variantId?: string | null;
-    email: string;
+    email?: string | null;
     phone?: string | null;
   }): Promise<StockNotificationRow> {
-    const cleanEmail = params.email.trim().toLowerCase();
+    const cleanEmail = params.email ? params.email.trim().toLowerCase() : null;
     const cleanPhone = params.phone ? params.phone.trim() : null;
 
     // Check for existing pending notification
     const existing = await this.findMany({ product_id: params.productId });
     const match = existing.find((req) => {
       if (req.notified_at) return false;
-      const emailMatches = req.email.toLowerCase() === cleanEmail;
-      const phoneMatches = cleanPhone && req.phone === cleanPhone;
+      const emailMatches = Boolean(cleanEmail && req.email && req.email.toLowerCase() === cleanEmail);
+      const phoneMatches = Boolean(cleanPhone && req.phone && req.phone === cleanPhone);
       const variantMatches = (req.variant_id || null) === (params.variantId || null);
       return (emailMatches || phoneMatches) && variantMatches;
     });
