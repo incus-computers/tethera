@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import {
+  badRequestProblem,
+  forbiddenProblem,
+  internalServerErrorProblem,
+} from "@/lib/api/problemDetails";
+import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +16,9 @@ export async function GET(
   try {
     const { id } = params;
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Product identifier is required." },
-        { status: 400 }
-      );
+      return badRequestProblem("Product identifier is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     let product = await db.products.findById(id);
@@ -41,10 +46,9 @@ export async function GET(
     });
   } catch (error: any) {
     console.error("[API PRODUCT REVIEWS GET ERROR]:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch product reviews." },
-      { status: 500 }
-    );
+    return internalServerErrorProblem(error.message || "Failed to fetch product reviews.", {
+      instance: req.nextUrl.pathname,
+    });
   }
 }
 
@@ -55,10 +59,9 @@ export async function POST(
   try {
     const { id } = params;
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Product identifier is required." },
-        { status: 400 }
-      );
+      return badRequestProblem("Product identifier is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     let product = await db.products.findById(id);
@@ -79,42 +82,35 @@ export async function POST(
     } = body;
 
     if (!customerEmail || !customerEmail.trim()) {
-      return NextResponse.json(
-        { success: false, error: "Customer email is required for purchase verification." },
-        { status: 400 }
-      );
+      return badRequestProblem("Customer email is required for purchase verification.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     if (!rating || Number(rating) < 1 || Number(rating) > 5) {
-      return NextResponse.json(
-        { success: false, error: "Rating must be an integer between 1 and 5." },
-        { status: 400 }
-      );
+      return badRequestProblem("Rating must be an integer between 1 and 5.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     if (!title || !title.trim()) {
-      return NextResponse.json(
-        { success: false, error: "Review title is required." },
-        { status: 400 }
-      );
+      return badRequestProblem("Review title is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     if (!content || !content.trim()) {
-      return NextResponse.json(
-        { success: false, error: "Review content is required." },
-        { status: 400 }
-      );
+      return badRequestProblem("Review content is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     // Verify buyer eligibility
     const check = await db.reviews.canUserReview(productId, customerEmail, userId);
     if (!check.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: check.reason || "Only verified buyers with a delivered order can leave a review.",
-        },
-        { status: 403 }
+      return forbiddenProblem(
+        check.reason || "Only verified buyers with a confirmed delivered order can leave a review.",
+        { instance: req.nextUrl.pathname }
       );
     }
 
@@ -128,6 +124,13 @@ export async function POST(
       userId: userId || null,
     });
 
+    // Invalidate product cache so latest rating and review count propagate to catalog
+    safeRevalidate("product", {
+      productId,
+      productSlug: product?.slug,
+      categorySlug: product?.category_slug,
+    });
+
     return NextResponse.json(
       {
         success: true,
@@ -137,9 +140,8 @@ export async function POST(
     );
   } catch (error: any) {
     console.error("[API PRODUCT REVIEWS POST ERROR]:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to submit review." },
-      { status: 500 }
-    );
+    return internalServerErrorProblem(error.message || "Failed to submit review.", {
+      instance: req.nextUrl.pathname,
+    });
   }
 }

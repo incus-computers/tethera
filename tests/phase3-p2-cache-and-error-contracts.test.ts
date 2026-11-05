@@ -15,6 +15,13 @@ import {
   internalServerErrorProblem,
   createProblemResponse,
 } from "@/lib/api/problemDetails";
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import {
+  POST as postProductRoute,
+  PUT as putProductRoute,
+} from "@/app/api/admin/products/route";
+import { POST as postReviewRoute } from "@/app/api/products/[id]/reviews/route";
 
 describe("P2.3 Cache Invalidation Engine (OPT-BE-02)", () => {
   it("computes all target paths and tags for product entity mutations", () => {
@@ -149,6 +156,76 @@ describe("P2.3 Cache Invalidation Engine (OPT-BE-02)", () => {
       expect(body.type).toBe("https://tethera.com/problems/internal-server-error");
       expect(body.title).toBe("Internal Server Error");
       expect(body.status).toBe(500);
+    });
+  });
+
+  describe("API Route Integration: Cache Revalidation & RFC 7807 Error Responses", () => {
+    it("returns RFC 7807 400 Bad Request when admin product creation lacks required fields", async () => {
+      const req = new NextRequest("http://localhost:3000/api/admin/products", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer superadmin",
+        },
+        body: JSON.stringify({
+          name: "Incomplete GPU",
+          // missing brand, sku, retail_price
+        }),
+      });
+
+      const res = await postProductRoute(req);
+      expect(res.status).toBe(400);
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
+
+      const body = await res.json();
+      expect(body.type).toBe("https://tethera.com/problems/bad-request");
+      expect(body.title).toBe("Bad Request");
+      expect(body.status).toBe(400);
+      expect(body.detail).toMatch(/required/i);
+      expect(body.success).toBe(false);
+    });
+
+    it("returns RFC 7807 403 Forbidden when review submission is from unverified buyer", async () => {
+      const req = new NextRequest("http://localhost:3000/api/products/cpu-1/reviews", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          customerEmail: "unverified-guest@example.com",
+          customerName: "Guest",
+          rating: 4,
+          title: "Good but unverified",
+          content: "Did not buy from store.",
+        }),
+      });
+
+      const res = await postReviewRoute(req, { params: { id: "cpu-1" } });
+      expect(res.status).toBe(403);
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
+
+      const body = await res.json();
+      expect(body.type).toBe("https://tethera.com/problems/forbidden");
+      expect(body.status).toBe(403);
+      expect(body.detail).toMatch(/only verified buyers/i);
+      expect(body.success).toBe(false);
+    });
+
+    it("ensures zero em dashes across all P2.3 files", () => {
+      const files = [
+        "src/lib/cache/revalidate.ts",
+        "src/lib/api/problemDetails.ts",
+        "src/app/api/admin/products/route.ts",
+        "src/app/api/admin/products/bulk/import/route.ts",
+        "src/app/api/admin/banners/route.ts",
+        "src/app/api/admin/promotions/route.ts",
+        "src/app/api/admin/inventory/route.ts",
+        "src/app/api/products/[id]/reviews/route.ts",
+      ];
+      for (const relPath of files) {
+        const fullPath = path.resolve(process.cwd(), relPath);
+        expect(fs.existsSync(fullPath)).toBe(true);
+        const content = fs.readFileSync(fullPath, "utf-8");
+        expect(content.includes("\u2014")).toBe(false);
+      }
     });
   });
 });

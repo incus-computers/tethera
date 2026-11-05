@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
+import {
+  badRequestProblem,
+  unauthorizedProblem,
+  forbiddenProblem,
+  internalServerErrorProblem,
+} from "@/lib/api/problemDetails";
+import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -8,13 +15,19 @@ export async function GET(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "promotions:read");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
     const promotions = await db.promotions.findMany();
     return NextResponse.json({ success: true, count: promotions.length, promotions });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -23,24 +36,30 @@ export async function POST(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "promotions:write");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { code, title, description, discount_type, discount_value, min_spend, max_discount, start_date, end_date, usage_limit } = body;
 
     if (!code || !title || !discount_value) {
-      return NextResponse.json(
-        { success: false, error: "Promotion code, title, and discount value are required." },
-        { status: 400 }
+      return badRequestProblem(
+        "Promotion code, title, and discount value are required.",
+        { instance: req.nextUrl.pathname }
       );
     }
 
     const existing = await db.promotions.findByCode(code);
     if (existing) {
-      return NextResponse.json(
-        { success: false, error: `Promotion code '${code.toUpperCase()}' already exists.` },
-        { status: 400 }
+      return badRequestProblem(
+        `Promotion code '${code.toUpperCase()}' already exists.`,
+        { instance: req.nextUrl.pathname }
       );
     }
 
@@ -75,13 +94,16 @@ export async function POST(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
+    // Invalidate promotion ISR cache
+    safeRevalidate("promotion");
+
     return NextResponse.json({
       success: true,
       message: `Promotion '${newPromo.code}' created successfully.`,
       promotion: newPromo,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -90,14 +112,22 @@ export async function PUT(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "promotions:write");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { id, ...updates } = body;
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "Promotion ID is required." }, { status: 400 });
+      return badRequestProblem("Promotion ID is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const existing = await db.promotions.findById(id);
@@ -117,13 +147,16 @@ export async function PUT(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
+    // Invalidate promotion ISR cache
+    safeRevalidate("promotion");
+
     return NextResponse.json({
       success: true,
       message: "Promotion updated successfully.",
       promotion: updated,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -132,14 +165,22 @@ export async function DELETE(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "promotions:write");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "Promotion ID is required." }, { status: 400 });
+      return badRequestProblem("Promotion ID is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const existing = await db.promotions.findById(id);
@@ -159,11 +200,14 @@ export async function DELETE(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
+    // Invalidate promotion ISR cache
+    safeRevalidate("promotion");
+
     return NextResponse.json({
       success,
       message: "Promotion deleted successfully.",
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }

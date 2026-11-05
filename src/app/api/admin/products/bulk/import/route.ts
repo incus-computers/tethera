@@ -4,6 +4,14 @@ import { requireAdminPermission } from "@/lib/auth/rbac";
 import { parseProductCsv, validateBulkCsvRows } from "@/lib/csv/productCsv";
 import { FLAGSHIP_STORE_ID } from "@/lib/db/repositories/stores.repository";
 import { PcBuilderSlot, Product } from "@/lib/db/types";
+import {
+  badRequestProblem,
+  unauthorizedProblem,
+  forbiddenProblem,
+  unprocessableEntityProblem,
+  internalServerErrorProblem,
+} from "@/lib/api/problemDetails";
+import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +31,13 @@ export async function POST(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "products:write");
     if (!perm.authorized) {
-      return NextResponse.json(
-        { success: false, error: perm.error },
-        { status: perm.status || 401 }
-      );
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
     let csvContent = "";
@@ -53,10 +64,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (!csvContent || csvContent.trim().length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Empty CSV content provided." },
-        { status: 400 }
-      );
+      return badRequestProblem("Empty CSV content provided.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     // 1. Parse CSV rows
@@ -85,14 +95,18 @@ export async function POST(req: NextRequest) {
     const validation = validateBulkCsvRows(rows, existingSkus);
 
     if (!validation.isValid || validation.errors.length > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Validation failed with ${validation.errors.length} error(s). Entire upload halted to protect database integrity.`,
+      const msg = `Validation failed with ${validation.errors.length} error(s). Entire upload halted to protect database integrity.`;
+      return unprocessableEntityProblem(msg, {
+        instance: req.nextUrl.pathname,
+        invalid_params: validation.errors.map((e) => ({
+          name: `row_${e.row}_${e.field}`,
+          reason: e.message,
+        })),
+        extensions: {
+          message: msg,
           errors: validation.errors,
         },
-        { status: 422 }
-      );
+      });
     }
 
     // 4. Atomic Execution: Apply updates and inserts
@@ -226,6 +240,10 @@ export async function POST(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
+    // Invalidate product catalog and inventory ISR cache
+    safeRevalidate("product");
+    safeRevalidate("inventory");
+
     return NextResponse.json({
       success: true,
       message: `Bulk CSV import completed successfully. ${createdCount} created, ${updatedCount} updated.`,
@@ -238,9 +256,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[ADMIN BULK CSV IMPORT ERROR]:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to process bulk CSV import." },
-      { status: 500 }
-    );
+    return internalServerErrorProblem(error.message || "Failed to process bulk CSV import.", {
+      instance: req.nextUrl.pathname,
+    });
   }
 }

@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
 import { FLAGSHIP_STORE_ID } from "@/lib/db/repositories/stores.repository";
+import {
+  badRequestProblem,
+  unauthorizedProblem,
+  forbiddenProblem,
+  notFoundProblem,
+  internalServerErrorProblem,
+} from "@/lib/api/problemDetails";
+import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +18,13 @@ export async function GET(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "products:read");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
     const products = await db.products.findMany();
@@ -31,7 +45,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, count: enriched.length, products: enriched });
   } catch (error: any) {
     console.error("[ADMIN PRODUCTS GET ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -40,10 +54,16 @@ export async function POST(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "products:write");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const {
       name,
       brand,
@@ -60,9 +80,9 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (!name || !brand || !sku || !retail_price) {
-      return NextResponse.json(
-        { success: false, error: "Product name, brand, SKU, and retail price are required." },
-        { status: 400 }
+      return badRequestProblem(
+        "Product name, brand, SKU, and retail price are required.",
+        { instance: req.nextUrl.pathname }
       );
     }
 
@@ -106,6 +126,13 @@ export async function POST(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
+    // Invalidate ISR cache paths & tags
+    safeRevalidate("product", {
+      productId: prodId,
+      productSlug: slug,
+      categorySlug: category_slug || "components",
+    });
+
     return NextResponse.json({
       success: true,
       message: `Product '${createdProduct.name}' created successfully.`,
@@ -118,7 +145,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[ADMIN PRODUCTS POST ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -127,18 +154,31 @@ export async function PUT(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "products:write");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { id, stock_on_hand, ...updates } = body;
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "Product ID is required." }, { status: 400 });
+      return badRequestProblem("Product ID is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     // Capture before state for immutable audit log
     const existingProduct = await db.products.findById(id);
+    if (!existingProduct) {
+      return notFoundProblem(`Product with ID '${id}' was not found.`, {
+        instance: req.nextUrl.pathname,
+      });
+    }
 
     // Map category to pc_builder_slot if category_slug is updated
     if (updates.category_slug && !updates.pc_builder_slot) {
@@ -148,33 +188,23 @@ export async function PUT(req: NextRequest) {
         motherboards: "motherboard",
         cooling: "cooler",
         ram: "ram",
-        storage: "storage_primary",
+        storage: "storage",
+        psu: "psu",
         cases: "case",
-        "power-supplies": "psu",
       };
       if (slotMap[updates.category_slug]) {
         updates.pc_builder_slot = slotMap[updates.category_slug];
       }
     }
 
-    // Update product fields
     const updatedProduct = await db.products.update(id, updates);
 
-    // If stock_on_hand was updated, synchronize with store_inventory
+    // Update stock if explicitly passed
     if (stock_on_hand !== undefined) {
-      await db.inventory.updateOnHandStock(
-        id,
-        Number(stock_on_hand),
-        FLAGSHIP_STORE_ID,
-        {
-          reasonCode: body.stock_adjustment_reason || body.reason_code,
-          actorId: perm.user?.id,
-          notes: body.notes || "Admin product catalog stock update",
-        }
-      );
+      await db.inventory.updateOnHandStock(id, Number(stock_on_hand));
     }
 
-    const currentInv = await db.inventory.getByProductAndStore(id);
+    const currentInv = await db.inventory.getByProductAndStore(id, FLAGSHIP_STORE_ID);
 
     // Record immutable audit log
     await db.auditLogs.log({
@@ -184,10 +214,17 @@ export async function PUT(req: NextRequest) {
       action: "PRODUCT_UPDATED",
       entity_type: "product",
       entity_id: id,
-      before_state: existingProduct ? { retail_price: existingProduct.retail_price, sale_price: existingProduct.sale_price, is_active: existingProduct.is_active } : null,
-      after_state: { ...updates, stock_on_hand },
+      before_state: existingProduct ? { ...existingProduct } : null,
+      after_state: { ...updatedProduct, stock_on_hand },
       ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
       user_agent: req.headers.get("user-agent") || undefined,
+    });
+
+    // Invalidate ISR cache paths & tags
+    safeRevalidate("product", {
+      productId: id,
+      productSlug: updatedProduct?.slug,
+      categorySlug: updatedProduct?.category_slug,
     });
 
     return NextResponse.json({
@@ -202,7 +239,7 @@ export async function PUT(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[ADMIN PRODUCTS PUT ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -211,17 +248,31 @@ export async function DELETE(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "products:delete");
     if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "Product ID is required." }, { status: 400 });
+      return badRequestProblem("Product ID is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const existingProduct = await db.products.findById(id);
+    if (!existingProduct) {
+      return notFoundProblem(`Product with ID '${id}' was not found.`, {
+        instance: req.nextUrl.pathname,
+      });
+    }
+
     const success = await db.products.delete(id);
 
     // Record immutable audit log
@@ -238,12 +289,19 @@ export async function DELETE(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
+    // Invalidate ISR cache paths & tags
+    safeRevalidate("product", {
+      productId: id,
+      productSlug: existingProduct?.slug,
+      categorySlug: existingProduct?.category_slug,
+    });
+
     return NextResponse.json({
       success,
       message: `Product '${id}' successfully removed.`,
     });
   } catch (error: any) {
     console.error("[ADMIN PRODUCTS DELETE ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }

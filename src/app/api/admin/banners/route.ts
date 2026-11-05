@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyAdminClearance } from "@/lib/auth/adminAuth";
+import {
+  badRequestProblem,
+  forbiddenProblem,
+  internalServerErrorProblem,
+} from "@/lib/api/problemDetails";
+import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +25,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, count: banners.length, banners });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -28,10 +34,12 @@ export async function POST(req: NextRequest) {
   try {
     const clearance = verifyAdminClearance(req, "superadmin");
     if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+      return forbiddenProblem(clearance.error || "Superadmin authorization required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const {
       title,
       type = "content",
@@ -52,10 +60,9 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (!title || !cta_link) {
-      return NextResponse.json(
-        { success: false, error: "Banner title and CTA link are required." },
-        { status: 400 }
-      );
+      return badRequestProblem("Banner title and CTA link are required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const count = await db.banners.count();
@@ -81,13 +88,16 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
     });
 
+    // Invalidate banner ISR cache
+    safeRevalidate("banner");
+
     return NextResponse.json({
       success: true,
       message: "New promotional banner added by Superadmin.",
       banner: newBanner,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -96,24 +106,32 @@ export async function PUT(req: NextRequest) {
   try {
     const clearance = verifyAdminClearance(req, "superadmin");
     if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+      return forbiddenProblem(clearance.error || "Superadmin authorization required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { id, ...updates } = body;
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "Banner ID is required." }, { status: 400 });
+      return badRequestProblem("Banner ID is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const updated = await db.banners.update(id, updates);
+
+    // Invalidate banner ISR cache
+    safeRevalidate("banner");
+
     return NextResponse.json({
       success: true,
       message: "Promotional banner updated successfully.",
       banner: updated,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }
 
@@ -122,22 +140,30 @@ export async function DELETE(req: NextRequest) {
   try {
     const clearance = verifyAdminClearance(req, "superadmin");
     if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+      return forbiddenProblem(clearance.error || "Superadmin authorization required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ success: false, error: "Banner ID is required." }, { status: 400 });
+      return badRequestProblem("Banner ID is required.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const success = await db.banners.delete(id);
+
+    // Invalidate banner ISR cache
+    safeRevalidate("banner");
+
     return NextResponse.json({
       success,
       message: "Promotional banner deleted successfully.",
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
   }
 }

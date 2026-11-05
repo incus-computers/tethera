@@ -3,6 +3,14 @@ import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
 import { FLAGSHIP_STORE_ID } from "@/lib/db/repositories/stores.repository";
 import { Product, StoreInventory } from "@/lib/db/types";
+import {
+  badRequestProblem,
+  unauthorizedProblem,
+  forbiddenProblem,
+  notFoundProblem,
+  internalServerErrorProblem,
+} from "@/lib/api/problemDetails";
+import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +30,13 @@ export async function GET(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "inventory:read");
     if (!perm.authorized) {
-      return NextResponse.json(
-        { success: false, error: perm.error },
-        { status: perm.status || 401 }
-      );
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
     const { searchParams } = new URL(req.url);
@@ -113,13 +124,16 @@ export async function POST(req: NextRequest) {
   try {
     const perm = requireAdminPermission(req, "inventory:adjust");
     if (!perm.authorized) {
-      return NextResponse.json(
-        { success: false, error: perm.error },
-        { status: perm.status || 401 }
-      );
+      return perm.status === 401
+        ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
+            instance: req.nextUrl.pathname,
+          })
+        : forbiddenProblem(perm.error || "Access denied.", {
+            instance: req.nextUrl.pathname,
+          });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const {
       productId,
       variantId,
@@ -132,27 +146,22 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (!productId) {
-      return NextResponse.json(
-        { success: false, error: "Missing required field: 'productId'." },
-        { status: 400 }
-      );
+      return badRequestProblem("Missing required field: 'productId'.", {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     const product = await db.products.findById(productId);
     if (!product) {
-      return NextResponse.json(
-        { success: false, error: `Product '${productId}' not found.` },
-        { status: 404 }
-      );
+      return notFoundProblem(`Product '${productId}' not found.`, {
+        instance: req.nextUrl.pathname,
+      });
     }
 
     if (!reasonCode || !VALID_REASON_CODES.includes(reasonCode as ReasonCode)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Invalid or missing 'reasonCode'. Must be one of: ${VALID_REASON_CODES.join(", ")}`,
-        },
-        { status: 400 }
+      return badRequestProblem(
+        `Invalid or missing 'reasonCode'. Must be one of: ${VALID_REASON_CODES.join(", ")}`,
+        { instance: req.nextUrl.pathname }
       );
     }
 
@@ -161,12 +170,9 @@ export async function POST(req: NextRequest) {
       newStockOnHand === undefined &&
       lowStockThreshold === undefined
     ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "At least one adjustment field ('deltaQuantity', 'newStockOnHand', or 'lowStockThreshold') must be provided.",
-        },
-        { status: 400 }
+      return badRequestProblem(
+        "At least one adjustment field ('deltaQuantity', 'newStockOnHand', or 'lowStockThreshold') must be provided.",
+        { instance: req.nextUrl.pathname }
       );
     }
 
@@ -231,6 +237,9 @@ export async function POST(req: NextRequest) {
       user_agent: req.headers.get("user-agent") || undefined,
     });
 
+    // Invalidate inventory ISR cache
+    safeRevalidate("inventory", { productId });
+
     return NextResponse.json({
       success: true,
       message: `Stock for '${product.name}' updated from ${previousStock} to ${targetStock} units (${reasonCode}).`,
@@ -239,9 +248,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[ADMIN INVENTORY POST ERROR]:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to update inventory." },
-      { status: 500 }
-    );
+    return internalServerErrorProblem(error.message || "Failed to update inventory.", {
+      instance: req.nextUrl.pathname,
+    });
   }
 }
