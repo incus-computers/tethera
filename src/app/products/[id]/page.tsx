@@ -15,6 +15,8 @@ import {
   PREBUILT_SYSTEMS,
 } from "../../../lib/data/mockHardware";
 import { ProductItemTileImage } from "../../../components/products/ProductItemTileImage";
+import { WishlistToggleButton } from "../../../components/products/WishlistToggleButton";
+import { ProductReviewsSection } from "../../../components/products/ProductReviewsSection";
 import { useCartStore } from "../../../lib/store/useCartStore";
 import { useLocationStore } from "../../../lib/store/useLocationStore";
 import { useHeaderStore } from "../../../lib/store/useHeaderStore";
@@ -1363,13 +1365,13 @@ function ProductDetailContent() {
                 </div>
               </div>
 
-              {/* Action Button */}
-              <div className="pt-1">
+              {/* Action Button & Wishlist */}
+              <div className="pt-1 flex items-center gap-2">
                 <button
                   type="button"
                   disabled={isOutOfStock}
                   onClick={handleAddToCart}
-                  className={`w-full min-h-[44px] py-3 px-5 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center justify-center gap-2 ${
+                  className={`flex-1 min-h-[44px] py-3 px-5 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center justify-center gap-2 ${
                     isOutOfStock
                       ? "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed"
                       : "bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] cursor-pointer active:scale-[0.99]"
@@ -1378,6 +1380,7 @@ function ProductDetailContent() {
                   <ShoppingCart className="w-4 h-4 text-[#0A0B0E]" />
                   <span>{isOutOfStock ? "Out of Stock" : "Add to Shopping Cart"}</span>
                 </button>
+                <WishlistToggleButton productId={product.id} />
               </div>
             </div>
           </div>
@@ -1574,6 +1577,11 @@ function ProductDetailContent() {
           </section>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* VERIFIED CUSTOMER REVIEWS & RATINGS */}
+      {/* ========================================================================= */}
+      <ProductReviewsSection productId={product.id} productName={product.name} />
 
       {/* ========================================================================= */}
       {/* RELATED / SUGGESTED PAIRINGS (FULL WIDTH) */}

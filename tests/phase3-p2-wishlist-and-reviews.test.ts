@@ -1,6 +1,8 @@
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
+import fs from "fs";
+import path from "path";
 
 vi.mock("server-only", () => ({}));
 
@@ -314,6 +316,42 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
       const mergeData = await mergeRes.json();
       expect(mergeData.success).toBe(true);
       expect(mergeData.items.some((i: any) => i.product_id === "cpu-1")).toBe(true);
+    });
+  });
+
+  describe("UI Craftsmanship & Accessibility Standards", () => {
+    const p22Files = [
+      "src/lib/db/repositories/reviews.repository.ts",
+      "src/lib/db/repositories/wishlist.repository.ts",
+      "src/app/api/products/[id]/reviews/route.ts",
+      "src/app/api/wishlist/route.ts",
+      "src/app/api/wishlist/merge/route.ts",
+      "src/components/products/ProductReviewsSection.tsx",
+      "src/components/products/WishlistToggleButton.tsx",
+    ];
+
+    it("ensures zero em dashes across all P2.2 code and components", () => {
+      for (const relPath of p22Files) {
+        const fullPath = path.resolve(process.cwd(), relPath);
+        expect(fs.existsSync(fullPath)).toBe(true);
+        const content = fs.readFileSync(fullPath, "utf-8");
+        expect(content.includes("\u2014")).toBe(false);
+      }
+    });
+
+    it("ensures minimum 44px tap targets are present on all review and wishlist interactive elements", () => {
+      const wishlistBtnContent = fs.readFileSync(
+        path.resolve(process.cwd(), "src/components/products/WishlistToggleButton.tsx"),
+        "utf-8"
+      );
+      expect(wishlistBtnContent).toMatch(/min-h-\[44px\]/);
+      expect(wishlistBtnContent).toMatch(/min-w-\[44px\]/);
+
+      const reviewsContent = fs.readFileSync(
+        path.resolve(process.cwd(), "src/components/products/ProductReviewsSection.tsx"),
+        "utf-8"
+      );
+      expect(reviewsContent).toMatch(/min-h-\[44px\]/);
     });
   });
 });

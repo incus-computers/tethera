@@ -27,8 +27,12 @@ import {
   Home,
   Briefcase,
   Wrench,
+  Heart,
+  ShoppingCart,
+  Trash2,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/useAuthStore";
+import { useCartStore } from "@/lib/store/useCartStore";
 import { useLocationStore } from "@/lib/store/useLocationStore";
 import { formatRupiah } from "@/lib/utils/currency";
 import { CustomerSegment } from "@/lib/types/customer";
@@ -108,7 +112,76 @@ export default function AccountPage() {
   const { user, isAuthenticated, logout, updateProfile, initSession } = useAuthStore();
   const { setLocation } = useLocationStore();
 
-  const [activeTab, setActiveTab] = useState<"current_orders" | "order_history" | "personal_data" | "address" | "preferences">("current_orders");
+  const [activeTab, setActiveTab] = useState<"current_orders" | "order_history" | "wishlist" | "personal_data" | "address" | "preferences">("current_orders");
+
+  // Wishlist State & Cart Store
+  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+  const [isLoadingWishlist, setIsLoadingWishlist] = useState(false);
+  const [wishlistError, setWishlistError] = useState<string | null>(null);
+  const { addItem: addCartItem, openCart } = useCartStore();
+
+  const loadWishlist = useCallback(async () => {
+    try {
+      setIsLoadingWishlist(true);
+      setWishlistError(null);
+      const query = user?.id ? `?userId=${encodeURIComponent(user.id)}` : "";
+      const res = await fetch(`/api/wishlist${query}`);
+      if (!res.ok) throw new Error("Failed to load wishlist items.");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.items)) {
+        setWishlistItems(data.items);
+      }
+    } catch (err: any) {
+      setWishlistError(err.message || "Failed to load wishlist.");
+    } finally {
+      setIsLoadingWishlist(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (activeTab === "wishlist") {
+      loadWishlist();
+    }
+  }, [activeTab, loadWishlist]);
+
+  const handleRemoveWishlist = async (productId: string) => {
+    try {
+      await fetch("/api/wishlist", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, userId: user?.id || undefined }),
+      });
+      setWishlistItems((prev) => prev.filter((item) => item.product_id !== productId));
+    } catch (err) {
+      console.error("Failed to remove item from wishlist", err);
+    }
+  };
+
+  const handleMoveToCart = async (item: any) => {
+    const prod = item.product;
+    if (!prod) return;
+    const currentPrice =
+      prod.sale_price && prod.sale_price < prod.price ? prod.sale_price : prod.price;
+
+    addCartItem({
+      id: prod.id,
+      sku: prod.sku || `SKU-${prod.id}`,
+      name: prod.name,
+      brand: prod.brand || "Tethera",
+      category: prod.category || "Components",
+      slot: prod.slot || "custom",
+      price: currentPrice,
+      originalPrice: prod.price,
+      sale_price: prod.sale_price ?? null,
+      image: prod.images?.[0] || prod.image || "/images/placeholder.png",
+      images: prod.images || (prod.image ? [prod.image] : []),
+      inStock: prod.inStock ?? (prod.stockCount > 0),
+      stockCount: prod.stockCount ?? 10,
+      specs: prod.specs || {},
+    });
+    await handleRemoveWishlist(item.product_id);
+    openCart();
+  };
 
   // Orders State
   const [orders, setOrders] = useState<EnrichedOrder[]>([]);
@@ -143,7 +216,7 @@ export default function AccountPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      if (tabParam && ["current_orders", "order_history", "personal_data", "address", "preferences"].includes(tabParam)) {
+      if (tabParam && ["current_orders", "order_history", "wishlist", "personal_data", "address", "preferences"].includes(tabParam)) {
         setActiveTab(tabParam as any);
       }
     }
@@ -525,6 +598,23 @@ export default function AccountPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("wishlist")}
+            className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 ${
+              activeTab === "wishlist"
+                ? "bg-zinc-800 text-white font-semibold"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-400" />
+            <span>Saved Wishlist</span>
+            {wishlistItems.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-bold">
+                {wishlistItems.length}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={() => setActiveTab("personal_data")}
             className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 ${
               activeTab === "personal_data"
@@ -878,6 +968,145 @@ export default function AccountPage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB: SAVED WISHLIST */}
+        {/* ========================================================================= */}
+        {activeTab === "wishlist" && (
+          <div className="space-y-4">
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 sm:p-8 space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+                <div>
+                  <h2 className="text-base font-semibold text-white">Saved Hardware Wishlist</h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Hardware items and components saved for future upgrades or custom PC builds.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadWishlist}
+                  disabled={isLoadingWishlist}
+                  className="px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 font-medium flex items-center gap-1.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-400 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingWishlist ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              {isLoadingWishlist && wishlistItems.length === 0 && (
+                <div className="p-8 text-center text-xs text-zinc-400">
+                  Loading your saved hardware wishlist...
+                </div>
+              )}
+
+              {wishlistError && (
+                <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-900/60 text-xs text-rose-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{wishlistError}</span>
+                </div>
+              )}
+
+              {!isLoadingWishlist && wishlistItems.length === 0 && (
+                <div className="text-center py-12 space-y-3">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-zinc-800/80 flex items-center justify-center text-zinc-500">
+                    <Heart className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">Your wishlist is empty</h3>
+                  <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                    Browse components, GPUs, and prebuilt PCs, and click the heart icon to save items here.
+                  </p>
+                  <div className="pt-2">
+                    <Link
+                      href="/components"
+                      className="inline-flex items-center min-h-[44px] px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-400"
+                    >
+                      Explore Components
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {!isLoadingWishlist && wishlistItems.length > 0 && (
+                <div className="divide-y divide-zinc-800">
+                  {wishlistItems.map((item) => {
+                    const prod = item.product;
+                    if (!prod) return null;
+                    const inStock = prod.inStock ?? (prod.stockCount > 0);
+                    const currentPrice = prod.sale_price && prod.sale_price < prod.price ? prod.sale_price : prod.price;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="w-16 h-16 rounded-lg bg-zinc-800 border border-zinc-700/80 overflow-hidden shrink-0 flex items-center justify-center">
+                            <img
+                              src={prod.images?.[0] || prod.image || "/images/placeholder.png"}
+                              alt={prod.name}
+                              className="w-full h-full object-contain p-1"
+                            />
+                          </div>
+
+                          <div className="min-w-0 space-y-1">
+                            <Link
+                              href={`/products/${prod.id}`}
+                              className="text-sm font-semibold text-white hover:text-emerald-400 transition-colors line-clamp-1 block"
+                            >
+                              {prod.name}
+                            </Link>
+
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="font-bold text-zinc-100">
+                                {formatRupiah(currentPrice)}
+                              </span>
+                              {prod.sale_price && prod.sale_price < prod.price && (
+                                <span className="line-through text-zinc-500 font-mono">
+                                  {formatRupiah(prod.price)}
+                                </span>
+                              )}
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                  inStock
+                                    ? "bg-emerald-950/60 text-emerald-400 border border-emerald-900/60"
+                                    : "bg-rose-950/60 text-rose-400 border border-rose-900/60"
+                                }`}
+                              >
+                                {inStock ? "In Stock" : "Out of Stock"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveToCart(item)}
+                            disabled={!inStock}
+                            className="min-h-[44px] px-3.5 py-2 rounded-lg bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#52E394]"
+                          >
+                            <ShoppingCart className="w-4 h-4 text-[#0A0B0E]" />
+                            <span>Move to Cart</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveWishlist(item.product_id)}
+                            className="min-h-[44px] min-w-[44px] p-2.5 rounded-lg border border-zinc-700/80 hover:border-rose-900/60 text-zinc-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer flex items-center justify-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
+                            aria-label={`Remove ${prod.name} from wishlist`}
+                            title="Remove from wishlist"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
