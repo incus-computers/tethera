@@ -23,6 +23,7 @@ export * from "./repositories/rma.repository";
 export * from "./repositories/inventoryLedger.repository";
 export * from "./repositories/reviews.repository";
 export * from "./repositories/wishlist.repository";
+export * from "./repositories/stockNotifications.repository";
 
 // Consolidated `db` Accessor Object
 import { productsRepository } from "./repositories/products.repository";
@@ -49,6 +50,7 @@ import {
 import { inventoryLedgerRepository } from "./repositories/inventoryLedger.repository";
 import { reviewsRepository } from "./repositories/reviews.repository";
 import { wishlistRepository } from "./repositories/wishlist.repository";
+import { stockNotificationsRepository } from "./repositories/stockNotifications.repository";
 
 export const db = {
   products: productsRepository,
@@ -71,6 +73,7 @@ export const db = {
   inventoryLedger: inventoryLedgerRepository,
   reviews: reviewsRepository,
   wishlist: wishlistRepository,
+  stockNotifications: stockNotificationsRepository,
 };
 
 export default db;

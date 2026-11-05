@@ -555,4 +555,48 @@ export interface WishlistItemRow {
   created_at?: string;
 }
 
+// 17. Back-in-Stock Notifications Table (CUST-01)
+export interface StockNotificationRow {
+  id: string;
+  product_id: string;
+  variant_id?: string | null;
+  email: string;
+  phone?: string | null;
+  notified_at?: string | null;
+  created_at?: string;
+}
+
+// 18. Faceted Catalog Discovery Types (CUST-01)
+export interface FacetedCatalogParams {
+  search?: string;
+  categorySlug?: string;
+  brands?: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  inStockOnly?: boolean;
+  pcBuilderSlot?: string;
+  sort?: "featured" | "price-asc" | "price-desc" | "newest" | "rating";
+  page?: number;
+  limit?: number;
+}
+
+export interface CatalogFacetAggregations {
+  brands: { name: string; count: number }[];
+  categories: { slug: string; name: string; count: number }[];
+  priceRange: { min: number; max: number };
+  inStockCount: number;
+  totalMatching: number;
+}
+
+export interface FacetedCatalogResult {
+  products: Product[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  facets: CatalogFacetAggregations;
+}
+
 

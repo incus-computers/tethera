@@ -1,7 +1,15 @@
 import "server-only";
 import { BaseRepository, QueryOptions } from "./base.repository";
-import { Product, PcBuilderSlot, ProductVariation } from "../types";
+import {
+  Product,
+  PcBuilderSlot,
+  ProductVariation,
+  FacetedCatalogParams,
+  FacetedCatalogResult,
+  CatalogFacetAggregations,
+} from "../types";
 import { MOCK_COMPONENTS } from "../../data/mockHardware";
+import { inventoryRepository } from "./inventory.repository";
 
 // Normalizes a product record so variations, images, categories, and slots are consistently linked
 export function normalizeProduct(raw: any): Product {
@@ -200,6 +208,168 @@ export class ProductsRepository extends BaseRepository<Product> {
     }
 
     return (data as Product[]).map(normalizeProduct);
+  }
+
+  /**
+   * Faceted catalog query engine with multi-brand, price bounds, stock status, sorting and facet counts (CUST-01)
+   */
+  async getFacetedCatalog(params: FacetedCatalogParams = {}): Promise<FacetedCatalogResult> {
+    const all = await this.findMany();
+    const inventory = await inventoryRepository.findMany();
+    const invMap = new Map(inventory.map((inv) => [inv.product_id, inv]));
+
+    const cleanSearch = params.search ? params.search.toLowerCase().trim() : "";
+    const cleanCategory = params.categorySlug ? params.categorySlug.toLowerCase().trim() : "";
+    const selectedBrands = params.brands?.map((b) => b.toLowerCase().trim()).filter(Boolean) || [];
+
+    // Filter pipeline
+    const filtered = all.filter((prod) => {
+      // 1. Search term match
+      if (cleanSearch) {
+        const matchesName = prod.name.toLowerCase().includes(cleanSearch);
+        const matchesBrand = prod.brand.toLowerCase().includes(cleanSearch);
+        const matchesSku = prod.sku.toLowerCase().includes(cleanSearch);
+        const matchesCat = prod.category_slug?.toLowerCase().includes(cleanSearch);
+        if (!matchesName && !matchesBrand && !matchesSku && !matchesCat) {
+          return false;
+        }
+      }
+
+      // 2. Category slug match
+      if (cleanCategory && cleanCategory !== "all") {
+        const pCat = (prod.category_slug || "").toLowerCase();
+        const pSlot = (prod.pc_builder_slot || "").toLowerCase();
+
+        const exactMatch = pCat === cleanCategory;
+        const containsMatch = pCat.includes(cleanCategory) || cleanCategory.includes(pCat);
+        const slotMatch = pSlot === cleanCategory;
+        const aliasMatch =
+          (cleanCategory === "processors" && (pCat === "cpu" || pSlot === "cpu")) ||
+          (cleanCategory === "cpu" && (pCat === "processors" || pCat.includes("processor"))) ||
+          (cleanCategory === "graphics-cards" && (pCat === "gpu" || pSlot === "gpu")) ||
+          (cleanCategory === "gpu" && (pCat === "graphics-cards" || pCat.includes("graphic"))) ||
+          (cleanCategory === "motherboards" && (pCat === "motherboard" || pSlot === "motherboard")) ||
+          (cleanCategory === "memory" && (pCat === "ram" || pSlot === "ram")) ||
+          (cleanCategory === "chassis" && (pCat === "cases" || pSlot === "case"));
+
+        if (!exactMatch && !containsMatch && !slotMatch && !aliasMatch) {
+          return false;
+        }
+      }
+
+      // 3. Multi-brand match
+      if (selectedBrands.length > 0) {
+        const prodBrand = prod.brand.toLowerCase();
+        if (!selectedBrands.includes(prodBrand)) {
+          return false;
+        }
+      }
+
+      // 4. Effective price range
+      const effectivePrice =
+        prod.sale_price && prod.sale_price < prod.retail_price
+          ? prod.sale_price
+          : prod.retail_price;
+
+      if (params.minPrice !== undefined && effectivePrice < params.minPrice) {
+        return false;
+      }
+      if (params.maxPrice !== undefined && effectivePrice > params.maxPrice) {
+        return false;
+      }
+
+      // 5. In-stock only
+      if (params.inStockOnly) {
+        const inv = invMap.get(prod.id);
+        const inStock = inv ? inv.stock_on_hand - inv.stock_reserved > 0 : true;
+        if (!inStock) return false;
+      }
+
+      // 6. PC builder slot
+      if (params.pcBuilderSlot) {
+        if (prod.pc_builder_slot !== params.pcBuilderSlot) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Compute dynamic facet aggregations over the matched set
+    const brandCounts: Record<string, number> = {};
+    const categoryCounts: Record<string, number> = {};
+    let minPriceFound = Number.POSITIVE_INFINITY;
+    let maxPriceFound = 0;
+    let inStockCount = 0;
+
+    for (const p of filtered) {
+      // Brands
+      brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1;
+
+      // Categories
+      const cSlug = p.category_slug || "components";
+      categoryCounts[cSlug] = (categoryCounts[cSlug] || 0) + 1;
+
+      // Price range
+      const pPrice = p.sale_price && p.sale_price < p.retail_price ? p.sale_price : p.retail_price;
+      if (pPrice < minPriceFound) minPriceFound = pPrice;
+      if (pPrice > maxPriceFound) maxPriceFound = pPrice;
+
+      // In stock
+      const inv = invMap.get(p.id);
+      const isAvailable = inv ? inv.stock_on_hand - inv.stock_reserved > 0 : true;
+      if (isAvailable) inStockCount++;
+    }
+
+    const facets: CatalogFacetAggregations = {
+      brands: Object.entries(brandCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count),
+      categories: Object.entries(categoryCounts)
+        .map(([slug, count]) => ({ slug, name: slug, count }))
+        .sort((a, b) => b.count - a.count),
+      priceRange: {
+        min: minPriceFound === Number.POSITIVE_INFINITY ? 0 : minPriceFound,
+        max: maxPriceFound,
+      },
+      inStockCount,
+      totalMatching: filtered.length,
+    };
+
+    // Sorting
+    const sorted = [...filtered].sort((a, b) => {
+      const priceA = a.sale_price && a.sale_price < a.retail_price ? a.sale_price : a.retail_price;
+      const priceB = b.sale_price && b.sale_price < b.retail_price ? b.sale_price : b.retail_price;
+
+      switch (params.sort) {
+        case "price-asc":
+          return priceA - priceB;
+        case "price-desc":
+          return priceB - priceA;
+        case "newest":
+          return (b.id || "").localeCompare(a.id || "");
+        default:
+          return 0; // maintain default featured order
+      }
+    });
+
+    // Pagination
+    const page = Math.max(1, Number(params.page) || 1);
+    const limit = Math.max(1, Number(params.limit) || 50);
+    const total = sorted.length;
+    const totalPages = Math.ceil(total / limit) || 1;
+    const paginatedProducts = sorted.slice((page - 1) * limit, page * limit);
+
+    return {
+      products: paginatedProducts,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+      facets,
+    };
   }
 }
 
