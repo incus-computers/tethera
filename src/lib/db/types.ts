@@ -226,6 +226,9 @@ export interface Order {
   shipping_fee: number;
   assembly_fee: number;
   total: number;
+  tax_amount?: number;
+  tax_rate?: number;
+  dpp_amount?: number;
   status: OrderStatus;
   courier_info?: CourierDispatchInfo | null;
   payment_method?: string | null;
