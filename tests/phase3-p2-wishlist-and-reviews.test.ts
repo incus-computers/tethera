@@ -1,9 +1,20 @@
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
+import { NextRequest } from "next/server";
 
 vi.mock("server-only", () => ({}));
 
 import { db } from "@/lib/db";
+import {
+  GET as getReviewsRoute,
+  POST as postReviewRoute,
+} from "@/app/api/products/[id]/reviews/route";
+import {
+  GET as getWishlistRoute,
+  POST as postWishlistRoute,
+  DELETE as deleteWishlistRoute,
+} from "@/app/api/wishlist/route";
+import { POST as mergeWishlistRoute } from "@/app/api/wishlist/merge/route";
 
 describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
   describe("ReviewsRepository: Delivered Purchase Verification & Rating Aggregation", () => {
@@ -145,6 +156,164 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
       // Verify anonymous items are cleared
       const guestItems = await db.wishlist.getWishlist({ sessionToken });
       expect(guestItems.length).toBe(0);
+    });
+  });
+
+  describe("API Route: /api/products/[id]/reviews", () => {
+    it("blocks unverified customer with 403 Forbidden", async () => {
+      const req = new NextRequest("http://localhost:3000/api/products/cpu-1/reviews", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          customerEmail: "fraudulent-reviewer@example.com",
+          customerName: "Imposter",
+          rating: 5,
+          title: "Fake review",
+          content: "Did not buy but leaving review anyway",
+        }),
+      });
+
+      const res = await postReviewRoute(req, { params: { id: "cpu-1" } });
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.success).toBe(false);
+      expect(data.error).toMatch(/only verified buyers/i);
+    });
+
+    it("accepts review from verified delivered customer with 201 Created and updates GET histogram", async () => {
+      const email = `buyer-${Date.now()}@example.com`;
+      await db.orders.createOrderWithItems(
+        {
+          order_number: `TET-REV-API-${Date.now()}`,
+          customer_name: "Delivered Customer",
+          customer_email: email,
+          customer_phone: "+62 811-9999-8888",
+          fulfillment_type: "delivery",
+          payment_method: "BCA Virtual Account",
+          status: "collected",
+          subtotal: 3500000,
+          shipping_fee: 0,
+          assembly_fee: 0,
+          total: 3500000,
+        },
+        [
+          {
+            product_id: "psu-1",
+            product_title_snapshot: "Corsair RM750e",
+            quantity: 1,
+            unit_price: 3500000,
+            is_custom_build: false,
+          },
+        ]
+      );
+
+      const postReq = new NextRequest("http://localhost:3000/api/products/psu-1/reviews", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          customerEmail: email,
+          customerName: "Delivered Customer",
+          rating: 5,
+          title: "Dead silent ATX 3.0 PSU",
+          content: "Powers my RTX 4080 Super without any coil whine.",
+        }),
+      });
+
+      const postRes = await postReviewRoute(postReq, { params: { id: "psu-1" } });
+      expect(postRes.status).toBe(201);
+      const postData = await postRes.json();
+      expect(postData.success).toBe(true);
+      expect(postData.review.verified_purchase).toBe(true);
+
+      const getReq = new NextRequest(`http://localhost:3000/api/products/psu-1/reviews?checkEmail=${encodeURIComponent(email)}`);
+      const getRes = await getReviewsRoute(getReq, { params: { id: "psu-1" } });
+      expect(getRes.status).toBe(200);
+      const getData = await getRes.json();
+      expect(getData.success).toBe(true);
+      expect(getData.summary.totalCount).toBeGreaterThanOrEqual(1);
+      expect(getData.summary.distribution[5]).toBeGreaterThanOrEqual(1);
+      expect(getData.eligibility.allowed).toBe(false); // already reviewed
+    });
+  });
+
+  describe("API Route: /api/wishlist and /api/wishlist/merge", () => {
+    it("handles adding, retrieving hydrated items, and deleting from wishlist", async () => {
+      const sessionToken = `test-sess-${Date.now()}`;
+
+      // POST add item
+      const addReq = new NextRequest("http://localhost:3000/api/wishlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          productId: "gpu-1",
+          sessionToken,
+        }),
+      });
+
+      const addRes = await postWishlistRoute(addReq);
+      expect(addRes.status).toBe(200);
+      const addData = await addRes.json();
+      expect(addData.success).toBe(true);
+
+      // GET wishlist hydrated
+      const getReq = new NextRequest(`http://localhost:3000/api/wishlist?sessionToken=${sessionToken}`);
+      const getRes = await getWishlistRoute(getReq);
+      expect(getRes.status).toBe(200);
+      const getData = await getRes.json();
+      expect(getData.success).toBe(true);
+      expect(getData.items.length).toBe(1);
+      expect(getData.items[0].product).toBeDefined();
+      expect(getData.items[0].product.id).toBe("gpu-1");
+
+      // DELETE item
+      const delReq = new NextRequest("http://localhost:3000/api/wishlist", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          productId: "gpu-1",
+          sessionToken,
+        }),
+      });
+
+      const delRes = await deleteWishlistRoute(delReq);
+      expect(delRes.status).toBe(200);
+
+      const verifyReq = new NextRequest(`http://localhost:3000/api/wishlist?sessionToken=${sessionToken}`);
+      const verifyRes = await getWishlistRoute(verifyReq);
+      const verifyData = await verifyRes.json();
+      expect(verifyData.items.length).toBe(0);
+    });
+
+    it("merges guest session wishlist into customer account via /api/wishlist/merge", async () => {
+      const sessionToken = `merge-sess-${Date.now()}`;
+      const userId = `merge-user-${Date.now()}`;
+
+      // Add to session
+      const addReq = new NextRequest("http://localhost:3000/api/wishlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          productId: "cpu-1",
+          sessionToken,
+        }),
+      });
+      await postWishlistRoute(addReq);
+
+      // Merge
+      const mergeReq = new NextRequest("http://localhost:3000/api/wishlist/merge", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionToken,
+          userId,
+        }),
+      });
+
+      const mergeRes = await mergeWishlistRoute(mergeReq);
+      expect(mergeRes.status).toBe(200);
+      const mergeData = await mergeRes.json();
+      expect(mergeData.success).toBe(true);
+      expect(mergeData.items.some((i: any) => i.product_id === "cpu-1")).toBe(true);
     });
   });
 });
