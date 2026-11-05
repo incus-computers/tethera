@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { calculateInclusiveTax, DEFAULT_PPN_RATE } from "@/lib/tax/taxCalculation";
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,11 +84,17 @@ export async function POST(req: NextRequest) {
         }
 
         serverSubtotal += unitPrice * quantity;
+        const lineTax = calculateInclusiveTax(unitPrice * quantity, DEFAULT_PPN_RATE);
         orderItems.push({
           product_id: productId,
+          variant_id: variantId ? String(variantId) : null,
           quantity,
           unit_price: unitPrice,
           is_custom_build: false,
+          product_title_snapshot: dbProduct?.name || it.item?.name || it.name || "Hardware Component",
+          sku_snapshot: dbProduct?.sku || it.item?.sku || it.sku || productId || null,
+          tax_rate_snapshot: DEFAULT_PPN_RATE,
+          tax_amount_snapshot: lineTax.taxAmount,
         });
       }
     }
@@ -128,11 +135,16 @@ export async function POST(req: NextRequest) {
         serverSubtotal += pcVerifiedTotal;
         serverAssemblyFee += pcAssemblyTierFee;
 
+        const pcTax = calculateInclusiveTax(pcVerifiedTotal, DEFAULT_PPN_RATE);
         orderItems.push({
           custom_build_id: pc.id,
           quantity: 1,
           unit_price: pcVerifiedTotal,
           is_custom_build: true,
+          product_title_snapshot: pc.name || "Custom PC System Build",
+          sku_snapshot: pc.id || "CUSTOM-PC",
+          tax_rate_snapshot: DEFAULT_PPN_RATE,
+          tax_amount_snapshot: pcTax.taxAmount,
         });
       }
     }
@@ -215,6 +227,9 @@ export async function POST(req: NextRequest) {
       assembly_fee: serverAssemblyFee,
       discount_amount: serverDiscountAmount,
       total: serverTotal,
+      dpp_amount: calculateInclusiveTax(serverSubtotal, DEFAULT_PPN_RATE).dpp,
+      tax_amount: calculateInclusiveTax(serverSubtotal, DEFAULT_PPN_RATE).taxAmount,
+      tax_rate: DEFAULT_PPN_RATE,
       status: "order_received",
       payment_method: null,
       payment_reference: null,
@@ -223,6 +238,7 @@ export async function POST(req: NextRequest) {
     };
 
     const { order } = await db.orders.createOrderWithItems(orderData, orderItems);
+    const orderTax = calculateInclusiveTax(order.subtotal, DEFAULT_PPN_RATE);
 
     return NextResponse.json({
       success: true,
@@ -232,6 +248,11 @@ export async function POST(req: NextRequest) {
       shippingFee: order.shipping_fee,
       total: order.total,
       pickupCode: order.pickup_code,
+      tax: {
+        dpp: order.dpp_amount ?? orderTax.dpp,
+        taxAmount: order.tax_amount ?? orderTax.taxAmount,
+        taxRate: order.tax_rate ?? DEFAULT_PPN_RATE,
+      },
     });
   } catch (error: any) {
     console.error("Create order error:", error);
