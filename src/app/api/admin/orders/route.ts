@@ -14,6 +14,42 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const statusFilter = searchParams.get("status");
+    const orderId = searchParams.get("id");
+
+    if (orderId) {
+      const order = await db.orders.findById(orderId);
+      if (!order) {
+        return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
+      }
+
+      const { items } = await db.orders.getOrderWithItems(order.id);
+      const enrichedItems = await Promise.all(
+        items.map(async (it) => {
+          const product = it.product_id ? await db.products.findById(it.product_id) : null;
+          return {
+            ...it,
+            product: product
+              ? {
+                  id: product.id,
+                  name: product.name,
+                  sku: product.sku,
+                  brand: product.brand,
+                  images: product.images,
+                  retail_price: product.retail_price,
+                }
+              : null,
+          };
+        })
+      );
+
+      return NextResponse.json({
+        success: true,
+        order: {
+          ...order,
+          items: enrichedItems,
+        },
+      });
+    }
 
     const orders = await db.orders.findMany(
       statusFilter ? { status: statusFilter as any } : undefined,
@@ -70,16 +106,24 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderId, nextStatus, notes } = body;
+    const {
+      orderId,
+      nextStatus,
+      notes,
+      waybill_id,
+      tracking_number,
+      courier_provider,
+      courier_service_code,
+    } = body;
 
-    if (!orderId || !nextStatus) {
+    if (!orderId) {
       return NextResponse.json(
-        { success: false, error: "Order ID and target status are required." },
+        { success: false, error: "Order ID is required." },
         { status: 400 }
       );
     }
 
-    // Validate valid status transitions
+    // Validate valid status transitions if nextStatus is provided
     const validManualTransitions: string[] = [
       "order_received",
       "order_accepted",
@@ -104,7 +148,7 @@ export async function PUT(req: NextRequest) {
       "refunded",
     ];
 
-    if (!validManualTransitions.includes(nextStatus)) {
+    if (nextStatus && !validManualTransitions.includes(nextStatus)) {
       return NextResponse.json(
         { success: false, error: `Invalid status transition: '${nextStatus}'` },
         { status: 400 }
@@ -130,11 +174,17 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    const updated = await db.orders.update(orderId, {
-      status: nextStatus,
-      notes: notes !== undefined ? notes : undefined,
+    const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
-    });
+    };
+    if (nextStatus) updatePayload.status = nextStatus;
+    if (notes !== undefined) updatePayload.notes = notes;
+    if (waybill_id !== undefined) updatePayload.waybill_id = waybill_id;
+    if (tracking_number !== undefined) updatePayload.tracking_number = tracking_number;
+    if (courier_provider !== undefined) updatePayload.courier_provider = courier_provider;
+    if (courier_service_code !== undefined) updatePayload.courier_service_code = courier_service_code;
+
+    const updated = await db.orders.update(orderId, updatePayload as any);
 
     if (!updated) {
       return NextResponse.json({ success: false, error: "Order not found." }, { status: 404 });
@@ -143,7 +193,9 @@ export async function PUT(req: NextRequest) {
     const msg =
       nextStatus === "cancelled"
         ? `Order #${updated.order_number} has been rejected / cancelled. Reason logged: ${notes || "Warehouse out of stock"}.`
-        : `Order #${updated.order_number} transitioned to '${nextStatus.replace(/_/g, " ").toUpperCase()}'.`;
+        : nextStatus
+        ? `Order #${updated.order_number} transitioned to '${nextStatus.replace(/_/g, " ").toUpperCase()}'.`
+        : `Order #${updated.order_number} details successfully updated.`;
 
     return NextResponse.json({
       success: true,

@@ -127,9 +127,9 @@ export function FluxAnalyticsTab({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 flux-animate-fade flux-animate-slide-up">
       {/* Header & Quick Action Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/5 flux-animate-slide-up flux-delay-1">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#37baf2]/10 border border-[#37baf2]/20 flex items-center justify-center text-[#37baf2]">
@@ -153,7 +153,7 @@ export function FluxAnalyticsTab({
           <button
             type="button"
             onClick={handleExportCsv}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#12141A] hover:bg-[#1A1D24] text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition flex items-center gap-2"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#12141A] hover:bg-[#1A1D24] text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition flex items-center gap-2 flux-interactive-btn"
           >
             <Download className="w-4 h-4 text-[#37baf2]" />
             <span>Export CSV</span>
@@ -162,7 +162,7 @@ export function FluxAnalyticsTab({
           <button
             type="button"
             onClick={resetColWidths}
-            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#12141A] hover:bg-[#1A1D24] text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition flex items-center gap-2"
+            className="min-h-[44px] px-4 py-2 rounded-xl bg-[#12141A] hover:bg-[#1A1D24] text-slate-300 hover:text-white border border-white/10 text-xs font-semibold transition flex items-center gap-2 flux-interactive-btn"
             title="Reset table column widths to default layout"
           >
             <RotateCcw className="w-4 h-4 text-[#37baf2]" />
@@ -181,7 +181,7 @@ export function FluxAnalyticsTab({
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Weekly Gross Profit */}
-        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-[#52E394]/30 transition-all">
+        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-[#52E394]/30 transition-all flux-card-hover flux-animate-slide-up flux-delay-1">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Weekly Gross Profit (7D)
@@ -211,7 +211,7 @@ export function FluxAnalyticsTab({
         </div>
 
         {/* Card 2: Sales in a Week (Revenue) */}
-        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-[#37baf2]/30 transition-all">
+        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-[#37baf2]/30 transition-all flux-card-hover flux-animate-slide-up flux-delay-2">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Sales in a Week (7D)
@@ -234,7 +234,7 @@ export function FluxAnalyticsTab({
         </div>
 
         {/* Card 3: Weekly Units Sold */}
-        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-purple-500/30 transition-all">
+        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-purple-500/30 transition-all flux-card-hover flux-animate-slide-up flux-delay-3">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Weekly Volume Sold
@@ -256,7 +256,7 @@ export function FluxAnalyticsTab({
         </div>
 
         {/* Card 4: Store Lifetime Totals */}
-        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-indigo-500/30 transition-all">
+        <div className="bg-[#12141A] border border-white/5 rounded-2xl p-5 relative overflow-hidden group hover:border-indigo-500/30 transition-all flux-card-hover flux-animate-slide-up flux-delay-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Store Lifetime Profit

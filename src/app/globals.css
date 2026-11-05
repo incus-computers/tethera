@@ -150,6 +150,168 @@ body {
 }
 
 /* ========================================================================= */
+/* FLUX DASHBOARD ANIMATION SYSTEM */
+/* Inspired by flux.dashboardpack.com smooth cubic-bezier transitions */
+/* ========================================================================= */
+
+:root {
+  --flux-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --flux-ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fluxFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fluxSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fluxSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fluxSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fluxScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Flux entrance animations */
+.flux-animate-fade {
+  animation: fluxFadeIn 0.35s var(--flux-ease) forwards;
+}
+
+.flux-animate-slide-up {
+  animation: fluxSlideUp 0.45s var(--flux-ease) forwards;
+}
+
+.flux-animate-slide-down {
+  animation: fluxSlideDown 0.4s var(--flux-ease) forwards;
+}
+
+.flux-animate-slide-right {
+  animation: fluxSlideInRight 0.35s var(--flux-ease) forwards;
+}
+
+.flux-animate-scale {
+  animation: fluxScaleIn 0.3s var(--flux-ease) forwards;
+}
+
+/* Cascading stagger entrance delays */
+.flux-delay-1 {
+  animation-delay: 50ms;
+  animation-fill-mode: both;
+}
+
+.flux-delay-2 {
+  animation-delay: 100ms;
+  animation-fill-mode: both;
+}
+
+.flux-delay-3 {
+  animation-delay: 150ms;
+  animation-fill-mode: both;
+}
+
+.flux-delay-4 {
+  animation-delay: 200ms;
+  animation-fill-mode: both;
+}
+
+.flux-delay-5 {
+  animation-delay: 250ms;
+  animation-fill-mode: both;
+}
+
+.flux-delay-6 {
+  animation-delay: 300ms;
+  animation-fill-mode: both;
+}
+
+/* Flux interactive card hover micro-interaction */
+.flux-card-hover {
+  transition: transform 0.25s var(--flux-ease),
+              box-shadow 0.25s var(--flux-ease),
+              border-color 0.25s var(--flux-ease),
+              background-color 0.25s var(--flux-ease);
+}
+
+.flux-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.4), 0 0 16px -2px rgba(55, 186, 242, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Flux tactile button micro-interaction */
+.flux-interactive-btn {
+  transition: transform 0.18s var(--flux-ease),
+              background-color 0.18s var(--flux-ease),
+              border-color 0.18s var(--flux-ease),
+              box-shadow 0.18s var(--flux-ease),
+              color 0.18s var(--flux-ease);
+}
+
+.flux-interactive-btn:active {
+  transform: scale(0.97);
+}
+
+/* Smooth table row transitions */
+.flux-table-row {
+  transition: background-color 0.18s var(--flux-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flux-animate-fade,
+  .flux-animate-slide-up,
+  .flux-animate-slide-down,
+  .flux-animate-slide-right,
+  .flux-animate-scale,
+  .flux-card-hover,
+  .flux-interactive-btn,
+  .flux-table-row {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ========================================================================= */
 /* FUNCTIONAL TRANSITIONS */
 /* ========================================================================= */
 

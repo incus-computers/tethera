@@ -72,13 +72,13 @@ export function FluxCustomerDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity flux-animate-fade"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Drawer Body */}
-      <div className="relative w-full max-w-xl h-full bg-[#12141A] border-l border-white/10 shadow-2xl flex flex-col z-10 text-slate-100 animate-in slide-in-from-right duration-300">
+      <div className="relative w-full max-w-xl h-full bg-[#12141A] border-l border-white/10 shadow-2xl flex flex-col z-10 text-slate-100 flux-animate-slide-right">
         {/* Header */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between gap-4 bg-[#0E1015]">
           <div className="flex items-center gap-3 min-w-0">

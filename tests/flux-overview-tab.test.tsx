@@ -62,10 +62,23 @@ describe("FluxOverviewTab Enhancements", () => {
     expect(html).toContain("w-10 h-10 rounded-full");
   });
 
-  it("renders subtle gradient on the info cards matching welcome card", () => {
+  it("does not render the welcome back box", () => {
     const html = renderToStaticMarkup(React.createElement(FluxOverviewTab, defaultProps));
-    // Verify subtle gradient background on the card boxes
-    expect(html).toContain("bg-gradient-to-r from-[#12141A] via-[#161B22] to-[#12141A]");
+    expect(html).not.toContain("Welcome back");
+  });
+
+  it("renders subtle gradient with sheen on the right on info cards and trajectory card", () => {
+    const html = renderToStaticMarkup(React.createElement(FluxOverviewTab, defaultProps));
+    // Verify subtle gradient background has sheen on the right, not in the middle
+    expect(html).toContain("bg-gradient-to-r from-[#12141A] to-[#161B22]");
+    expect(html).not.toContain("via-[#161B22]");
+  });
+
+  it("renders left-to-right progressive reveal clip path for Weekly Sales Trajectory graph", () => {
+    const html = renderToStaticMarkup(React.createElement(FluxOverviewTab, defaultProps));
+    expect(html).toContain('id="fluxChartReveal"');
+    expect(html).toContain('url(#fluxChartReveal)');
+    expect(html).toContain("1.25s cubic-bezier(0.16, 1, 0.3, 1)");
   });
 
   it("renders pure line graph without bar graph elements", () => {
@@ -103,8 +116,22 @@ describe("FluxOverviewTab Enhancements", () => {
     expect(html).toContain("left:50%");
   });
 
-  it("renders faint page load animation classes", () => {
+  it("renders faint page load animation classes and Flux animation system", () => {
     const html = renderToStaticMarkup(React.createElement(FluxOverviewTab, defaultProps));
     expect(html).toContain("animate-in fade-in slide-in-from-bottom-2 duration-700");
+    expect(html).toContain("flux-animate-fade");
+    expect(html).toContain("flux-animate-slide-up");
+    expect(html).toContain("flux-card-hover");
+  });
+
+  it("removes featured catalog items and aligns low stock warning with recent orders and pipeline", () => {
+    const html = renderToStaticMarkup(React.createElement(FluxOverviewTab, defaultProps));
+    // Verify Featured Catalog Items is completely removed
+    expect(html).not.toContain("Featured Catalog Items");
+    // Verify Low Stock Warning is present and aligned with matching container
+    expect(html).toContain("Low Stock Warning");
+    // Verify Recent Orders, Pipeline, and Low Stock Warning share the matching card styling
+    expect(html).toContain("Order Fulfillment Pipeline");
+    expect(html).toContain("Recent Orders");
   });
 });

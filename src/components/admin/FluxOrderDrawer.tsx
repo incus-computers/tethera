@@ -27,6 +27,7 @@ import {
   WORKFLOW_STAGES,
   getWorkflowStageIndex,
   getNextWorkflowStep,
+  canDispatchOrder,
 } from "@/lib/utils/orderWorkflow";
 import { getStatusBadge } from "./FluxOverviewTab";
 
@@ -66,13 +67,13 @@ export function FluxOrderDrawer({
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity flux-animate-fade"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Drawer Body */}
-      <div className="relative w-full max-w-xl h-full bg-[#12141A] border-l border-white/10 shadow-2xl flex flex-col z-10 text-slate-100 animate-in slide-in-from-right duration-300">
+      <div className="relative w-full max-w-xl h-full bg-[#12141A] border-l border-white/10 shadow-2xl flex flex-col z-10 text-slate-100 flux-animate-slide-right">
         {/* Header */}
         <div className="p-5 border-b border-white/10 flex items-center justify-between gap-4 bg-[#0E1015]">
           <div className="min-w-0">
@@ -372,17 +373,19 @@ export function FluxOrderDrawer({
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                onOpenDispatchModal(order);
-                onClose();
-              }}
-              className="min-h-[44px] px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold inline-flex items-center gap-2 border border-white/10 transition-all active:scale-95"
-            >
-              <Truck className="w-4 h-4 text-[#37baf2]" />
-              <span>Dispatch</span>
-            </button>
+            {canDispatchOrder(order.status) && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenDispatchModal(order);
+                  onClose();
+                }}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold inline-flex items-center gap-2 border border-white/10 transition-all active:scale-95"
+              >
+                <Truck className="w-4 h-4 text-[#37baf2]" />
+                <span>Find Courier</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

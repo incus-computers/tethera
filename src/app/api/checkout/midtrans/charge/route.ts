@@ -7,12 +7,23 @@ import { sendOrderNotificationEmail, sendInvoiceEmail } from "@/lib/notification
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { orderId, orderNumber, paymentChannel, amount } = body;
+    const { orderId, orderNumber, paymentChannel } = body;
 
-    if (!orderId || !orderNumber) {
+    if (!orderId && !orderNumber) {
       return NextResponse.json(
-        { error: "orderId and orderNumber are required" },
+        { error: "orderId or orderNumber is required" },
         { status: 400 }
+      );
+    }
+
+    const order = orderId
+      ? await db.orders.findById(orderId)
+      : await db.orders.findByOrderNumber(orderNumber);
+
+    if (!order) {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
       );
     }
 
@@ -20,23 +31,26 @@ export async function POST(req: NextRequest) {
     const method = MIDTRANS_PAYMENT_METHODS.find((m) => m.id === channel);
     const channelName = method?.name || "Midtrans Instant Pay";
 
-    // 1. Generate authentic Midtrans Payment ID and Details
-    const paymentDetails = generateMidtransPaymentDetails(orderNumber, channel, amount);
+    // 1. Generate authentic Midtrans Payment ID and Details using server-verified order total
+    const paymentDetails = generateMidtransPaymentDetails(
+      order.order_number,
+      channel,
+      order.total
+    );
     const paymentReference = paymentDetails.paymentId;
 
     // 2. Process stock reservation & transition order state
-    const rpcResult = await db.orders.processPaymentSuccess(orderId, paymentReference);
+    const rpcResult = await db.orders.processPaymentSuccess(order.id, paymentReference);
 
     // 3. Update order with payment method details
-    const order = await db.orders.findById(orderId);
-    if (order) {
-      await db.orders.update(orderId, {
-        payment_method: `${channelName} (Midtrans)`,
-        payment_reference: paymentReference,
-        status: "order_accepted",
-        paid_at: new Date().toISOString(),
-      });
-    }
+    const updatedOrder = await db.orders.update(order.id, {
+      payment_method: `${channelName} (Midtrans)`,
+      payment_reference: paymentReference,
+      status: rpcResult.status as any || order.status,
+      paid_at: new Date().toISOString(),
+    });
+
+    const activeOrder = updatedOrder || order;
 
     // 4. Send dual WhatsApp & Email notifications
     try {

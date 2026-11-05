@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { verifyAdminClearance } from "@/lib/auth/adminAuth";
+import { requireAdminPermission } from "@/lib/auth/rbac";
+import { FLAGSHIP_STORE_ID } from "@/lib/db/repositories/stores.repository";
 
 export const dynamic = "force-dynamic";
 
 // GET: Fetch all products with inventory levels for admin
 export async function GET(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "admin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 401 });
+    const perm = requireAdminPermission(req, "products:read");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
     }
 
     const products = await db.products.findMany();
@@ -34,12 +35,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Add new product (SUPERADMIN ONLY)
+// POST: Add new product (requires products:write permission)
 export async function POST(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+    const perm = requireAdminPermission(req, "products:write");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
     }
 
     const body = await req.json();
@@ -91,9 +92,23 @@ export async function POST(req: NextRequest) {
     const stockCount = Number(initial_stock) || 10;
     await db.inventory.updateOnHandStock(prodId, stockCount);
 
+    // Record immutable audit log
+    await db.auditLogs.log({
+      actor_id: perm.user?.id || "unknown",
+      actor_name: perm.user?.name || "Staff Admin",
+      role: perm.user?.role || "ADMIN",
+      action: "PRODUCT_CREATED",
+      entity_type: "product",
+      entity_id: prodId,
+      before_state: null,
+      after_state: { sku, name, retail_price: Number(retail_price), initial_stock: stockCount },
+      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
+      user_agent: req.headers.get("user-agent") || undefined,
+    });
+
     return NextResponse.json({
       success: true,
-      message: `Product '${createdProduct.name}' created successfully by Superadmin.`,
+      message: `Product '${createdProduct.name}' created successfully.`,
       product: {
         ...createdProduct,
         stock_on_hand: stockCount,
@@ -107,12 +122,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT: Update any element of a product (ADMIN & SUPERADMIN)
+// PUT: Update any element of a product (requires products:write permission)
 export async function PUT(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "admin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 401 });
+    const perm = requireAdminPermission(req, "products:write");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
     }
 
     const body = await req.json();
@@ -121,6 +136,9 @@ export async function PUT(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ success: false, error: "Product ID is required." }, { status: 400 });
     }
+
+    // Capture before state for immutable audit log
+    const existingProduct = await db.products.findById(id);
 
     // Map category to pc_builder_slot if category_slug is updated
     if (updates.category_slug && !updates.pc_builder_slot) {
@@ -139,15 +157,38 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    // Update product fields (name, description, price, specs, images, category, etc.)
+    // Update product fields
     const updatedProduct = await db.products.update(id, updates);
 
     // If stock_on_hand was updated, synchronize with store_inventory
     if (stock_on_hand !== undefined) {
-      await db.inventory.updateOnHandStock(id, Number(stock_on_hand));
+      await db.inventory.updateOnHandStock(
+        id,
+        Number(stock_on_hand),
+        FLAGSHIP_STORE_ID,
+        {
+          reasonCode: body.stock_adjustment_reason || body.reason_code,
+          actorId: perm.user?.id,
+          notes: body.notes || "Admin product catalog stock update",
+        }
+      );
     }
 
     const currentInv = await db.inventory.getByProductAndStore(id);
+
+    // Record immutable audit log
+    await db.auditLogs.log({
+      actor_id: perm.user?.id || "unknown",
+      actor_name: perm.user?.name || "Staff Admin",
+      role: perm.user?.role || "ADMIN",
+      action: "PRODUCT_UPDATED",
+      entity_type: "product",
+      entity_id: id,
+      before_state: existingProduct ? { retail_price: existingProduct.retail_price, sale_price: existingProduct.sale_price, is_active: existingProduct.is_active } : null,
+      after_state: { ...updates, stock_on_hand },
+      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
+      user_agent: req.headers.get("user-agent") || undefined,
+    });
 
     return NextResponse.json({
       success: true,
@@ -165,12 +206,12 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE: Delete product (SUPERADMIN ONLY)
+// DELETE: Delete product (requires products:delete permission)
 export async function DELETE(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+    const perm = requireAdminPermission(req, "products:delete");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -180,10 +221,26 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Product ID is required." }, { status: 400 });
     }
 
+    const existingProduct = await db.products.findById(id);
     const success = await db.products.delete(id);
+
+    // Record immutable audit log
+    await db.auditLogs.log({
+      actor_id: perm.user?.id || "unknown",
+      actor_name: perm.user?.name || "Staff Admin",
+      role: perm.user?.role || "ADMIN",
+      action: "PRODUCT_DELETED",
+      entity_type: "product",
+      entity_id: id,
+      before_state: existingProduct ? { name: existingProduct.name, sku: existingProduct.sku } : null,
+      after_state: null,
+      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
+      user_agent: req.headers.get("user-agent") || undefined,
+    });
+
     return NextResponse.json({
       success,
-      message: `Product '${id}' successfully removed by Superadmin.`,
+      message: `Product '${id}' successfully removed.`,
     });
   } catch (error: any) {
     console.error("[ADMIN PRODUCTS DELETE ERROR]:", error);

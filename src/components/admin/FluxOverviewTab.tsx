@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import {
   DollarSign,
   ShoppingBag,
@@ -23,7 +23,6 @@ import {
 import { formatRupiah } from "@/lib/utils/currency";
 import { getNextWorkflowStep } from "@/lib/utils/orderWorkflow";
 import { AdminTab } from "./AdminSidebar";
-import { getProductPrimaryImage } from "./FluxProductsTab";
 
 interface FluxOverviewTabProps {
   orders: any[];
@@ -115,6 +114,13 @@ export function getStatusBadge(status: string) {
         label: "Processing",
         dotColor: "bg-amber-400",
         classes: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+      };
+    case "courier_failed":
+    case "courier_rejected":
+      return {
+        label: s === "courier_rejected" ? "Courier Rejected" : "Courier Failed",
+        dotColor: "bg-rose-400",
+        classes: "bg-rose-500/10 text-rose-400 border-rose-500/20",
       };
     case "cancelled":
     case "refunded":
@@ -363,13 +369,6 @@ export function FluxOverviewTab({
       .slice(0, 5);
   }, [orders]);
 
-  // Top 5 Products by Sales / Stock
-  const topProducts = useMemo(() => {
-    return [...products]
-      .sort((a, b) => (b.retail_price || b.price || 0) - (a.retail_price || a.price || 0))
-      .slice(0, 5);
-  }, [products]);
-
   // Calculate SVG Graph Coordinates
   const chartPoints = useMemo(() => {
     const list = weeklyMetrics.dailyBreakdown;
@@ -407,56 +406,12 @@ export function FluxOverviewTab({
     <div
       className={`space-y-6 sm:space-y-8 transition-opacity duration-700 ${
         isLoaded ? "opacity-100" : "opacity-0"
-      } animate-in fade-in slide-in-from-bottom-2 duration-700 ease-out fill-mode-both`}
+      } animate-in fade-in slide-in-from-bottom-2 duration-700 ease-out fill-mode-both flux-animate-fade flux-animate-slide-up`}
     >
-      {/* Top Welcome Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#12141A] via-[#161B22] to-[#12141A] border border-white/10 p-6 sm:p-8 shadow-xl">
-        <div
-          className="absolute -right-16 -top-16 w-64 h-64 bg-[#37baf2]/15 blur-3xl rounded-full pointer-events-none"
-          aria-hidden="true"
-        />
-
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#37baf2]/10 border border-[#37baf2]/25 text-[11px] font-bold text-[#37baf2]">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Incus Hardware Operations</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Welcome back, {user?.name || "Administrator"}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-xl font-normal">
-              Store operations are active. Review pending order fulfillments, track inventory
-              velocity, and monitor daily revenue streams below.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={onOpenNewProductModal}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] text-xs font-bold inline-flex items-center gap-2 shadow-md shadow-[#37baf2]/20 transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Add Product</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigateTab("orders")}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold border border-white/10 inline-flex items-center gap-2 transition-colors"
-            >
-              <span>Manage Orders</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 4 Flux Metric Stat Cards with Subtle Gradient (Matching Welcome Card) & Circular Logo Containers */}
+      {/* 4 Flux Metric Stat Cards with Subtle Gradient Sheen on the Right & Circular Logo Containers */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* Card 1: Weekly Revenue */}
-        <div className="bg-gradient-to-r from-[#12141A] via-[#161B22] to-[#12141A] rounded-2xl p-5 border border-white/10 relative overflow-hidden group hover:border-white/20 transition-all duration-300 shadow-lg">
+        <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl p-5 border border-white/10 relative overflow-hidden group flux-card-hover flux-animate-slide-up flux-delay-1 shadow-lg">
           <div className="flex items-center justify-between gap-3 mb-3 relative z-10">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
@@ -493,7 +448,7 @@ export function FluxOverviewTab({
         </div>
 
         {/* Card 2: Orders Total & Volume */}
-        <div className="bg-gradient-to-r from-[#12141A] via-[#161B22] to-[#12141A] rounded-2xl p-5 border border-white/10 relative overflow-hidden group hover:border-white/20 transition-all duration-300 shadow-lg">
+        <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl p-5 border border-white/10 relative overflow-hidden group flux-card-hover flux-animate-slide-up flux-delay-2 shadow-lg">
           <div className="flex items-center justify-between gap-3 mb-3 relative z-10">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
@@ -521,7 +476,7 @@ export function FluxOverviewTab({
         </div>
 
         {/* Card 3: Average Order Value */}
-        <div className="bg-gradient-to-r from-[#12141A] via-[#161B22] to-[#12141A] rounded-2xl p-5 border border-white/10 relative overflow-hidden group hover:border-white/20 transition-all duration-300 shadow-lg">
+        <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl p-5 border border-white/10 relative overflow-hidden group flux-card-hover flux-animate-slide-up flux-delay-3 shadow-lg">
           <div className="flex items-center justify-between gap-3 mb-3 relative z-10">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
@@ -543,7 +498,7 @@ export function FluxOverviewTab({
         </div>
 
         {/* Card 4: Catalog & Low Stock */}
-        <div className="bg-gradient-to-r from-[#12141A] via-[#161B22] to-[#12141A] rounded-2xl p-5 border border-white/10 relative overflow-hidden group hover:border-white/20 transition-all duration-300 shadow-lg">
+        <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl p-5 border border-white/10 relative overflow-hidden group flux-card-hover flux-animate-slide-up flux-delay-4 shadow-lg">
           <div className="flex items-center justify-between gap-3 mb-3 relative z-10">
             <div className="space-y-0.5">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
@@ -572,8 +527,8 @@ export function FluxOverviewTab({
         </div>
       </div>
 
-      {/* Sales Trajectory Line Graph Card (Pure Line Graph, No Bar Graph, Subtle Gradient) */}
-      <div className="bg-gradient-to-r from-[#12141A] via-[#161B22] to-[#12141A] rounded-2xl border border-white/10 p-5 sm:p-6 shadow-xl relative overflow-hidden group hover:border-white/20 transition-all duration-300 space-y-4">
+      {/* Sales Trajectory Line Graph Card (Pure Line Graph, No Bar Graph, Sheen on Right) */}
+      <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl border border-white/10 p-5 sm:p-6 shadow-xl relative overflow-hidden group flux-card-hover flux-animate-slide-up flux-delay-5 space-y-4">
         {/* Graph Header: Unboxed stats with no containers */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4 relative z-10">
           <div className="flex items-center gap-3">
@@ -645,9 +600,23 @@ export function FluxOverviewTab({
             >
               <defs>
                 <linearGradient id="fluxSalesAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#37baf2" stopOpacity="0.18" />
+                  <stop offset="0%" stopColor="#37baf2" stopOpacity="0.22" />
+                  <stop offset="60%" stopColor="#37baf2" stopOpacity="0.06" />
                   <stop offset="100%" stopColor="#37baf2" stopOpacity="0.0" />
                 </linearGradient>
+
+                {/* Left-to-Right Progressive Reveal Clip Path */}
+                <clipPath id="fluxChartReveal">
+                  <rect
+                    x="0"
+                    y="0"
+                    width={isLoaded ? "700" : "0"}
+                    height="180"
+                    style={{
+                      transition: "width 1.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                    }}
+                  />
+                </clipPath>
               </defs>
 
               {/* Faint Horizontal Guide Lines */}
@@ -675,29 +644,29 @@ export function FluxOverviewTab({
                 stroke="rgba(255,255,255,0.08)"
               />
 
-              {/* Area Under Curve Fill */}
-              <path
-                d={chartAreaPath}
-                fill="url(#fluxSalesAreaGrad)"
-                className={`transition-opacity duration-1000 ${
-                  isLoaded ? "opacity-100" : "opacity-0"
-                }`}
-              />
+              {/* Left-to-Right Animated Trajectory Group */}
+              <g clipPath="url(#fluxChartReveal)">
+                {/* Area Under Curve Fill */}
+                <path
+                  d={chartAreaPath}
+                  fill="url(#fluxSalesAreaGrad)"
+                />
 
-              {/* Animated Trend Stroke Line */}
-              <path
-                d={chartLinePath}
-                fill="none"
-                stroke="#37baf2"
-                strokeWidth="2.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray="1400"
-                strokeDashoffset={isLoaded ? "0" : "1400"}
-                style={{
-                  transition: "stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                }}
-              />
+                {/* Animated Trend Stroke Line Drawing from Left to Right */}
+                <path
+                  d={chartLinePath}
+                  fill="none"
+                  stroke="#37baf2"
+                  strokeWidth="2.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="900"
+                  strokeDashoffset={isLoaded ? "0" : "900"}
+                  style={{
+                    transition: "stroke-dashoffset 1.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                  }}
+                />
+              </g>
 
               {/* Hover Indicator Vertical Line */}
               {hoveredDayIndex !== null && chartPoints[hoveredDayIndex] && (
@@ -721,11 +690,14 @@ export function FluxOverviewTab({
                 return (
                   <div
                     key={pt.dateStr}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300 pointer-events-auto"
+                    className="absolute pointer-events-auto"
                     style={{
                       left: `${pt.leftPct}%`,
                       top: `${pt.topPct}%`,
                       opacity: isLoaded ? 1 : 0,
+                      transform: `translate(-50%, -50%) scale(${isLoaded ? 1 : 0.4})`,
+                      transition: "opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+                      transitionDelay: isLoaded ? `${idx * 130 + 120}ms` : "0ms",
                     }}
                   >
                     <button
@@ -784,253 +756,271 @@ export function FluxOverviewTab({
         </div>
       </div>
 
-      {/* 2-Column Responsive Section: Recent Orders & Top Selling / Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Recent Orders Table (8 cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="bg-[#12141A] rounded-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-4">
-            <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-4">
-              <div>
-                <h2 className="text-base font-bold text-white tracking-tight">
-                  Recent Orders
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Latest customer purchases requiring tracking or dispatch
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onNavigateTab("orders")}
-                className="text-xs text-[#37baf2] hover:text-[#52c6f5] font-semibold inline-flex items-center gap-1 transition-colors min-h-[44px]"
-              >
-                <span>View All ({orders.length})</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+      {/* Harmonics Operations Layout: Recent Orders, Order Fulfillment Pipeline, Low Stock Warning */}
+      <div className="space-y-6">
+        {/* Section 1: Recent Orders */}
+        <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-4 flux-card-hover flux-animate-slide-up flux-delay-5">
+          <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-4">
+            <div>
+              <h2 className="text-base font-bold text-white tracking-tight">
+                Recent Orders
+              </h2>
+              <p className="text-xs text-slate-400">
+                Latest customer purchases requiring tracking or dispatch
+              </p>
             </div>
 
-            {recentOrders.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                No orders recorded yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto -mx-5 sm:mx-0">
-                <table className="w-full text-left border-collapse min-w-[540px]">
-                  <thead>
-                    <tr className="border-b border-white/5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                      <th className="py-2.5 px-3">Order ID</th>
-                      <th className="py-2.5 px-3">Customer</th>
-                      <th className="py-2.5 px-3">Status</th>
-                      <th className="py-2.5 px-3 text-right">Total</th>
-                      <th className="py-2.5 px-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-xs">
-                    {recentOrders.map((order) => {
-                      const badge = getStatusBadge(order.status);
-                      const nextStep = getNextWorkflowStep(order.status);
-                      const totalVal = Number(order.total ?? order.total_amount ?? order.totalPrice) || 0;
-                      const customerName =
-                        order.customer_name ||
-                        order.shipping_address?.full_name ||
-                        order.user?.name ||
-                        "Customer";
-
-                      return (
-                        <tr
-                          key={order.id}
-                          className="hover:bg-white/[0.02] transition-colors group"
-                        >
-                          <td className="py-3 px-3 font-medium text-slate-300">
-                            #{String(order.id).slice(-8)}
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="font-semibold text-white">{customerName}</div>
-                            <div className="text-[10px] text-slate-400">
-                              {order.shipping_city || "Jakarta"}
-                            </div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badge.classes}`}
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${badge.dotColor}`}
-                              />
-                              <span>{badge.label}</span>
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right font-bold text-white">
-                            {formatRupiah(totalVal)}
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {onUpdateStatus && nextStep && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateStatus(order.id, nextStep.nextStatus)}
-                                  className="min-h-[44px] px-2.5 py-1 rounded-lg bg-[#37baf2]/10 hover:bg-[#37baf2] text-[#37baf2] hover:text-[#0A0B0E] border border-[#37baf2]/30 text-xs font-bold inline-flex items-center gap-1 transition-all"
-                                  title={`Advance to ${nextStep.nextStatus}`}
-                                >
-                                  <span>{nextStep.nextActionLabel}</span>
-                                  <ArrowRight className="w-3 h-3" />
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => onInspectOrder(order)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-white/5"
-                                title="Inspect Order"
-                                aria-label={`Inspect Order ${order.id}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => onNavigateTab("orders")}
+              className="text-xs text-[#37baf2] hover:text-[#52c6f5] font-semibold inline-flex items-center gap-1 transition-colors min-h-[44px] flux-interactive-btn"
+            >
+              <span>View All ({orders.length})</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* Fulfillment Pipeline Breakdown */}
-          <div className="bg-[#12141A] rounded-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-4">
+          {recentOrders.length === 0 ? (
+            <div className="py-12 text-center text-slate-400 text-xs">
+              No orders recorded yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-5 sm:mx-0">
+              <table className="w-full text-left border-collapse min-w-[540px]">
+                <thead>
+                  <tr className="border-b border-white/5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <th className="py-2.5 px-3">Order ID</th>
+                    <th className="py-2.5 px-3">Customer</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Total</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-xs">
+                  {recentOrders.map((order) => {
+                    const badge = getStatusBadge(order.status);
+                    const nextStep = getNextWorkflowStep(order.status);
+                    const totalVal = Number(order.total ?? order.total_amount ?? order.totalPrice) || 0;
+                    const customerName =
+                      order.customer_name ||
+                      order.shipping_address?.full_name ||
+                      order.user?.name ||
+                      "Customer";
+
+                    return (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-white/[0.02] transition-colors group flux-table-row"
+                      >
+                        <td className="py-3 px-3 font-medium text-slate-300">
+                          #{String(order.id).slice(-8)}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-white">{customerName}</div>
+                          <div className="text-[10px] text-slate-400">
+                            {order.shipping_city || "Jakarta"}
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badge.classes}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${badge.dotColor}`}
+                            />
+                            <span>{badge.label}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right font-bold text-white">
+                          {formatRupiah(totalVal)}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {onUpdateStatus && nextStep && (
+                              <button
+                                type="button"
+                                onClick={() => onUpdateStatus(order.id, nextStep.nextStatus)}
+                                className="min-h-[44px] px-2.5 py-1 rounded-lg bg-[#37baf2]/10 hover:bg-[#37baf2] text-[#37baf2] hover:text-[#0A0B0E] border border-[#37baf2]/30 text-xs font-bold inline-flex items-center gap-1 transition-all flux-interactive-btn"
+                                title={`Advance to ${nextStep.nextStatus}`}
+                              >
+                                <span>{nextStep.nextActionLabel}</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onInspectOrder(order)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center border border-white/5 flux-interactive-btn"
+                              title="Inspect Order"
+                              aria-label={`Inspect Order ${order.id}`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Section 2: Fulfillment Pipeline Breakdown */}
+        <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-4 flux-card-hover flux-animate-slide-up flux-delay-5">
+          <div className="border-b border-white/5 pb-3">
             <h2 className="text-base font-bold text-white tracking-tight">
               Order Fulfillment Pipeline
             </h2>
+            <p className="text-xs text-slate-400">
+              Live status distribution across customer order lifecycle stages
+            </p>
+          </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="text-[11px] font-semibold text-slate-400">Processing</div>
-                <div className="text-lg font-bold text-amber-400 mt-1">
-                  {metrics.processingOrders}
-                </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flux-card-hover">
+              <div className="text-[11px] font-semibold text-slate-400">Processing</div>
+              <div className="text-xl font-bold text-amber-400 mt-1">
+                {metrics.processingOrders}
               </div>
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="text-[11px] font-semibold text-slate-400">Shipped</div>
-                <div className="text-lg font-bold text-[#37baf2] mt-1">
-                  {metrics.shippedOrders}
-                </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flux-card-hover">
+              <div className="text-[11px] font-semibold text-slate-400">Shipped</div>
+              <div className="text-xl font-bold text-[#37baf2] mt-1">
+                {metrics.shippedOrders}
               </div>
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="text-[11px] font-semibold text-slate-400">Delivered</div>
-                <div className="text-lg font-bold text-emerald-400 mt-1">
-                  {metrics.deliveredOrders}
-                </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flux-card-hover">
+              <div className="text-[11px] font-semibold text-slate-400">Delivered</div>
+              <div className="text-xl font-bold text-emerald-400 mt-1">
+                {metrics.deliveredOrders}
               </div>
-              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <div className="text-[11px] font-semibold text-slate-400">Pending / Other</div>
-                <div className="text-lg font-bold text-slate-300 mt-1">
-                  {metrics.pendingOrders}
-                </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 flux-card-hover">
+              <div className="text-[11px] font-semibold text-slate-400">Pending / Other</div>
+              <div className="text-xl font-bold text-slate-300 mt-1">
+                {metrics.pendingOrders}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Top Products & Low Stock Alerts (4 cols) */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Low Stock Alerts */}
-          {metrics.lowStockItems.length > 0 && (
-            <div className="bg-[#12141A] rounded-2xl border border-amber-500/30 p-5 shadow-xl space-y-3">
-              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wide">
-                <AlertTriangle className="w-4 h-4" />
-                <span>Low Stock Warning ({metrics.lowStockItems.length})</span>
+        {/* Section 3: Low Stock Warning (Aligned to match Recent Orders & Fulfillment Pipeline) */}
+        <div className="bg-gradient-to-r from-[#12141A] to-[#161B22] rounded-2xl border border-white/10 p-5 sm:p-6 shadow-xl space-y-4 flux-card-hover flux-animate-slide-up flux-delay-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+                <AlertTriangle className="w-5 h-5" />
               </div>
-              <div className="space-y-2">
-                {metrics.lowStockItems.slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-center justify-between text-xs"
-                  >
-                    <div className="min-w-0 pr-2">
-                      <div className="font-semibold text-white truncate">{item.name}</div>
-                      <div className="text-[10px] text-amber-300 font-medium">
-                        {item.computedStock === 0
-                          ? "Out of stock in warehouse"
-                          : item.outOfStockVar
-                          ? `${item.outOfStockVar.name}: 0 left (${item.computedStock} total)`
-                          : `Only ${item.computedStock} units left`}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onNavigateTab("products")}
-                      className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 font-bold text-xs shrink-0 min-h-[44px] flex items-center transition-colors"
-                    >
-                      Restock
-                    </button>
-                  </div>
-                ))}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-white tracking-tight">
+                    Low Stock Warning ({metrics.lowStockItems.length})
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    {metrics.lowStockItems.length} alerts
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Warehouse hardware items running below replenishment threshold
+                </p>
               </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onNavigateTab("products")}
+              className="text-xs text-[#37baf2] hover:text-[#52c6f5] font-semibold inline-flex items-center gap-1 transition-colors min-h-[44px] flux-interactive-btn self-start sm:self-auto"
+            >
+              <span>Manage Hardware Catalog</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {metrics.lowStockItems.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
+              <CheckCircle2 className="w-8 h-8 text-emerald-400 opacity-90" />
+              <div className="text-sm font-semibold text-white">All inventory levels healthy</div>
+              <p className="text-xs text-slate-400 max-w-sm">
+                No warehouse products are currently running below their minimum replenishment threshold.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-5 sm:mx-0">
+              <table className="w-full text-left border-collapse min-w-[540px]">
+                <thead>
+                  <tr className="border-b border-white/5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <th className="py-2.5 px-3">Product / Hardware</th>
+                    <th className="py-2.5 px-3">Category</th>
+                    <th className="py-2.5 px-3">Stock Available</th>
+                    <th className="py-2.5 px-3">Severity</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-xs">
+                  {metrics.lowStockItems.slice(0, 5).map((item) => {
+                    const isZero = item.computedStock === 0;
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-white/[0.02] transition-colors group flux-table-row"
+                      >
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-white truncate max-w-xs sm:max-w-md">
+                            {item.name}
+                          </div>
+                          {item.sku && (
+                            <div className="text-[10px] text-slate-400">{item.sku}</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-slate-300">
+                          {item.category || "Hardware"}
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-white">
+                          {isZero ? (
+                            <span className="text-rose-400 font-bold">0 units left</span>
+                          ) : item.outOfStockVar ? (
+                            <span className="text-amber-300">
+                              {item.outOfStockVar.name}: 0 left ({item.computedStock} total)
+                            </span>
+                          ) : (
+                            <span className="text-amber-300">Only {item.computedStock} units left</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                              isZero
+                                ? "bg-rose-500/10 text-rose-300 border-rose-500/20"
+                                : "bg-amber-500/10 text-amber-300 border-amber-500/20"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isZero ? "bg-rose-400" : "bg-amber-400"
+                              }`}
+                            />
+                            <span>{isZero ? "Critical Out of Stock" : "Low Stock"}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => onNavigateTab("products")}
+                            className="min-h-[44px] px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold inline-flex items-center gap-1 transition-all flux-interactive-btn"
+                          >
+                            <span>Restock</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
-
-          {/* Top Value Products */}
-          <div className="bg-[#12141A] rounded-2xl border border-white/10 p-5 shadow-xl space-y-4">
-            <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-3">
-              <h2 className="text-sm font-bold text-white tracking-tight">
-                Featured Catalog Items
-              </h2>
-              <button
-                type="button"
-                onClick={() => onNavigateTab("products")}
-                className="text-xs text-[#37baf2] hover:text-[#52c6f5] font-semibold"
-              >
-                All
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {topProducts.map((prod) => {
-                const prodImg = getProductPrimaryImage(prod);
-                const prodPrice = Number(prod.retail_price ?? prod.price) || 0;
-                const prodStock =
-                  prod.stock_available !== undefined
-                    ? Number(prod.stock_available)
-                    : prod.stock_on_hand !== undefined
-                    ? Number(prod.stock_on_hand)
-                    : prod.stockCount !== undefined
-                    ? Number(prod.stockCount)
-                    : Number(prod.stock ?? 10);
-
-                return (
-                  <div
-                    key={prod.id}
-                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/[0.02] transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 relative overflow-hidden shrink-0 flex items-center justify-center">
-                      {prodImg ? (
-                        <Image
-                          src={prodImg}
-                          alt={prod.name}
-                          fill
-                          className="object-cover"
-                          sizes="40px"
-                        />
-                      ) : (
-                        <Package className="w-5 h-5 text-slate-500" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold text-white truncate">
-                        {prod.name}
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {formatRupiah(prodPrice)}
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-slate-300 border border-white/10 shrink-0">
-                      Stock: {prodStock}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </div>
     </div>

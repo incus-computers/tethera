@@ -23,6 +23,10 @@ export type OrderStatus =
   | "ready_for_pickup"
   | "collected"
   | "shipped"
+  | "partially_fulfilled"
+  | "partially_refunded"
+  | "courier_failed"
+  | "courier_rejected"
   | "cancelled"
   | "refunded";
 
@@ -241,6 +245,172 @@ export interface OrderItem {
   quantity: number;
   unit_price: number;
   is_custom_build: boolean;
+  variant_id?: string | null;
+  product_title_snapshot?: string | null;
+  sku_snapshot?: string | null;
+  variant_title_snapshot?: string | null;
+  unit_cost_snapshot?: number | null;
+  tax_rate_snapshot?: number | null;
+  tax_amount_snapshot?: number | null;
+}
+
+// 7b. Product Variants Table
+export interface ProductVariantRow {
+  id: string;
+  product_id: string;
+  sku: string;
+  name: string;
+  attribute_type: string;
+  attribute_value: string;
+  price: number;
+  sale_price?: number | null;
+  stock_quantity: number;
+  reserved_quantity: number;
+  weight_grams?: number;
+  image_url?: string | null;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 7c. Persistent Hybrid Cart & Cart Items Table
+export interface Cart {
+  id: string;
+  user_id?: string | null;
+  anonymous_session_token?: string | null;
+  status: "active" | "merged" | "abandoned" | "converted";
+  expires_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CartItemRow {
+  id: string;
+  cart_id: string;
+  product_id?: string | null;
+  variant_id?: string | null;
+  custom_build_id?: string | null;
+  quantity: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 7d. Inventory Reservations Table
+export interface InventoryReservationRow {
+  id: string;
+  order_id: string;
+  product_id: string;
+  variant_id?: string | null;
+  store_id: string;
+  quantity: number;
+  status: "reserved" | "settled" | "released";
+  expires_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 7e. Multi-Carrier Fulfillment Table
+export interface FulfillmentRow {
+  id: string;
+  order_id: string;
+  fulfillment_number: string;
+  carrier: string;
+  service_code: string;
+  waybill_id?: string | null;
+  tracking_url?: string | null;
+  status: "pending" | "processing" | "shipped" | "in_transit" | "delivered" | "failed" | "cancelled";
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  dispatched_by?: string | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FulfillmentItemRow {
+  id: string;
+  fulfillment_id: string;
+  order_item_id: string;
+  quantity: number;
+}
+
+// 7f. Returns (RMA) & Refunds Table
+export interface ReturnRequestRow {
+  id: string;
+  rma_number: string;
+  order_id: string;
+  customer_id?: string | null;
+  customer_email: string;
+  status: "requested" | "approved" | "item_received" | "inspected" | "rejected" | "completed";
+  reason: string;
+  customer_notes?: string | null;
+  admin_notes?: string | null;
+  photos?: string[];
+  requested_at: string;
+  inspected_at?: string | null;
+  resolved_at?: string | null;
+  handled_by?: string | null;
+}
+
+export interface RefundRow {
+  id: string;
+  refund_number: string;
+  order_id: string;
+  return_request_id?: string | null;
+  amount: number;
+  currency: string;
+  gateway_refund_id?: string | null;
+  restock_inventory: boolean;
+  reason: string;
+  processed_by: string;
+  status: "pending" | "completed" | "failed";
+  created_at?: string;
+}
+
+// 7g. Inventory Adjustment Ledger Table
+export interface InventoryAdjustmentLedgerRow {
+  id: string;
+  product_id: string;
+  variant_id?: string | null;
+  store_id: string;
+  delta_quantity: number;
+  previous_stock: number;
+  new_stock: number;
+  reason_code: "SALE" | "RESTOCK" | "RETURN" | "DAMAGE" | "MANUAL_AUDIT" | "CANCELLED_ORDER";
+  reference_order_id?: string | null;
+  actor_id: string;
+  notes?: string | null;
+  created_at?: string;
+}
+
+// 7h. Granular RBAC & Staff Audit Logs Table
+export type AdminRole = "SUPER_ADMIN" | "CATALOG_MANAGER" | "FULFILLMENT_OPERATOR" | "SUPPORT_AGENT";
+
+export interface AdminUserRow {
+  id: string;
+  user_id?: string | null;
+  email: string;
+  name: string;
+  role: AdminRole;
+  is_active: boolean;
+  last_login_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AdminAuditLogRow {
+  id: string;
+  actor_id: string;
+  actor_name: string;
+  role: string;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  before_state?: Record<string, any> | null;
+  after_state?: Record<string, any> | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at?: string;
 }
 
 // 8. Customer Profiles Table

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { verifyAdminClearance } from "@/lib/auth/adminAuth";
+import { requireAdminPermission } from "@/lib/auth/rbac";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "admin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 401 });
+    const perm = requireAdminPermission(req, "promotions:read");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
     }
 
     const promotions = await db.promotions.findMany();
@@ -18,12 +18,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: Create promotion (SUPERADMIN ONLY)
+// POST: Create promotion (requires promotions:write permission)
 export async function POST(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+    const perm = requireAdminPermission(req, "promotions:write");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
     }
 
     const body = await req.json();
@@ -61,9 +61,23 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
     });
 
+    // Record immutable audit log
+    await db.auditLogs.log({
+      actor_id: perm.user?.id || "unknown",
+      actor_name: perm.user?.name || "Staff Admin",
+      role: perm.user?.role || "ADMIN",
+      action: "PROMOTION_CREATED",
+      entity_type: "promotion",
+      entity_id: newPromo.id,
+      before_state: null,
+      after_state: { code: newPromo.code, discount_type, discount_value: Number(discount_value) },
+      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
+      user_agent: req.headers.get("user-agent") || undefined,
+    });
+
     return NextResponse.json({
       success: true,
-      message: `Promotion '${newPromo.code}' created successfully by Superadmin.`,
+      message: `Promotion '${newPromo.code}' created successfully.`,
       promotion: newPromo,
     });
   } catch (error: any) {
@@ -71,12 +85,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT: Update promotion (SUPERADMIN ONLY)
+// PUT: Update promotion (requires promotions:write permission)
 export async function PUT(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+    const perm = requireAdminPermission(req, "promotions:write");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
     }
 
     const body = await req.json();
@@ -86,7 +100,23 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Promotion ID is required." }, { status: 400 });
     }
 
+    const existing = await db.promotions.findById(id);
     const updated = await db.promotions.update(id, updates);
+
+    // Record immutable audit log
+    await db.auditLogs.log({
+      actor_id: perm.user?.id || "unknown",
+      actor_name: perm.user?.name || "Staff Admin",
+      role: perm.user?.role || "ADMIN",
+      action: "PROMOTION_UPDATED",
+      entity_type: "promotion",
+      entity_id: id,
+      before_state: existing ? { code: existing.code, is_active: existing.is_active } : null,
+      after_state: updates,
+      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
+      user_agent: req.headers.get("user-agent") || undefined,
+    });
+
     return NextResponse.json({
       success: true,
       message: "Promotion updated successfully.",
@@ -97,12 +127,12 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE: Delete promotion (SUPERADMIN ONLY)
+// DELETE: Delete promotion (requires promotions:write permission)
 export async function DELETE(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 403 });
+    const perm = requireAdminPermission(req, "promotions:write");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -112,7 +142,23 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Promotion ID is required." }, { status: 400 });
     }
 
+    const existing = await db.promotions.findById(id);
     const success = await db.promotions.delete(id);
+
+    // Record immutable audit log
+    await db.auditLogs.log({
+      actor_id: perm.user?.id || "unknown",
+      actor_name: perm.user?.name || "Staff Admin",
+      role: perm.user?.role || "ADMIN",
+      action: "PROMOTION_DELETED",
+      entity_type: "promotion",
+      entity_id: id,
+      before_state: existing ? { code: existing.code } : null,
+      after_state: null,
+      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
+      user_agent: req.headers.get("user-agent") || undefined,
+    });
+
     return NextResponse.json({
       success,
       message: "Promotion deleted successfully.",

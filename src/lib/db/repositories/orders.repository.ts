@@ -2,6 +2,7 @@ import "server-only";
 import { BaseRepository } from "./base.repository";
 import { Order, OrderItem, CourierDispatchInfo } from "../types";
 import { inventoryRepository } from "./inventory.repository";
+import { FLAGSHIP_STORE_ID } from "./stores.repository";
 
 const INITIAL_SAMPLE_ORDERS: Order[] = [
   {
@@ -391,10 +392,16 @@ export class OrdersRepository extends BaseRepository<Order> {
 
     for (const item of items) {
       if (item.product_id) {
-        const res = await inventoryRepository.reserveStock(item.product_id, item.quantity);
-        if (!res.success) {
-          return { success: false, error: res.error };
-        }
+        await inventoryRepository.deductReservedStock(
+          item.product_id,
+          item.quantity,
+          FLAGSHIP_STORE_ID,
+          {
+            referenceOrderId: orderId,
+            actorId: "midtrans_webhook",
+            notes: `Settled order #${order.order_number}`,
+          }
+        );
         reservedItems.push({ product_id: item.product_id, quantity: item.quantity });
       }
     }
@@ -407,9 +414,10 @@ export class OrdersRepository extends BaseRepository<Order> {
       : "order_accepted";
 
     const pickupCode =
-      order.fulfillment_type === "click_and_collect"
+      order.pickup_code ||
+      (order.fulfillment_type === "click_and_collect"
         ? Math.floor(1000 + Math.random() * 9000).toString()
-        : null;
+        : null);
 
     const updated = await this.update(orderId, {
       status: nextStatus,
@@ -423,6 +431,60 @@ export class OrdersRepository extends BaseRepository<Order> {
       status: updated?.status || nextStatus,
       reservedItems,
     };
+  }
+
+  /**
+   * Cancel order and release any reserved inventory back to available stock.
+   */
+  async cancelOrder(
+    orderId: string,
+    reason: string = "Order cancelled or payment expired."
+  ): Promise<{ success: boolean; order?: Order; error?: string }> {
+    const order = await this.findById(orderId);
+    if (!order) return { success: false, error: "Order not found." };
+    if (order.status === "cancelled") {
+      return { success: true, order };
+    }
+
+    const items = await this.itemsRepository.findMany({ order_id: orderId });
+    const isPaid = Boolean(order.paid_at) || [
+      "paid",
+      "order_accepted",
+      "assembly_in_progress",
+      "testing_bench",
+      "ready_for_dispatch",
+      "ready_for_pickup",
+    ].includes(order.status);
+
+    for (const item of items) {
+      if (item.product_id) {
+        if (isPaid) {
+          const inv = await inventoryRepository.getByProductAndStore(item.product_id);
+          const currentOnHand = inv ? inv.stock_on_hand : 0;
+          await inventoryRepository.updateOnHandStock(
+            item.product_id,
+            currentOnHand + (item.quantity || 1),
+            FLAGSHIP_STORE_ID,
+            {
+              reasonCode: "CANCELLED_ORDER",
+              referenceOrderId: orderId,
+              actorId: "system",
+              notes: `Order cancellation restock: ${reason}`,
+            }
+          );
+        } else {
+          await inventoryRepository.releaseReservedStock(item.product_id, item.quantity);
+        }
+      }
+    }
+
+    const updated = await this.update(orderId, {
+      status: "cancelled",
+      notes: order.notes ? `${order.notes} | ${reason}` : reason,
+      updated_at: new Date().toISOString(),
+    });
+
+    return { success: true, order: updated || undefined };
   }
 }
 

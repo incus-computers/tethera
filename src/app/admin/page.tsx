@@ -1234,7 +1234,10 @@ export default function AdminPortalPage() {
       if (data.success) {
         showToast(data.message);
         setOrders((prev) =>
-          prev.map((o) => (o.id === dispatchModalOrder.id ? data.order : o))
+          prev.map((o) => (o.id === dispatchModalOrder.id ? { ...data.order, status: "dispatched" } : o))
+        );
+        setSelectedOrderForDrawer((prev: any) =>
+          prev && prev.id === dispatchModalOrder.id ? { ...data.order, status: "dispatched" } : prev
         );
         setDispatchModalOrder(null);
       } else {
@@ -1244,6 +1247,36 @@ export default function AdminPortalPage() {
       alert(err.message);
     } finally {
       setDispatchingLoading(false);
+    }
+  };
+
+  const handleSimulateCourierFailure = async (orderId: string) => {
+    try {
+      const res = await fetch("/api/admin/courier/dispatch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          orderId,
+          action: "simulate_failure",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Courier assignment rejected. Re-dispatch is now unlocked.");
+        setOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? { ...o, status: "courier_failed" } : o))
+        );
+        setSelectedOrderForDrawer((prev: any) =>
+          prev && prev.id === orderId ? { ...prev, status: "courier_failed" } : prev
+        );
+      } else {
+        alert(data.error || "Failed to simulate courier rejection");
+      }
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -1892,124 +1925,128 @@ export default function AdminPortalPage() {
             </div>
           )}
 
-          {/* Tab 0: Overview */}
-          {activeTab === "overview" && (
-            <FluxOverviewTab
-              orders={orders}
-              products={products}
-              customers={customers}
-              user={user}
-              analyticsData={analyticsData}
-              onNavigateTab={(tab) => setActiveTab(tab)}
-              onInspectOrder={(ord) => setSelectedOrderForDrawer(ord)}
-              onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
-              onOpenNewProductModal={() => {
-                setNewProductImageUrl("");
-                setNewProductImages([]);
-                setNewProductRetailPrice("");
-                setNewProductSalePrice("");
-                setNewProductDiscountPercent("");
-                setNewProductDiscountEnabled(false);
-                setNewProductModalOpen(true);
-              }}
-            />
-          )}
+          {/* Active Tab View with Flux Smooth Transition */}
+          <div key={activeTab} className="flux-animate-fade flux-animate-slide-up">
+            {/* Tab 0: Overview */}
+            {activeTab === "overview" && (
+              <FluxOverviewTab
+                orders={orders}
+                products={products}
+                customers={customers}
+                user={user}
+                analyticsData={analyticsData}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onInspectOrder={(ord) => setSelectedOrderForDrawer(ord)}
+                onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
+                onOpenNewProductModal={() => {
+                  setNewProductImageUrl("");
+                  setNewProductImages([]);
+                  setNewProductRetailPrice("");
+                  setNewProductSalePrice("");
+                  setNewProductDiscountPercent("");
+                  setNewProductDiscountEnabled(false);
+                  setNewProductModalOpen(true);
+                }}
+              />
+            )}
 
-          {/* Tab 1: Orders */}
-          {activeTab === "orders" && (
-            <FluxOrdersTab
-              orders={orders}
-              onInspectOrder={(ord) => setSelectedOrderForDrawer(ord)}
-              onOpenDispatchModal={(ord) => setDispatchModalOrder(ord)}
-              onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
-              onOpenRejectModal={(ord) => {
-                setRejectModalOrder(ord);
-                setRejectReason("Out of stock in warehouse");
-                setCustomRejectReason("");
-              }}
-            />
-          )}
+            {/* Tab 1: Orders */}
+            {activeTab === "orders" && (
+              <FluxOrdersTab
+                orders={orders}
+                onInspectOrder={(ord) => setSelectedOrderForDrawer(ord)}
+                onOpenDispatchModal={(ord) => setDispatchModalOrder(ord)}
+                onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
+                onSimulateCourierFailure={handleSimulateCourierFailure}
+                onOpenRejectModal={(ord) => {
+                  setRejectModalOrder(ord);
+                  setRejectReason("Out of stock in warehouse");
+                  setCustomRejectReason("");
+                }}
+              />
+            )}
 
-          {/* Tab 2: Products */}
-          {activeTab === "products" && (
-            <FluxProductsTab
-              products={products}
-              onOpenNewProductModal={() => {
-                setNewProductImageUrl("");
-                setNewProductImages([]);
-                setNewProductRetailPrice("");
-                setNewProductSalePrice("");
-                setNewProductDiscountPercent("");
-                setNewProductDiscountEnabled(false);
-                setNewProductModalOpen(true);
-              }}
-              onEditProduct={(p) => openEditProductModal(p)}
-              onDeleteProduct={(id) => {
-                const prod = products.find((x) => x.id === id);
-                handleDeleteProduct(id, prod?.name || "Product");
-              }}
-            />
-          )}
+            {/* Tab 2: Products */}
+            {activeTab === "products" && (
+              <FluxProductsTab
+                products={products}
+                onOpenNewProductModal={() => {
+                  setNewProductImageUrl("");
+                  setNewProductImages([]);
+                  setNewProductRetailPrice("");
+                  setNewProductSalePrice("");
+                  setNewProductDiscountPercent("");
+                  setNewProductDiscountEnabled(false);
+                  setNewProductModalOpen(true);
+                }}
+                onEditProduct={(p) => openEditProductModal(p)}
+                onDeleteProduct={(id) => {
+                  const prod = products.find((x) => x.id === id);
+                  handleDeleteProduct(id, prod?.name || "Product");
+                }}
+              />
+            )}
 
-          {/* Tab 3: Promotions & Featured Prebuilt Systems (Homepage Showcase) */}
-          {activeTab === "promotions" && (
-            <FluxPromotionsTab
-              banners={banners}
-              homepageModules={homepageModules}
-              setHomepageModules={setHomepageModules}
-              customPcHeroConfig={customPcHeroConfig}
-              setCustomPcHeroConfig={setCustomPcHeroConfig}
-              featuredPrebuiltIds={featuredPrebuiltIds}
-              setFeaturedPrebuiltIds={setFeaturedPrebuiltIds}
-              promotions={promotions}
-              handleResetHomepageModules={handleResetHomepageModules}
-              handleSaveHomepageModules={handleSaveHomepageModules}
-              savingModules={savingModules}
-              handleSaveCustomPcHero={handleSaveCustomPcHero}
-              savingCustomPcHero={savingCustomPcHero}
-              handleResetFeaturedPrebuilts={handleResetFeaturedPrebuilts}
-              handleSaveFeaturedPrebuilts={handleSaveFeaturedPrebuilts}
-              savingFeaturedPrebuilts={savingFeaturedPrebuilts}
-              handleMoveFeaturedPrebuilt={handleMoveFeaturedPrebuilt}
-              handleToggleFeaturedPrebuilt={handleToggleFeaturedPrebuilt}
-              onOpenNewBannerModal={() => setNewBannerModalOpen(true)}
-              onDeleteBanner={(id) => handleDeleteBanner(id)}
-              onToggleBannerActive={(id, curr) => toggleBannerActive(id, curr)}
-              onOpenNewPromoModal={() => setNewPromoModalOpen(true)}
-            />
-          )}
+            {/* Tab 3: Promotions & Featured Prebuilt Systems (Homepage Showcase) */}
+            {activeTab === "promotions" && (
+              <FluxPromotionsTab
+                banners={banners}
+                homepageModules={homepageModules}
+                setHomepageModules={setHomepageModules}
+                customPcHeroConfig={customPcHeroConfig}
+                setCustomPcHeroConfig={setCustomPcHeroConfig}
+                featuredPrebuiltIds={featuredPrebuiltIds}
+                setFeaturedPrebuiltIds={setFeaturedPrebuiltIds}
+                promotions={promotions}
+                handleResetHomepageModules={handleResetHomepageModules}
+                handleSaveHomepageModules={handleSaveHomepageModules}
+                savingModules={savingModules}
+                handleSaveCustomPcHero={handleSaveCustomPcHero}
+                savingCustomPcHero={savingCustomPcHero}
+                handleResetFeaturedPrebuilts={handleResetFeaturedPrebuilts}
+                handleSaveFeaturedPrebuilts={handleSaveFeaturedPrebuilts}
+                savingFeaturedPrebuilts={savingFeaturedPrebuilts}
+                handleMoveFeaturedPrebuilt={handleMoveFeaturedPrebuilt}
+                handleToggleFeaturedPrebuilt={handleToggleFeaturedPrebuilt}
+                onOpenNewBannerModal={() => setNewBannerModalOpen(true)}
+                onDeleteBanner={(id) => handleDeleteBanner(id)}
+                onToggleBannerActive={(id, curr) => toggleBannerActive(id, curr)}
+                onOpenNewPromoModal={() => setNewPromoModalOpen(true)}
+              />
+            )}
 
-          {/* Tab 4: CRM & Customer Intelligence */}
-          {activeTab === "crm" && (
-            <FluxCrmTab
-              customers={customers}
-              orders={orders}
-              onInspectCustomer={(c) => setSelectedCustomerForDrawer(c)}
-            />
-          )}
+            {/* Tab 4: CRM & Customer Intelligence */}
+            {activeTab === "crm" && (
+              <FluxCrmTab
+                customers={customers}
+                orders={orders}
+                onInspectCustomer={(c) => setSelectedCustomerForDrawer(c)}
+              />
+            )}
 
-          {/* Tab 5: Sales & Profit Intelligence */}
-          {activeTab === "analytics" && (
-            <FluxAnalyticsTab
-              products={products}
-              analyticsData={analyticsData}
-              sortedAndFilteredProducts={sortedAndFilteredProducts}
-              colWidths={colWidths}
-              handleColResizeStart={handleColResizeStart}
-              resetColWidths={resetColWidths}
-              analyticsSearch={analyticsSearch}
-              setAnalyticsSearch={setAnalyticsSearch}
-              analyticsCategoryFilter={analyticsCategoryFilter}
-              setAnalyticsCategoryFilter={setAnalyticsCategoryFilter}
-              analyticsSortBy={analyticsSortBy}
-              setAnalyticsSortBy={setAnalyticsSortBy}
-              analyticsSortOrder={analyticsSortOrder}
-              setAnalyticsSortOrder={setAnalyticsSortOrder}
-              setSelectedItemAnalytics={setSelectedItemAnalytics}
-              formatRupiah={formatRupiah}
-              categories={HARDWARE_CATEGORIES}
-            />
-          )}
+            {/* Tab 5: Sales & Profit Intelligence */}
+            {activeTab === "analytics" && (
+              <FluxAnalyticsTab
+                products={products}
+                analyticsData={analyticsData}
+                sortedAndFilteredProducts={sortedAndFilteredProducts}
+                colWidths={colWidths}
+                handleColResizeStart={handleColResizeStart}
+                resetColWidths={resetColWidths}
+                analyticsSearch={analyticsSearch}
+                setAnalyticsSearch={setAnalyticsSearch}
+                analyticsCategoryFilter={analyticsCategoryFilter}
+                setAnalyticsCategoryFilter={setAnalyticsCategoryFilter}
+                analyticsSortBy={analyticsSortBy}
+                setAnalyticsSortBy={setAnalyticsSortBy}
+                analyticsSortOrder={analyticsSortOrder}
+                setAnalyticsSortOrder={setAnalyticsSortOrder}
+                setSelectedItemAnalytics={setSelectedItemAnalytics}
+                formatRupiah={formatRupiah}
+                categories={HARDWARE_CATEGORIES}
+              />
+            )}
+          </div>
         </main>
       </div>
 

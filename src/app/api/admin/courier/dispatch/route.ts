@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, CourierDispatchInfo } from "@/lib/db";
-import { verifyAdminClearance } from "@/lib/auth/adminAuth";
+import { requireAdminPermission } from "@/lib/auth/rbac";
 import { biteship, TETHERA_WAREHOUSE_ORIGIN, COURIER_META } from "@/lib/shipping/biteship";
 
 export const dynamic = "force-dynamic";
@@ -34,9 +34,9 @@ const COURIER_DRIVERS: Record<string, Array<{ name: string; phone: string; plate
 
 export async function POST(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "admin");
-    if (!clearance.authorized) {
-      return NextResponse.json({ success: false, error: clearance.error }, { status: 401 });
+    const perm = requireAdminPermission(req, "orders:dispatch");
+    if (!perm.authorized) {
+      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
     }
 
     const body = await req.json();
@@ -62,8 +62,43 @@ export async function POST(req: NextRequest) {
     }
 
     // =========================================================================
-    // ACTION A: SIMULATE BITESHIP WEBHOOK STATUS TRANSITION
+    // ACTION A: SIMULATE BITESHIP WEBHOOK STATUS TRANSITION / COURIER FAILURE
     // =========================================================================
+    if (action === "simulate_failure" || action === "simulate_rejection") {
+      const existingCourier: CourierDispatchInfo = order.courier_info || {
+        provider: "biteship",
+        courier_company: courierProvider,
+        service_code: serviceCode,
+        service_name: serviceName || "Biteship Logistics",
+        waybill_id: (order as any).waybill_id || "N/A",
+        tracking_id: `TRK-${Date.now()}`,
+        dispatched_at: new Date().toISOString(),
+        status: "failed",
+        status_history: [],
+      };
+
+      const history = existingCourier.status_history || [];
+      history.push({
+        status: "failed",
+        note: "Courier pickup rejected or driver unavailable. Re-dispatch option unlocked.",
+        updated_at: new Date().toISOString(),
+      });
+
+      const updatedCourierInfo: CourierDispatchInfo = {
+        ...existingCourier,
+        status: "failed" as any,
+        status_history: history,
+      };
+
+      const updated = await db.orders.updateStage(orderId, "courier_failed", updatedCourierInfo);
+
+      return NextResponse.json({
+        success: true,
+        message: `Courier assignment cancelled / driver rejected for Order #${order.order_number}. Re-dispatch is now unlocked.`,
+        order: updated,
+      });
+    }
+
     if (action === "simulate_webhook" || action === "simulate_arrival") {
       const targetStatus = action === "simulate_arrival" ? "delivered" : simulatedStatus || "in_transit";
       const existingCourier: CourierDispatchInfo = order.courier_info || {
@@ -168,23 +203,42 @@ export async function POST(req: NextRequest) {
       pickup_address: TETHERA_WAREHOUSE_ORIGIN.address,
       dispatched_at: new Date().toISOString(),
       estimated_arrival: courierCode === "gojek" || courierCode === "grab" ? "1 - 2 Hours" : "1 - 2 Days",
-      status: deliveryType === "now" ? "picking_up" : "scheduled",
+      status: "dispatched",
       status_history: [
         {
-          status: deliveryType === "now" ? "picking_up" : "scheduled",
-          note: `Waybill ${biteshipResult.waybillId} generated. Automated pickup scheduled from Mangga Dua Flagship Hub.`,
+          status: "dispatched",
+          note: `Courier found and assigned via Biteship. Waybill ${biteshipResult.waybillId} generated. Automated pickup scheduled from Mangga Dua Flagship Hub.`,
           updated_at: new Date().toISOString(),
         },
       ],
     };
 
-    // Transition order state in DB
-    const nextOrderStatus = deliveryType === "now" ? "on_delivery" : "finding_courier";
+    // Transition order state in DB automatically to Dispatched
+    const nextOrderStatus = "dispatched";
     const updated = await db.orders.updateStage(orderId, nextOrderStatus, courierInfo);
+
+    // Record immutable audit log
+    await db.auditLogs.log({
+      actor_id: perm.user?.id || "unknown",
+      actor_name: perm.user?.name || "Staff Admin",
+      role: perm.user?.role || "ADMIN",
+      action: "ORDER_DISPATCHED",
+      entity_type: "order",
+      entity_id: orderId,
+      before_state: { status: order.status },
+      after_state: {
+        status: nextOrderStatus,
+        waybill_id: biteshipResult.waybillId,
+        courier: meta.name,
+        service: serviceName,
+      },
+      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
+      user_agent: req.headers.get("user-agent") || undefined,
+    });
 
     return NextResponse.json({
       success: true,
-      message: `Waybill #${biteshipResult.waybillId} generated via Biteship! ${meta.name} pickup scheduled from Mangga Dua Hub (${biteshipResult.pickupTime}).`,
+      message: `Courier found! Waybill #${biteshipResult.waybillId} assigned via ${meta.name}. Order automatically progressed to Dispatched.`,
       order: updated,
       waybillId: biteshipResult.waybillId,
       trackingUrl: biteshipResult.trackingUrl,

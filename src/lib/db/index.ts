@@ -15,6 +15,12 @@ export * from "./repositories/customBuilds.repository";
 export * from "./repositories/customers.repository";
 export * from "./repositories/promotions.repository";
 export * from "./repositories/banners.repository";
+export * from "./repositories/cart.repository";
+export * from "./repositories/auditLog.repository";
+export * from "./repositories/adminAudit.repository";
+export * from "./repositories/fulfillment.repository";
+export * from "./repositories/rma.repository";
+export * from "./repositories/inventoryLedger.repository";
 
 // Consolidated `db` Accessor Object
 import { productsRepository } from "./repositories/products.repository";
@@ -26,6 +32,19 @@ import { customBuildsRepository } from "./repositories/customBuilds.repository";
 import { customersRepository } from "./repositories/customers.repository";
 import { promotionsRepository } from "./repositories/promotions.repository";
 import { bannersRepository } from "./repositories/banners.repository";
+import { cartRepository } from "./repositories/cart.repository";
+import { auditLogRepository } from "./repositories/auditLog.repository";
+import {
+  adminUsersRepository,
+  adminAuditLogsRepository,
+} from "./repositories/adminAudit.repository";
+import { fulfillmentsRepository } from "./repositories/fulfillment.repository";
+import {
+  rmaRepository,
+  returnRequestsRepository,
+  refundsRepository,
+} from "./repositories/rma.repository";
+import { inventoryLedgerRepository } from "./repositories/inventoryLedger.repository";
 
 export const db = {
   products: productsRepository,
@@ -37,6 +56,15 @@ export const db = {
   customers: customersRepository,
   promotions: promotionsRepository,
   banners: bannersRepository,
+  cart: cartRepository,
+  auditLogs: auditLogRepository,
+  adminUsers: adminUsersRepository,
+  adminAudit: adminAuditLogsRepository,
+  fulfillments: fulfillmentsRepository,
+  rma: rmaRepository,
+  returnRequests: returnRequestsRepository,
+  refunds: refundsRepository,
+  inventoryLedger: inventoryLedgerRepository,
 };
 
 export default db;

@@ -75,6 +75,8 @@ export function getWorkflowStageIndex(status: string): number {
       return 2;
     case "ready_for_dispatch":
     case "ready_for_pickup":
+    case "courier_failed":
+    case "courier_rejected":
       return 3;
     case "finding_courier":
       return 4;
@@ -90,6 +92,30 @@ export function getWorkflowStageIndex(status: string): number {
     default:
       return 0;
   }
+}
+
+export function canDispatchOrder(status: string): boolean {
+  const s = (status || "").toLowerCase().trim();
+  return (
+    s === "ready_for_dispatch" ||
+    s === "ready_for_pickup" ||
+    s === "finding_courier" ||
+    s === "courier_failed" ||
+    s === "courier_rejected"
+  );
+}
+
+export function isOrderDispatched(status: string): boolean {
+  const s = (status || "").toLowerCase().trim();
+  return (
+    s === "dispatched" ||
+    s === "shipped" ||
+    s === "on_delivery" ||
+    s === "delivery_arrived" ||
+    s === "delivered" ||
+    s === "finished" ||
+    s === "collected"
+  );
 }
 
 export function getNextWorkflowStep(

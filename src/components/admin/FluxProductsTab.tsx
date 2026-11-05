@@ -236,9 +236,9 @@ export function FluxProductsTab({
   }, [products, categoryFilter, stockFilter, searchTerm]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 flux-animate-fade flux-animate-slide-up">
       {/* Top Controls Bar */}
-      <div className="bg-[#12141A] rounded-2xl border border-white/10 p-5 shadow-xl space-y-4">
+      <div className="bg-[#12141A] rounded-2xl border border-white/10 p-5 shadow-xl space-y-4 flux-card-hover flux-animate-slide-up flux-delay-1">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Left: Search input */}
           <div className="relative flex-1 max-w-md">
@@ -254,7 +254,7 @@ export function FluxProductsTab({
               <button
                 type="button"
                 onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-0.5"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-0.5 flux-interactive-btn"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -299,7 +299,7 @@ export function FluxProductsTab({
               <button
                 type="button"
                 onClick={() => setViewMode("table")}
-                className={`p-2 rounded-lg transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center ${
+                className={`p-2 rounded-lg transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center flux-interactive-btn ${
                   viewMode === "table"
                     ? "bg-[#37baf2] text-[#0A0B0E] font-bold"
                     : "text-zinc-400 hover:text-white"
@@ -312,7 +312,7 @@ export function FluxProductsTab({
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-lg transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center ${
+                className={`p-2 rounded-lg transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center flux-interactive-btn ${
                   viewMode === "grid"
                     ? "bg-[#37baf2] text-[#0A0B0E] font-bold"
                     : "text-zinc-400 hover:text-white"
@@ -328,7 +328,7 @@ export function FluxProductsTab({
             <button
               type="button"
               onClick={onOpenNewProductModal}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] text-sm font-bold inline-flex items-center gap-1.5 shadow-md shadow-[#37baf2]/20 transition-all active:scale-95"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] text-sm font-bold inline-flex items-center gap-1.5 shadow-md shadow-[#37baf2]/20 flux-interactive-btn active:scale-95"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Add Product</span>
@@ -361,7 +361,7 @@ export function FluxProductsTab({
         </div>
       ) : viewMode === "table" ? (
         /* Table View with Resizable Columns */
-        <div className="bg-[#12141A] rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+        <div className="bg-[#12141A] rounded-2xl border border-white/10 overflow-hidden shadow-xl flux-card-hover flux-animate-slide-up flux-delay-2">
           <div className="overflow-x-auto">
             <table
               className="w-full text-left border-collapse table-fixed select-text"
@@ -511,7 +511,7 @@ export function FluxProductsTab({
                   return (
                     <tr
                       key={prod.id}
-                      className="hover:bg-white/[0.02] transition-colors group"
+                      className="hover:bg-white/[0.02] transition-colors group flux-table-row"
                     >
                       {/* Hardware Component: Photo, Title, Brand, SKU */}
                       <td className="py-4 px-4">
@@ -607,7 +607,7 @@ export function FluxProductsTab({
                           <button
                             type="button"
                             onClick={() => onEditProduct(prod)}
-                            className="p-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 min-h-[44px] min-w-[44px] inline-flex items-center justify-center transition-colors border border-white/5"
+                            className="p-2.5 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 min-h-[44px] min-w-[44px] inline-flex items-center justify-center transition-colors border border-white/5 flux-interactive-btn"
                             title="Edit Product"
                             aria-label={`Edit ${prod.name}`}
                           >
@@ -617,7 +617,7 @@ export function FluxProductsTab({
                           <button
                             type="button"
                             onClick={() => onDeleteProduct(prod.id)}
-                            className="p-2.5 rounded-xl text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 min-h-[44px] min-w-[44px] inline-flex items-center justify-center transition-colors border border-white/5"
+                            className="p-2.5 rounded-xl text-zinc-300 hover:text-rose-400 hover:bg-rose-500/10 min-h-[44px] min-w-[44px] inline-flex items-center justify-center transition-colors border border-white/5 flux-interactive-btn"
                             title="Delete Product"
                             aria-label={`Delete ${prod.name}`}
                           >
@@ -655,7 +655,7 @@ export function FluxProductsTab({
             return (
               <div
                 key={prod.id}
-                className="bg-[#12141A] rounded-2xl border border-white/10 p-5 flex flex-col justify-between shadow-xl group hover:border-[#37baf2]/40 transition-colors"
+                className="bg-[#12141A] rounded-2xl border border-white/10 p-5 flex flex-col justify-between shadow-xl group hover:border-[#37baf2]/40 transition-colors flux-card-hover flux-animate-slide-up"
               >
                 <div>
                   <div className="relative w-full aspect-square rounded-xl bg-white/5 border border-white/5 overflow-hidden mb-3.5 flex items-center justify-center">

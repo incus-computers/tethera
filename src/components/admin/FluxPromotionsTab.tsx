@@ -100,9 +100,9 @@ export function FluxPromotionsTab({
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 flux-animate-fade flux-animate-slide-up">
       {/* Sub Navigation Bar */}
-      <div className="bg-[#12141A] rounded-2xl border border-white/10 p-4 shadow-xl flex flex-wrap items-center gap-2">
+      <div className="bg-[#12141A] rounded-2xl border border-white/10 p-4 shadow-xl flex flex-wrap items-center gap-2 flux-card-hover flux-animate-slide-up flux-delay-1">
         {[
           { id: "banners", label: "Hero Banners", icon: Sparkles, count: banners.length },
           { id: "layout", label: "Storefront Modules", icon: Layers, count: homepageModules.length },
@@ -117,7 +117,7 @@ export function FluxPromotionsTab({
               key={tab.id}
               type="button"
               onClick={() => setSubTab(tab.id as any)}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-2 transition-all ${
+              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold inline-flex items-center gap-2 transition-all flux-interactive-btn ${
                 isActive
                   ? "bg-[#37baf2] text-[#0A0B0E] font-bold shadow-md shadow-[#37baf2]/20"
                   : "bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5"
@@ -157,7 +157,7 @@ export function FluxPromotionsTab({
             <button
               type="button"
               onClick={onOpenNewBannerModal}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-[#37baf2]/20 transition-all self-start sm:self-auto"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-[#37baf2]/20 transition-all self-start sm:self-auto flux-interactive-btn"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>New Banner Slide</span>
@@ -168,7 +168,7 @@ export function FluxPromotionsTab({
             {banners.map((banner) => (
               <div
                 key={banner.id}
-                className="bg-[#12141A] rounded-2xl border border-white/10 p-4 shadow-xl flex flex-col justify-between group hover:border-[#37baf2]/30 transition-colors"
+                className="bg-[#12141A] rounded-2xl border border-white/10 p-4 shadow-xl flex flex-col justify-between group hover:border-[#37baf2]/30 transition-colors flux-card-hover flux-animate-slide-up"
               >
                 <div>
                   <div className="relative h-44 rounded-xl overflow-hidden bg-slate-900 mb-3 border border-white/5">

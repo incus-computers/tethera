@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 // Midtrans Payment Gateway Integration for Tethera E-Commerce
 
 export type MidtransPaymentChannel =
@@ -470,4 +472,62 @@ export function generateMidtransPaymentDetails(
     expiryTime: expiry,
     status: "pending",
   };
+}
+
+/**
+ * Computes official Midtrans SHA512 signature key for webhook verification
+ * Formula: SHA512(order_id + status_code + gross_amount + ServerKey)
+ */
+export function generateMidtransSignature(
+  orderId: string,
+  statusCode: string,
+  grossAmount: string | number,
+  serverKey?: string
+): string {
+  const key = serverKey || process.env.MIDTRANS_SERVER_KEY || "SB-Mid-server-test-tethera";
+  const amountStr = typeof grossAmount === "number" ? grossAmount.toFixed(2) : grossAmount;
+  const rawString = `${orderId}${statusCode}${amountStr}${key}`;
+  return crypto.createHash("sha512").update(rawString).digest("hex");
+}
+
+/**
+ * Validates incoming Midtrans webhook notification signature against server secret key
+ */
+export function verifyMidtransSignature(
+  orderId: string,
+  statusCode: string,
+  grossAmount: string | number,
+  signatureKey: string,
+  serverKey?: string
+): boolean {
+  if (!signatureKey) return false;
+  const key = serverKey || process.env.MIDTRANS_SERVER_KEY || "SB-Mid-server-test-tethera";
+
+  const candidate1 = crypto
+    .createHash("sha512")
+    .update(`${orderId}${statusCode}${grossAmount}${key}`)
+    .digest("hex");
+
+  const candidate2 =
+    typeof grossAmount === "number"
+      ? crypto
+          .createHash("sha512")
+          .update(`${orderId}${statusCode}${grossAmount.toFixed(2)}${key}`)
+          .digest("hex")
+      : candidate1;
+
+  const candidate3 =
+    typeof grossAmount === "string" && !grossAmount.includes(".")
+      ? crypto
+          .createHash("sha512")
+          .update(`${orderId}${statusCode}${Number(grossAmount).toFixed(2)}${key}`)
+          .digest("hex")
+      : candidate1;
+
+  const incoming = signatureKey.toLowerCase().trim();
+  return (
+    incoming === candidate1.toLowerCase() ||
+    incoming === candidate2.toLowerCase() ||
+    incoming === candidate3.toLowerCase()
+  );
 }

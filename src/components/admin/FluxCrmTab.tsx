@@ -81,9 +81,9 @@ export function FluxCrmTab({
   }, [customerStats, tierFilter, searchTerm]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 flux-animate-fade flux-animate-slide-up">
       {/* Top Filter Bar */}
-      <div className="bg-[#12141A] rounded-2xl border border-white/10 p-5 shadow-xl space-y-4">
+      <div className="bg-[#12141A] rounded-2xl border border-white/10 p-5 shadow-xl space-y-4 flux-card-hover flux-animate-slide-up flux-delay-1">
         {/* Tier Segmentation Pills */}
         <div className="flex flex-wrap items-center gap-2 border-b border-white/5 pb-4">
           {[
@@ -96,7 +96,7 @@ export function FluxCrmTab({
               key={tab.id}
               type="button"
               onClick={() => setTierFilter(tab.id as any)}
-              className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-2 transition-all ${
+              className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-2 transition-all flux-interactive-btn ${
                 tierFilter === tab.id
                   ? "bg-[#37baf2] text-[#0A0B0E] font-bold shadow-md shadow-[#37baf2]/20"
                   : "bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5"
@@ -168,7 +168,7 @@ export function FluxCrmTab({
             return (
               <div
                 key={cust.id}
-                className="bg-[#12141A] rounded-2xl border border-white/10 p-5 shadow-xl flex flex-col justify-between group hover:border-[#37baf2]/30 transition-colors space-y-4"
+                className="bg-[#12141A] rounded-2xl border border-white/10 p-5 shadow-xl flex flex-col justify-between group hover:border-[#37baf2]/30 transition-colors space-y-4 flux-card-hover flux-animate-slide-up"
               >
                 <div>
                   <div className="flex items-start justify-between gap-3">
@@ -230,7 +230,7 @@ export function FluxCrmTab({
                         href={`https://wa.me/${cust.phone.replace(/[^0-9]/g, "")}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-2 rounded-lg text-emerald-400 hover:bg-emerald-500/10 min-h-[38px] min-w-[38px] flex items-center justify-center transition-colors"
+                        className="p-2 rounded-lg text-emerald-400 hover:bg-emerald-500/10 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors flux-interactive-btn"
                         title="Chat on WhatsApp"
                       >
                         <MessageSquare className="w-4 h-4" />
@@ -240,7 +240,7 @@ export function FluxCrmTab({
                     <button
                       type="button"
                       onClick={() => onInspectCustomer(cust)}
-                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white min-h-[38px] min-w-[38px] flex items-center justify-center transition-colors border border-white/5"
+                      className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors border border-white/5 flux-interactive-btn"
                       title="Inspect Profile"
                       aria-label={`Inspect ${cust.full_name}`}
                     >
