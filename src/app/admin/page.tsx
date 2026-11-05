@@ -1499,14 +1499,29 @@ export default function AdminPortalPage() {
     const form = e.currentTarget;
     const formData = new FormData(form);
 
+    const code = (formData.get("code") as string).toUpperCase().trim();
+    const title = formData.get("title") as string;
+    const description = (formData.get("description") as string) || "";
+    const discount_type = (formData.get("discount_type") as string) || "percentage";
+    const discount_value = Number(formData.get("discount_value") || 0);
+    const min_spend = Number(formData.get("min_spend")) || undefined;
+    const max_discount = Number(formData.get("max_discount")) || undefined;
+    const max_global_uses = Number(formData.get("max_global_uses")) || Number(formData.get("usage_limit")) || undefined;
+    const starts_at = (formData.get("starts_at") as string) || undefined;
+    const ends_at = (formData.get("ends_at") as string) || undefined;
+
     const payload = {
-      code: (formData.get("code") as string).toUpperCase(),
-      title: formData.get("title") as string,
-      description: formData.get("description") as string,
-      discount_type: formData.get("discount_type") as string,
-      discount_value: Number(formData.get("discount_value")),
-      min_spend: Number(formData.get("min_spend")) || undefined,
-      usage_limit: Number(formData.get("usage_limit")) || undefined,
+      code,
+      title,
+      description,
+      discount_type,
+      discount_value,
+      min_spend,
+      max_discount,
+      max_global_uses,
+      usage_limit: max_global_uses,
+      starts_at,
+      ends_at,
     };
 
     try {
@@ -2012,6 +2027,8 @@ export default function AdminPortalPage() {
                 onDeleteBanner={(id) => handleDeleteBanner(id)}
                 onToggleBannerActive={(id, curr) => toggleBannerActive(id, curr)}
                 onOpenNewPromoModal={() => setNewPromoModalOpen(true)}
+                onTogglePromoActive={handleTogglePromo}
+                onDeletePromo={handleDeletePromo}
               />
             )}
 
@@ -3147,26 +3164,44 @@ export default function AdminPortalPage() {
       {/* ====================================================================== */}
       {newPromoModalOpen && isSuperAdmin && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base">Create Promotional Voucher</h3>
+              <div>
+                <h3 className="font-bold text-white text-base">Create Promotional Voucher</h3>
+                <p className="text-xs text-slate-400">Configure tiered discounts, minimum spends, and usage limits</p>
+              </div>
               <button
+                type="button"
                 onClick={() => setNewPromoModalOpen(false)}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreatePromo} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-300 mb-1">Promo Code</label>
-                <input
-                  name="code"
-                  required
-                  placeholder="e.g. FLASHDEAL20"
-                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white  uppercase"
-                />
+            <form onSubmit={handleCreatePromo} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Promo Code</label>
+                  <input
+                    name="code"
+                    required
+                    placeholder="e.g. RTXSUPER10"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white uppercase focus:ring-2 focus:ring-[#37baf2] outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Discount Type</label>
+                  <select
+                    name="discount_type"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden cursor-pointer"
+                  >
+                    <option value="percentage">Percentage Off (%)</option>
+                    <option value="fixed_amount">Fixed Amount (IDR)</option>
+                    <option value="free_shipping">Free Shipping</option>
+                    <option value="buy_x_get_y">Buy X Get Y Free</option>
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -3174,30 +3209,82 @@ export default function AdminPortalPage() {
                 <input
                   name="title"
                   required
-                  placeholder="e.g. 20% Off RTX 4070 Ti Drop"
-                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                  placeholder="e.g. 10% Off RTX Series GPUs"
+                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Discount Type</label>
-                  <select
-                    name="discount_type"
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
-                  >
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="fixed_amount">Fixed Amount (IDR)</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-300 mb-1">Description (Optional)</label>
+                <input
+                  name="description"
+                  placeholder="e.g. Applies to cart subtotals over 5jt"
+                  className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-300 mb-1">Discount Value</label>
                   <input
                     name="discount_value"
                     type="number"
+                    min="0"
                     required
-                    placeholder="e.g. 15 or 500000"
-                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white "
+                    placeholder="e.g. 10 or 150000"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Max Discount Cap (IDR)</label>
+                  <input
+                    name="max_discount"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 1500000"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Min. Cart Spend (IDR)</label>
+                  <input
+                    name="min_spend"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 5000000"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Global Usage Limit</label>
+                  <input
+                    name="max_global_uses"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 100 uses"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Starts At</label>
+                  <input
+                    name="starts_at"
+                    type="date"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-300 mb-1">Ends At</label>
+                  <input
+                    name="ends_at"
+                    type="date"
+                    className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-2 focus:ring-[#37baf2] outline-hidden"
                   />
                 </div>
               </div>
@@ -3206,13 +3293,13 @@ export default function AdminPortalPage() {
                 <button
                   type="button"
                   onClick={() => setNewPromoModalOpen(false)}
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 text-slate-300"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] font-bold shadow-md shadow-[#37baf2]/20 cursor-pointer"
                 >
                   Activate Voucher
                 </button>

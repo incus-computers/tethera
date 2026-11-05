@@ -22,6 +22,11 @@ import {
   Store,
   FileText,
   Upload,
+  Calendar,
+  Clock,
+  Percent,
+  Truck,
+  Gift,
 } from "lucide-react";
 import {
   HomepageModuleItem,
@@ -54,6 +59,8 @@ interface FluxPromotionsTabProps {
   onDeleteBanner: (bannerId: string) => void;
   onToggleBannerActive: (bannerId: string, currentActive: boolean) => void;
   onOpenNewPromoModal: () => void;
+  onTogglePromoActive?: (promo: Promotion) => void;
+  onDeletePromo?: (id: string) => void;
 }
 
 export function FluxPromotionsTab({
@@ -78,6 +85,8 @@ export function FluxPromotionsTab({
   onDeleteBanner,
   onToggleBannerActive,
   onOpenNewPromoModal,
+  onTogglePromoActive,
+  onDeletePromo,
 }: FluxPromotionsTabProps) {
   const [subTab, setSubTab] = useState<"banners" | "layout" | "hero" | "prebuilts" | "coupons">("banners");
 
@@ -564,14 +573,14 @@ export function FluxPromotionsTab({
                 Discount Promotions &amp; Coupons
               </h2>
               <p className="text-xs text-slate-400">
-                Manage promotional coupon codes, percentage deductions, and active date windows
+                Manage tiered promotional coupon codes, date schedules, usage limits, and redemption metrics
               </p>
             </div>
 
             <button
               type="button"
               onClick={onOpenNewPromoModal}
-              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-[#37baf2]/20 transition-all self-start sm:self-auto"
+              className="min-h-[44px] px-4 py-2 rounded-xl bg-[#37baf2] hover:bg-[#52c6f5] text-[#0A0B0E] text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-[#37baf2]/20 transition-all self-start sm:self-auto cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Create Coupon</span>
@@ -584,31 +593,163 @@ export function FluxPromotionsTab({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {promotions.map((p) => (
-                <div
-                  key={p.id}
-                  className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2 text-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-[#37baf2]">
-                      {p.code}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        p.is_active
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-slate-500/10 text-slate-400 border border-slate-500/20"
-                      }`}
-                    >
-                      {p.is_active ? "Active" : "Inactive"}
-                    </span>
+              {promotions.map((p) => {
+                // Status calculation
+                const now = new Date();
+                const startsAt = p.starts_at || p.start_date;
+                const endsAt = p.ends_at || p.end_date;
+                const maxUses = p.max_global_uses ?? p.usage_limit;
+                const usageCount = p.usage_count || 0;
+                const totalGiven = p.total_discount_given || 0;
+
+                let statusLabel = "Active";
+                let statusColor = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+
+                if (!p.is_active) {
+                  statusLabel = "Inactive";
+                  statusColor = "bg-slate-500/10 text-slate-400 border-slate-500/20";
+                } else if (startsAt && new Date(startsAt) > now) {
+                  statusLabel = "Scheduled";
+                  statusColor = "bg-sky-500/10 text-sky-400 border-sky-500/20";
+                } else if (endsAt && new Date(endsAt) < now) {
+                  statusLabel = "Expired";
+                  statusColor = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                } else if (maxUses !== undefined && usageCount >= maxUses) {
+                  statusLabel = "Depleted";
+                  statusColor = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+                }
+
+                // Discount formatting
+                let discountText = "";
+                if (p.discount_type === "percentage") {
+                  discountText = `${p.discount_value}% Off`;
+                  if (p.max_discount) {
+                    discountText += ` (Cap: ${formatRupiah(p.max_discount)})`;
+                  }
+                } else if (p.discount_type === "fixed_amount") {
+                  discountText = `${formatRupiah(p.discount_value)} Flat Off`;
+                } else if (p.discount_type === "free_shipping") {
+                  discountText = p.discount_value ? `Free Shipping (Max: ${formatRupiah(p.discount_value)})` : "Free Courier Delivery";
+                } else if (p.discount_type === "buy_x_get_y") {
+                  discountText = "Buy X Get Y Free";
+                }
+
+                const percentUsed = maxUses && maxUses > 0 ? Math.min(100, Math.round((usageCount / maxUses) * 100)) : null;
+
+                return (
+                  <div
+                    key={p.id}
+                    className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-3 text-xs flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-[#37baf2]" />
+                          <span className="font-bold text-sm text-[#37baf2] tracking-wider">
+                            {p.code}
+                          </span>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="font-semibold text-white line-clamp-1">{p.title || p.code}</div>
+                        {p.description && (
+                          <div className="text-slate-400 text-[11px] line-clamp-1 mt-0.5">
+                            {p.description}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 text-[11px] text-slate-300 font-medium">
+                        <Percent className="w-3 h-3 text-[#37baf2]" />
+                        <span>{discountText}</span>
+                      </div>
+
+                      {/* Thresholds and Eligibility */}
+                      <div className="space-y-1 text-[11px] text-slate-400 pt-1 border-t border-white/5">
+                        {p.min_spend ? (
+                          <div className="flex justify-between">
+                            <span>Min. Spend:</span>
+                            <span className="text-slate-200 font-medium">{formatRupiah(p.min_spend)}</span>
+                          </div>
+                        ) : null}
+                        {endsAt ? (
+                          <div className="flex justify-between">
+                            <span>Valid Until:</span>
+                            <span className="text-slate-200">
+                              {new Date(endsAt).toLocaleDateString("id-ID", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Usage Metrics & Progress Bar */}
+                      <div className="pt-2 border-t border-white/5 space-y-1.5">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-400">Redemptions:</span>
+                          <span className="text-slate-200 font-semibold">
+                            {usageCount} {maxUses !== undefined ? `/ ${maxUses}` : "used"}
+                          </span>
+                        </div>
+                        {percentUsed !== null ? (
+                          <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                percentUsed >= 100
+                                  ? "bg-rose-500"
+                                  : percentUsed > 75
+                                  ? "bg-amber-400"
+                                  : "bg-[#37baf2]"
+                              }`}
+                              style={{ width: `${percentUsed}%` }}
+                            />
+                          </div>
+                        ) : null}
+                        {totalGiven > 0 ? (
+                          <div className="flex justify-between text-[10px] text-slate-400">
+                            <span>Discount Given:</span>
+                            <span className="text-emerald-400 font-semibold">{formatRupiah(totalGiven)}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onTogglePromoActive && onTogglePromoActive(p)}
+                        className={`min-h-[44px] px-3.5 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer ${
+                          p.is_active
+                            ? "bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/20"
+                            : "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/20"
+                        }`}
+                      >
+                        {p.is_active ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <span>{p.is_active ? "Deactivate" : "Activate"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onDeletePromo && onDeletePromo(p.id)}
+                        className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors cursor-pointer"
+                        title="Delete Promotion"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="font-semibold text-white">{p.title || p.description}</div>
-                  <div className="text-slate-400 text-[11px]">
-                    Discount: {p.discount_type === "percentage" ? `${p.discount_value}%` : formatRupiah(p.discount_value)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

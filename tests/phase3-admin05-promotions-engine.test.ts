@@ -8,6 +8,11 @@ import { db } from "@/lib/db";
 import { Promotion } from "@/lib/db/types";
 import { POST as validatePromoPOST } from "@/app/api/promotions/validate/route";
 import { POST as createOrderPOST } from "@/app/api/checkout/create-order/route";
+import {
+  POST as adminPromoPOST,
+  PUT as adminPromoPUT,
+  DELETE as adminPromoDELETE,
+} from "@/app/api/admin/promotions/route";
 
 describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
   describe("PromotionsRepository: validatePromotion", () => {
@@ -315,6 +320,130 @@ describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
 
       // Verify accessibility: min 44px tap targets on discount controls
       expect(checkoutCode).toContain("min-w-[44px] min-h-[44px]");
+    });
+  });
+
+  describe("Admin Promotions Management Enhanced API & UI", () => {
+    it("creates multi-tier promotion via POST /api/admin/promotions with full schema fields", async () => {
+      const code = `ADMTEST${Date.now()}`;
+      const startsAt = new Date().toISOString();
+      const endsAt = new Date(Date.now() + 86400000 * 7).toISOString();
+
+      const req = new NextRequest("http://localhost:3000/api/admin/promotions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer superadmin",
+        },
+        body: JSON.stringify({
+          code,
+          title: "Admin Tiered Campaign",
+          description: "Free shipping up to 50k with 2jt min spend",
+          discount_type: "free_shipping",
+          discount_value: 50000,
+          min_spend: 2000000,
+          max_global_uses: 25,
+          starts_at: startsAt,
+          ends_at: endsAt,
+        }),
+      });
+
+      const res = await adminPromoPOST(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.promotion.code).toBe(code);
+      expect(json.promotion.discount_type).toBe("free_shipping");
+      expect(json.promotion.min_spend).toBe(2000000);
+      expect(json.promotion.max_global_uses).toBe(25);
+    });
+
+    it("updates promotion status and limits via PUT /api/admin/promotions", async () => {
+      const promo = await db.promotions.create({
+        id: `promo-put-${Date.now()}`,
+        code: `PUTTEST${Date.now()}`,
+        title: "To Be Updated",
+        description: "Test description",
+        discount_type: "percentage",
+        discount_value: 10,
+        is_active: true,
+        usage_count: 0,
+      });
+
+      const req = new NextRequest("http://localhost:3000/api/admin/promotions", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer superadmin",
+        },
+        body: JSON.stringify({
+          id: promo.id,
+          is_active: false,
+          max_discount: 750000,
+        }),
+      });
+
+      const res = await adminPromoPUT(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.promotion.is_active).toBe(false);
+      expect(json.promotion.max_discount).toBe(750000);
+    });
+
+    it("deletes promotion via DELETE /api/admin/promotions", async () => {
+      const promo = await db.promotions.create({
+        id: `promo-del-${Date.now()}`,
+        code: `DELTEST${Date.now()}`,
+        title: "To Be Deleted",
+        description: "Test description",
+        discount_type: "fixed_amount",
+        discount_value: 50000,
+        is_active: true,
+        usage_count: 0,
+      });
+
+      const req = new NextRequest(`http://localhost:3000/api/admin/promotions?id=${promo.id}`, {
+        method: "DELETE",
+        headers: {
+          authorization: "Bearer superadmin",
+        },
+      });
+
+      const res = await adminPromoDELETE(req);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.success).toBe(true);
+
+      const deleted = await db.promotions.findById(promo.id);
+      expect(deleted).toBeNull();
+    });
+
+    it("verifies craftsmanship and accessibility in Admin Promotions Tab and Modal", async () => {
+      const fs = await import("fs");
+      const path = await import("path");
+
+      const tabPath = path.resolve(process.cwd(), "src/components/admin/FluxPromotionsTab.tsx");
+      const tabCode = fs.readFileSync(tabPath, "utf-8");
+
+      const adminPath = path.resolve(process.cwd(), "src/app/admin/page.tsx");
+      const adminCode = fs.readFileSync(adminPath, "utf-8");
+
+      // Verify no em dashes
+      expect(tabCode).not.toContain("\u2014");
+      expect(adminCode).not.toContain("\u2014");
+
+      // Verify interactive controls meet min-h-[44px]
+      expect(tabCode).toContain("min-h-[44px]");
+      expect(adminCode).toContain("min-h-[44px]");
+
+      // Verify usage progress bar and metrics tracking in FluxPromotionsTab
+      expect(tabCode).toContain("total_discount_given");
+      expect(tabCode).toContain("percentUsed");
+
+      // Verify toggle and delete hooks wired to FluxPromotionsTab in admin/page.tsx
+      expect(adminCode).toContain("onTogglePromoActive={handleTogglePromo}");
+      expect(adminCode).toContain("onDeletePromo={handleDeletePromo}");
     });
   });
 });

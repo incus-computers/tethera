@@ -46,11 +46,39 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { code, title, description, discount_type, discount_value, min_spend, max_discount, start_date, end_date, usage_limit } = body;
+    const {
+      code,
+      title,
+      description,
+      discount_type,
+      discount_value,
+      min_spend,
+      max_discount,
+      start_date,
+      starts_at,
+      end_date,
+      ends_at,
+      usage_limit,
+      max_global_uses,
+      max_uses_per_user,
+      eligible_categories,
+      eligible_product_ids,
+      buy_x_get_y,
+    } = body;
 
-    if (!code || !title || !discount_value) {
+    if (!code || !title) {
       return badRequestProblem(
-        "Promotion code, title, and discount value are required.",
+        "Promotion code and title are required.",
+        { instance: req.nextUrl.pathname }
+      );
+    }
+
+    const normType = discount_type || "percentage";
+    const numDiscountValue = discount_value !== undefined ? Number(discount_value) : 0;
+
+    if (normType === "percentage" && (numDiscountValue <= 0 || numDiscountValue > 100)) {
+      return badRequestProblem(
+        "Percentage discount must be between 1 and 100.",
         { instance: req.nextUrl.pathname }
       );
     }
@@ -63,20 +91,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const resolvedStartsAt = starts_at || start_date || new Date().toISOString();
+    const resolvedEndsAt = ends_at || end_date || new Date(Date.now() + 86400000 * 30).toISOString();
+    const resolvedMaxUses = max_global_uses !== undefined
+      ? Number(max_global_uses)
+      : usage_limit !== undefined
+      ? Number(usage_limit)
+      : undefined;
+
     const newPromo = await db.promotions.create({
       id: `promo-${Date.now()}`,
       code: code.toUpperCase().trim(),
       title,
       description: description || "",
-      discount_type: discount_type || "percentage",
-      discount_value: Number(discount_value),
+      discount_type: normType,
+      discount_value: numDiscountValue,
       min_spend: min_spend ? Number(min_spend) : undefined,
       max_discount: max_discount ? Number(max_discount) : undefined,
       is_active: true,
-      start_date: start_date || new Date().toISOString(),
-      end_date: end_date || new Date(Date.now() + 86400000 * 30).toISOString(),
+      start_date: resolvedStartsAt,
+      starts_at: resolvedStartsAt,
+      end_date: resolvedEndsAt,
+      ends_at: resolvedEndsAt,
       usage_count: 0,
-      usage_limit: usage_limit ? Number(usage_limit) : undefined,
+      usage_limit: resolvedMaxUses,
+      max_global_uses: resolvedMaxUses,
+      max_uses_per_user: max_uses_per_user ? Number(max_uses_per_user) : undefined,
+      total_discount_given: 0,
+      eligible_categories: Array.isArray(eligible_categories) ? eligible_categories : undefined,
+      eligible_product_ids: Array.isArray(eligible_product_ids) ? eligible_product_ids : undefined,
+      buy_x_get_y: buy_x_get_y && typeof buy_x_get_y === "object" ? buy_x_get_y : undefined,
       created_at: new Date().toISOString(),
     });
 
@@ -128,6 +172,19 @@ export async function PUT(req: NextRequest) {
       return badRequestProblem("Promotion ID is required.", {
         instance: req.nextUrl.pathname,
       });
+    }
+
+    if (updates.code) {
+      updates.code = String(updates.code).toUpperCase().trim();
+    }
+    if (updates.max_global_uses !== undefined && updates.usage_limit === undefined) {
+      updates.usage_limit = updates.max_global_uses;
+    }
+    if (updates.starts_at && !updates.start_date) {
+      updates.start_date = updates.starts_at;
+    }
+    if (updates.ends_at && !updates.end_date) {
+      updates.end_date = updates.ends_at;
     }
 
     const existing = await db.promotions.findById(id);
