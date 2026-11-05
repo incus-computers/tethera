@@ -17,6 +17,7 @@ import {
 import { ProductItemTileImage } from "../../../components/products/ProductItemTileImage";
 import { WishlistToggleButton } from "../../../components/products/WishlistToggleButton";
 import { ProductReviewsSection } from "../../../components/products/ProductReviewsSection";
+import { BackInStockModal } from "../../../components/products/BackInStockModal";
 import { useCartStore } from "../../../lib/store/useCartStore";
 import { useLocationStore } from "../../../lib/store/useLocationStore";
 import { useHeaderStore } from "../../../lib/store/useHeaderStore";
@@ -42,6 +43,7 @@ import {
   Zap,
   X,
   Maximize2,
+  Bell,
 } from "lucide-react";
 
 function isExpressRate(rate: ShippingRateOption): boolean {
@@ -264,6 +266,7 @@ function ProductDetailContent() {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [isBackInStockOpen, setIsBackInStockOpen] = useState(false);
 
   const { addStandardItem, addCustomPC, setFulfillmentMethod, fulfillmentMethod, openCart } = useCartStore();
   const { selectedRate, userLocation, setSelectedRate } = useLocationStore();
@@ -1366,21 +1369,34 @@ function ProductDetailContent() {
               </div>
 
               {/* Action Button & Wishlist */}
-              <div className="pt-1 flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isOutOfStock}
-                  onClick={handleAddToCart}
-                  className={`flex-1 min-h-[44px] py-3 px-5 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center justify-center gap-2 ${
-                    isOutOfStock
-                      ? "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed"
-                      : "bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] cursor-pointer active:scale-[0.99]"
-                  } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#52E394]`}
-                >
-                  <ShoppingCart className="w-4 h-4 text-[#0A0B0E]" />
-                  <span>{isOutOfStock ? "Out of Stock" : "Add to Shopping Cart"}</span>
-                </button>
-                <WishlistToggleButton productId={product.id} />
+              <div className="pt-1 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isOutOfStock}
+                    onClick={handleAddToCart}
+                    className={`flex-1 min-h-[44px] py-3 px-5 rounded-md text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center justify-center gap-2 ${
+                      isOutOfStock
+                        ? "bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed"
+                        : "bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] cursor-pointer active:scale-[0.99]"
+                    } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#52E394]`}
+                  >
+                    <ShoppingCart className="w-4 h-4 text-[#0A0B0E]" />
+                    <span>{isOutOfStock ? "Out of Stock" : "Add to Shopping Cart"}</span>
+                  </button>
+                  <WishlistToggleButton productId={product.id} />
+                </div>
+
+                {isOutOfStock && (
+                  <button
+                    type="button"
+                    onClick={() => setIsBackInStockOpen(true)}
+                    className="w-full min-h-[44px] py-2.5 px-4 rounded-md border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500/50"
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span>Notify Me When Back in Stock</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1788,6 +1804,19 @@ function ProductDetailContent() {
           )}
         </div>
       )}
+
+      <BackInStockModal
+        isOpen={isBackInStockOpen}
+        onClose={() => setIsBackInStockOpen(false)}
+        productId={product.id}
+        productTitle={product.name}
+        variantId={activeVariation?.id}
+        variantName={
+          activeVariation
+            ? formatVariationTitle(activeVariation.attributes)
+            : undefined
+        }
+      />
     </div>
   );
 }

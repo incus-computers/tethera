@@ -1,114 +1,302 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { MOCK_COMPONENTS, CATEGORY_SLUG_MAP, getExpandedCatalogItems } from "../../lib/data/mockHardware";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import {
+  MOCK_COMPONENTS,
+  CATEGORY_SLUG_MAP,
+  getExpandedCatalogItems,
+} from "../../lib/data/mockHardware";
 import { useCartStore } from "../../lib/store/useCartStore";
 import { formatRupiah } from "../../lib/utils/currency";
-import { WhatsAppInquiryButton } from "../../components/whatsapp/WhatsAppInquiryButton";
 import {
   Plus,
-  ArrowRight,
   ChevronRight,
-  Filter,
   SlidersHorizontal,
   Cpu,
   Search,
   X,
   RotateCcw,
   ArrowUpDown,
+  Check,
 } from "lucide-react";
 import { ProductItemTileImage } from "../../components/products/ProductItemTileImage";
 
-export default function ComponentsCatalogPage() {
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [selectedBrand, setSelectedBrand] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
+const CATEGORIES = [
+  "All",
+  "Processors",
+  "Graphics Cards",
+  "Motherboards",
+  "Cooling",
+  "Chassis",
+  "Memory",
+  "Storage",
+  "Power Supplies",
+  "Mice",
+  "Keyboards",
+  "Headphones",
+  "Mousepads",
+  "Other Peripherals",
+];
+
+function normalizeCategory(param: string | null): string {
+  if (!param || param.toLowerCase() === "all") return "All";
+  const lower = param.toLowerCase().trim();
+  if (lower === "cpu" || lower === "processors" || lower === "processor") return "Processors";
+  if (lower === "gpu" || lower === "graphics-cards" || lower === "graphics cards") return "Graphics Cards";
+  if (lower === "motherboards" || lower === "motherboard") return "Motherboards";
+  if (lower === "cooling" || lower === "cooler") return "Cooling";
+  if (lower === "chassis" || lower === "cases" || lower === "case") return "Chassis";
+  if (lower === "memory" || lower === "ram") return "Memory";
+  if (lower === "storage" || lower === "ssd") return "Storage";
+  if (lower === "psu" || lower === "power-supplies" || lower === "power supplies") return "Power Supplies";
+  if (lower === "mice" || lower === "mouse") return "Mice";
+  if (lower === "keyboards" || lower === "keyboard") return "Keyboards";
+  if (lower === "headphones" || lower === "headphone" || lower === "headset") return "Headphones";
+  if (lower === "mousepads" || lower === "mousepad") return "Mousepads";
+  if (lower === "other peripherals" || lower === "peripherals") return "Other Peripherals";
+
+  const found = CATEGORIES.find((c) => c.toLowerCase() === lower);
+  return found || param;
+}
+
+function ComponentsCatalogContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // Read initial values from URL search params
+  const initialCategory = normalizeCategory(searchParams.get("category"));
+  const initialBrand = searchParams.get("brand") || "All";
+  const initialSearch = searchParams.get("search") || "";
+  const initialMinPrice = searchParams.get("minPrice") || "";
+  const initialMaxPrice = searchParams.get("maxPrice") || "";
+  const initialInStock = searchParams.get("inStock") === "true" || searchParams.get("inStock") === "1";
+  const initialSort = (searchParams.get("sort") as "featured" | "price-asc" | "price-desc" | "newest") || "featured";
+
+  const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const [selectedBrand, setSelectedBrand] = useState(initialBrand);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [minPriceInput, setMinPriceInput] = useState(initialMinPrice);
+  const [maxPriceInput, setMaxPriceInput] = useState(initialMaxPrice);
+  const [inStockOnly, setInStockOnly] = useState(initialInStock);
+  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc" | "newest">(initialSort);
 
   const INITIAL_BATCH = 24;
   const BATCH_INCREMENT = 12;
   const [visibleCount, setVisibleCount] = useState(INITIAL_BATCH);
-  const sentinelRef = React.useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const { addStandardItem, openCart } = useCartStore();
-
-  const categories = [
-    "All",
-    "Processors",
-    "Graphics Cards",
-    "Motherboards",
-    "Cooling",
-    "Chassis",
-    "Memory",
-    "Storage",
-    "Power Supplies",
-    "Mice",
-    "Keyboards",
-    "Headphones",
-    "Mousepads",
-    "Other Peripherals",
-  ];
 
   const allComponents = useMemo(() => getExpandedCatalogItems(MOCK_COMPONENTS), []);
 
   const brands = useMemo(
-    () => ["All", ...Array.from(new Set(allComponents.map((item) => item.brand)))],
+    () => ["All", ...Array.from(new Set(allComponents.map((item) => item.brand))).sort()],
     [allComponents]
   );
+
+  // Dynamic price bounds across catalog
+  const catalogPriceBounds = useMemo(() => {
+    let min = Number.POSITIVE_INFINITY;
+    let max = 0;
+    for (const item of allComponents) {
+      const price = item.sale_price && item.sale_price < item.price ? item.sale_price : item.price;
+      if (price < min) min = price;
+      if (price > max) max = price;
+    }
+    return {
+      min: min === Number.POSITIVE_INFINITY ? 0 : min,
+      max,
+    };
+  }, [allComponents]);
+
+  // Synchronize state with URL parameters when user navigates (back / forward)
+  useEffect(() => {
+    setActiveCategory(normalizeCategory(searchParams.get("category")));
+    setSelectedBrand(searchParams.get("brand") || "All");
+    setSearchQuery(searchParams.get("search") || "");
+    setMinPriceInput(searchParams.get("minPrice") || "");
+    setMaxPriceInput(searchParams.get("maxPrice") || "");
+    setInStockOnly(searchParams.get("inStock") === "true" || searchParams.get("inStock") === "1");
+    setSortBy((searchParams.get("sort") as any) || "featured");
+  }, [searchParams]);
+
+  // Synchronize URL parameters when filters change
+  const updateUrlParams = (updates: {
+    category?: string;
+    brand?: string;
+    search?: string;
+    minPrice?: string;
+    maxPrice?: string;
+    inStock?: boolean;
+    sort?: string;
+  }) => {
+    const params = new URLSearchParams();
+
+    const category = updates.category !== undefined ? updates.category : activeCategory;
+    const brand = updates.brand !== undefined ? updates.brand : selectedBrand;
+    const search = updates.search !== undefined ? updates.search : searchQuery;
+    const minPrice = updates.minPrice !== undefined ? updates.minPrice : minPriceInput;
+    const maxPrice = updates.maxPrice !== undefined ? updates.maxPrice : maxPriceInput;
+    const inStock = updates.inStock !== undefined ? updates.inStock : inStockOnly;
+    const sort = updates.sort !== undefined ? updates.sort : sortBy;
+
+    if (category && category !== "All") {
+      params.set("category", category.toLowerCase().replace(/\s+/g, "-"));
+    }
+    if (brand && brand !== "All") {
+      params.set("brand", brand);
+    }
+    if (search.trim()) {
+      params.set("search", search.trim());
+    }
+    if (minPrice && !Number.isNaN(Number(minPrice)) && Number(minPrice) > 0) {
+      params.set("minPrice", minPrice);
+    }
+    if (maxPrice && !Number.isNaN(Number(maxPrice)) && Number(maxPrice) > 0) {
+      params.set("maxPrice", maxPrice);
+    }
+    if (inStock) {
+      params.set("inStock", "true");
+    }
+    if (sort && sort !== "featured") {
+      params.set("sort", sort);
+    }
+
+    const queryString = params.toString();
+    const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    router.replace(targetUrl, { scroll: false });
+  };
 
   const handleCategoryChange = (cat: string) => {
     setActiveCategory(cat);
     setVisibleCount(INITIAL_BATCH);
+    updateUrlParams({ category: cat });
   };
 
   const handleBrandChange = (brand: string) => {
     setSelectedBrand(brand);
     setVisibleCount(INITIAL_BATCH);
+    updateUrlParams({ brand });
   };
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
     setVisibleCount(INITIAL_BATCH);
+    updateUrlParams({ search: query });
   };
 
-  const handleSortChange = (sort: "featured" | "price-asc" | "price-desc") => {
+  const handleMinPriceChange = (val: string) => {
+    setMinPriceInput(val);
+    setVisibleCount(INITIAL_BATCH);
+    updateUrlParams({ minPrice: val });
+  };
+
+  const handleMaxPriceChange = (val: string) => {
+    setMaxPriceInput(val);
+    setVisibleCount(INITIAL_BATCH);
+    updateUrlParams({ maxPrice: val });
+  };
+
+  const handleInStockToggle = () => {
+    const nextVal = !inStockOnly;
+    setInStockOnly(nextVal);
+    setVisibleCount(INITIAL_BATCH);
+    updateUrlParams({ inStock: nextVal });
+  };
+
+  const handleSortChange = (sort: "featured" | "price-asc" | "price-desc" | "newest") => {
     setSortBy(sort);
     setVisibleCount(INITIAL_BATCH);
+    updateUrlParams({ sort });
   };
 
-  // Filtering
+  const resetAllFilters = () => {
+    setActiveCategory("All");
+    setSelectedBrand("All");
+    setSearchQuery("");
+    setMinPriceInput("");
+    setMaxPriceInput("");
+    setInStockOnly(false);
+    setSortBy("featured");
+    setVisibleCount(INITIAL_BATCH);
+    router.replace(pathname, { scroll: false });
+  };
+
+  // Multi-criteria filtering
   const q = searchQuery.toLowerCase().trim();
-  let filtered = allComponents.filter((item) => {
-    const matchesCat = activeCategory === "All" || item.category === activeCategory;
-    const matchesBrand = selectedBrand === "All" || item.brand === selectedBrand;
-    const matchesSearch =
-      !q ||
-      item.name.toLowerCase().includes(q) ||
-      item.brand.toLowerCase().includes(q) ||
-      item.sku.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q);
-    return matchesCat && matchesBrand && matchesSearch;
-  });
+  const minPriceNum = minPriceInput ? Number(minPriceInput) : null;
+  const maxPriceNum = maxPriceInput ? Number(maxPriceInput) : null;
 
-  // Sorting
-  if (sortBy === "price-asc") {
-    filtered.sort((a, b) => a.price - b.price);
-  } else if (sortBy === "price-desc") {
-    filtered.sort((a, b) => b.price - a.price);
-  }
+  const filtered = useMemo(() => {
+    return allComponents.filter((item) => {
+      // Category match
+      const matchesCat = activeCategory === "All" || item.category === activeCategory;
+      if (!matchesCat) return false;
 
-  const totalFiltered = filtered.length;
+      // Brand match
+      const matchesBrand = selectedBrand === "All" || item.brand === selectedBrand;
+      if (!matchesBrand) return false;
 
-  React.useEffect(() => {
+      // In stock match
+      if (inStockOnly && item.stockCount <= 0) return false;
+
+      // Price bounds
+      const effectivePrice = item.sale_price && item.sale_price < item.price ? item.sale_price : item.price;
+      if (minPriceNum !== null && !Number.isNaN(minPriceNum) && effectivePrice < minPriceNum) {
+        return false;
+      }
+      if (maxPriceNum !== null && !Number.isNaN(maxPriceNum) && effectivePrice > maxPriceNum) {
+        return false;
+      }
+
+      // Search keyword match
+      if (q) {
+        const matchesSearch =
+          item.name.toLowerCase().includes(q) ||
+          item.brand.toLowerCase().includes(q) ||
+          item.sku.toLowerCase().includes(q) ||
+          item.category.toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+
+      return true;
+    });
+  }, [allComponents, activeCategory, selectedBrand, inStockOnly, minPriceNum, maxPriceNum, q]);
+
+  // Deterministic sorting
+  const sorted = useMemo(() => {
+    const copy = [...filtered];
+    if (sortBy === "price-asc") {
+      copy.sort((a, b) => {
+        const pA = a.sale_price && a.sale_price < a.price ? a.sale_price : a.price;
+        const pB = b.sale_price && b.sale_price < b.price ? b.sale_price : b.price;
+        return pA - pB;
+      });
+    } else if (sortBy === "price-desc") {
+      copy.sort((a, b) => {
+        const pA = a.sale_price && a.sale_price < a.price ? a.sale_price : a.price;
+        const pB = b.sale_price && b.sale_price < b.price ? b.sale_price : b.price;
+        return pB - pA;
+      });
+    } else if (sortBy === "newest") {
+      copy.sort((a, b) => (b.id || "").localeCompare(a.id || ""));
+    }
+    return copy;
+  }, [filtered, sortBy]);
+
+  const totalFiltered = sorted.length;
+
+  useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => Math.min(prev + BATCH_INCREMENT, filtered.length));
+          setVisibleCount((prev) => Math.min(prev + BATCH_INCREMENT, sorted.length));
         }
       },
       { rootMargin: "400px" }
@@ -116,9 +304,18 @@ export default function ComponentsCatalogPage() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [filtered.length]);
+  }, [sorted.length]);
 
-  const visibleItems = filtered.slice(0, visibleCount);
+  const visibleItems = sorted.slice(0, visibleCount);
+
+  // Active filter indicators
+  const hasActiveFilters =
+    activeCategory !== "All" ||
+    selectedBrand !== "All" ||
+    searchQuery.trim().length > 0 ||
+    Boolean(minPriceInput) ||
+    Boolean(maxPriceInput) ||
+    inStockOnly;
 
   return (
     <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8 space-y-8">
@@ -159,13 +356,13 @@ export default function ComponentsCatalogPage() {
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search catalog by component model, brand, or SKU..."
-            className="w-full pl-10 pr-10 py-2.5 min-h-[44px] bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-600 focus:border-zinc-900 dark:focus:border-zinc-500 shadow-2xs transition-all"
+            className="w-full pl-10 pr-10 py-2.5 min-h-[44px] bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-600 focus:border-zinc-900 dark:focus:border-zinc-500 shadow-2xs transition-all"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => handleSearchChange("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+              className="absolute right-3 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md transition-colors"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -175,11 +372,12 @@ export default function ComponentsCatalogPage() {
 
         {/* Category Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
-          {categories.map((cat) => (
+          {CATEGORIES.map((cat) => (
             <button
               key={cat}
+              type="button"
               onClick={() => handleCategoryChange(cat)}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap tactile-btn min-h-[36px] ${
+              className={`px-3.5 py-2 rounded-lg font-bold transition-all whitespace-nowrap min-h-[44px] flex items-center justify-center ${
                 activeCategory === cat
                   ? "bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white border border-transparent dark:border-zinc-700 shadow-xs"
                   : "bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800"
@@ -190,27 +388,75 @@ export default function ComponentsCatalogPage() {
           ))}
         </div>
 
-        {/* Secondary Filter Bar */}
+        {/* Secondary Filter & Price Range Bar */}
         <div className="p-3.5 sm:p-4 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1 whitespace-nowrap">
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Brand:</span>
-            </span>
-            <select
-              value={selectedBrand}
-              onChange={(e) => handleBrandChange(e.target.value)}
-              className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#37baf2] min-h-[44px] cursor-pointer"
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Brand Filter */}
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1 whitespace-nowrap">
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>Brand:</span>
+              </span>
+              <select
+                value={selectedBrand}
+                onChange={(e) => handleBrandChange(e.target.value)}
+                className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-[#37baf2] min-h-[44px] cursor-pointer"
+              >
+                {brands.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Price Range Filter */}
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-500 dark:text-zinc-400 whitespace-nowrap">Price (Rp):</span>
+              <input
+                type="number"
+                value={minPriceInput}
+                onChange={(e) => handleMinPriceChange(e.target.value)}
+                placeholder={formatRupiah(catalogPriceBounds.min).replace("Rp", "").trim()}
+                aria-label="Minimum price in Rupiah"
+                className="w-24 sm:w-28 min-h-[44px] px-2.5 py-1.5 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-[#37baf2]"
+              />
+              <span className="text-zinc-400 font-bold">to</span>
+              <input
+                type="number"
+                value={maxPriceInput}
+                onChange={(e) => handleMaxPriceChange(e.target.value)}
+                placeholder={formatRupiah(catalogPriceBounds.max).replace("Rp", "").trim()}
+                aria-label="Maximum price in Rupiah"
+                className="w-24 sm:w-28 min-h-[44px] px-2.5 py-1.5 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-[#37baf2]"
+              />
+            </div>
+
+            {/* In-Stock Only Toggle */}
+            <button
+              type="button"
+              onClick={handleInStockToggle}
+              className={`min-h-[44px] px-3.5 py-2 rounded-lg font-semibold text-xs border transition-colors flex items-center gap-2 ${
+                inStockOnly
+                  ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                  : "bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700"
+              }`}
             >
-              {brands.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+              <div
+                className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                  inStockOnly
+                    ? "bg-emerald-600 border-emerald-600 text-white"
+                    : "border-zinc-400 dark:border-zinc-500"
+                }`}
+              >
+                {inStockOnly && <Check className="w-3 h-3 stroke-[3]" />}
+              </div>
+              <span>In Stock Only</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Sort Selector */}
             <div className="flex items-center gap-2">
               <span className="font-bold text-slate-500 dark:text-zinc-400 flex items-center gap-1 whitespace-nowrap">
                 <ArrowUpDown className="w-3.5 h-3.5" />
@@ -219,18 +465,99 @@ export default function ComponentsCatalogPage() {
               <select
                 value={sortBy}
                 onChange={(e: any) => handleSortChange(e.target.value)}
-                className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#37baf2] min-h-[44px] cursor-pointer"
+                className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-[#37baf2] min-h-[44px] cursor-pointer"
               >
                 <option value="featured">Featured First</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
+                <option value="newest">Newest First</option>
               </select>
             </div>
 
             <span className="text-slate-400 dark:text-zinc-600">|</span>
-            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{totalFiltered} products available</span>
+            <span className="text-emerald-700 dark:text-emerald-400 font-semibold whitespace-nowrap">
+              {totalFiltered} products available
+            </span>
           </div>
         </div>
+
+        {/* Active Filter Badges with 1-Click Removal */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <span className="text-zinc-500 dark:text-zinc-400 font-medium mr-1">Active Filters:</span>
+
+            {activeCategory !== "All" && (
+              <button
+                type="button"
+                onClick={() => handleCategoryChange("All")}
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              >
+                <span>Category: {activeCategory}</span>
+                <X className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100" />
+              </button>
+            )}
+
+            {selectedBrand !== "All" && (
+              <button
+                type="button"
+                onClick={() => handleBrandChange("All")}
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              >
+                <span>Brand: {selectedBrand}</span>
+                <X className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100" />
+              </button>
+            )}
+
+            {searchQuery.trim().length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleSearchChange("")}
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              >
+                <span>Search: &quot;{searchQuery}&quot;</span>
+                <X className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100" />
+              </button>
+            )}
+
+            {Boolean(minPriceInput || maxPriceInput) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMinPriceInput("");
+                  setMaxPriceInput("");
+                  updateUrlParams({ minPrice: "", maxPrice: "" });
+                }}
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              >
+                <span>
+                  Price: {minPriceInput ? formatRupiah(Number(minPriceInput)) : "Rp 0"} to{" "}
+                  {maxPriceInput ? formatRupiah(Number(maxPriceInput)) : "Any"}
+                </span>
+                <X className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100" />
+              </button>
+            )}
+
+            {inStockOnly && (
+              <button
+                type="button"
+                onClick={handleInStockToggle}
+                className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              >
+                <span>In Stock Only</span>
+                <X className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-100" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={resetAllFilters}
+              className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors font-medium ml-1"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Clear All</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Products Grid or Empty Search State */}
@@ -247,11 +574,7 @@ export default function ComponentsCatalogPage() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              handleSearchChange("");
-              handleCategoryChange("All");
-              handleBrandChange("All");
-            }}
+            onClick={resetAllFilters}
             className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-xs tactile-btn min-h-[44px]"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -310,7 +633,7 @@ export default function ComponentsCatalogPage() {
                           openCart();
                         }}
                         disabled={item.stockCount <= 0}
-                        className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                        className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400"
                         title="Add to Cart"
                         aria-label={`Add ${item.name} to Cart`}
                       >
@@ -330,35 +653,33 @@ export default function ComponentsCatalogPage() {
                     </Link>
                   </div>
 
-                <div className="mt-1 flex flex-col gap-1">
-                  {/* Price Row */}
-                  <div className="flex items-baseline justify-between gap-2">
-                    {/* Left Column: Current Price & Discount Badge */}
-                    <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
-                      <span className="text-sm sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
-                        {formatRupiah(item.sale_price && item.sale_price < item.price ? item.sale_price : item.price)}
-                      </span>
-                      {item.sale_price && item.sale_price < item.price && (
-                        <span className="text-[10px] sm:text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight shrink-0">
-                          -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                  <div className="mt-1 flex flex-col gap-1">
+                    {/* Price Row */}
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="flex items-baseline gap-1 sm:gap-1.5 min-w-0">
+                        <span className="text-sm sm:lg font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                          {formatRupiah(item.sale_price && item.sale_price < item.price ? item.sale_price : item.price)}
                         </span>
+                        {item.sale_price && item.sale_price < item.price && (
+                          <span className="text-[10px] sm:text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-1 sm:px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900/60 leading-tight shrink-0">
+                            -{Math.round(((item.price - item.sale_price) / item.price) * 100)}%
+                          </span>
+                        )}
+                      </div>
+
+                      {item.sale_price && item.sale_price < item.price && (
+                        <div className="flex flex-col items-end text-right shrink-0">
+                          <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none">
+                            {formatRupiah(item.price)}
+                          </span>
+                        </div>
                       )}
                     </div>
-
-                    {/* Right Column: Original Price (if discounted) */}
-                    {item.sale_price && item.sale_price < item.price && (
-                      <div className="flex flex-col items-end text-right shrink-0">
-                        <span className="text-[11px] sm:text-xs font-bold text-slate-400 dark:text-zinc-500 line-through leading-none">
-                          {formatRupiah(item.price)}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
           {/* Infinite Scroll Sentinel / Loading Indicator */}
           {visibleCount < totalFiltered && (
@@ -378,5 +699,19 @@ export default function ComponentsCatalogPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ComponentsCatalogPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full max-w-[1920px] mx-auto px-4 py-16 text-center text-xs text-zinc-400">
+          Loading hardware catalog...
+        </div>
+      }
+    >
+      <ComponentsCatalogContent />
+    </Suspense>
   );
 }

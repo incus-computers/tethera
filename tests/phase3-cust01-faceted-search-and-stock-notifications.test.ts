@@ -1,6 +1,8 @@
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
+import fs from "fs";
+import path from "path";
 
 vi.mock("server-only", () => ({}));
 
@@ -195,6 +197,48 @@ describe("CUST-01 Faceted Catalog Query Engine & Stock Notifications Repository"
       expect(json.notification).toBeDefined();
       expect(json.notification.product_id).toBe("gpu-1");
       expect(json.notification.email).toBe(email);
+    });
+  });
+
+  describe("UI Craftsmanship & Accessibility Standards", () => {
+    it("ensures BackInStockModal meets accessibility, minimum 44px tap targets, and anti-slop rules", () => {
+      const modalFile = path.resolve(
+        process.cwd(),
+        "src/components/products/BackInStockModal.tsx"
+      );
+      const content = fs.readFileSync(modalFile, "utf-8");
+
+      expect(content).not.toContain("—"); // Zero em dashes
+      expect(content).toContain("role=\"dialog\"");
+      expect(content).toContain("aria-modal=\"true\"");
+      expect(content).toContain("min-h-[44px]");
+    });
+
+    it("ensures /components discovery catalog has URL sync, Suspense wrapping, and active filter chips", () => {
+      const catalogFile = path.resolve(
+        process.cwd(),
+        "src/app/components/page.tsx"
+      );
+      const content = fs.readFileSync(catalogFile, "utf-8");
+
+      expect(content).not.toContain("—"); // Zero em dashes
+      expect(content).toContain("<Suspense");
+      expect(content).toContain("min-h-[44px]");
+      expect(content).toContain("router.replace");
+      expect(content).toContain("Active Filters");
+    });
+
+    it("ensures /products/[id] mounts BackInStockModal with zero em dashes and accessible trigger", () => {
+      const pdpFile = path.resolve(
+        process.cwd(),
+        "src/app/products/[id]/page.tsx"
+      );
+      const content = fs.readFileSync(pdpFile, "utf-8");
+
+      expect(content).not.toContain("—"); // Zero em dashes
+      expect(content).toContain("BackInStockModal");
+      expect(content).toContain("Notify Me When Back in Stock");
+      expect(content).toContain("min-h-[44px]");
     });
   });
 });
