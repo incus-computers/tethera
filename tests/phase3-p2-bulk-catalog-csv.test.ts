@@ -171,4 +171,43 @@ CPU-AMD-9800X3D,,AMD Ryzen 7 9800X3D,,AMD,CPU,8999000,,7200000,25,,ACTIVE,"High 
       expect(validation.errors[0].field).toBe("variant_name");
     });
   });
+
+  describe("Bulk Export API Endpoint (/api/admin/products/bulk/export)", () => {
+    it("blocks unauthenticated requests with 401 Unauthorized", async () => {
+      const { GET: exportGET } = await import("@/app/api/admin/products/bulk/export/route");
+      const { NextRequest } = await import("next/server");
+      const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/export");
+      const res = await exportGET(req);
+      expect(res.status).toBe(401);
+    });
+
+    it("allows CATALOG_MANAGER to download the complete catalog as CSV", async () => {
+      const { GET: exportGET } = await import("@/app/api/admin/products/bulk/export/route");
+      const { NextRequest } = await import("next/server");
+      const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/export", {
+        headers: { authorization: "Bearer catalog" },
+      });
+      const res = await exportGET(req);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/csv");
+      expect(res.headers.get("content-disposition")).toContain("attachment; filename=");
+      const text = await res.text();
+      expect(text).toContain("sku,parent_sku,name,variant_name,brand,category");
+      expect(text).toContain("AMD-100-100000910WOF");
+    });
+
+    it("serves starter CSV template when ?template=true is requested", async () => {
+      const { GET: exportGET } = await import("@/app/api/admin/products/bulk/export/route");
+      const { NextRequest } = await import("next/server");
+      const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/export?template=true", {
+        headers: { authorization: "Bearer catalog" },
+      });
+      const res = await exportGET(req);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-disposition")).toContain("tethera-catalog-sample-template.csv");
+      const text = await res.text();
+      expect(text).toContain("CPU-AMD-9800X3D");
+      expect(text).toContain("spec_socket");
+    });
+  });
 });
