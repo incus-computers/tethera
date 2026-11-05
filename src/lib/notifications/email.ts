@@ -4,6 +4,7 @@
  */
 
 import { CustomerProfile, CrmCampaignPayload } from "../types/customer";
+import { calculateInclusiveTax, DEFAULT_PPN_RATE } from "@/lib/tax/taxCalculation";
 
 export interface OrderEmailParams {
   toEmail: string;
@@ -278,8 +279,9 @@ export interface InvoiceEmailParams {
  */
 export async function sendInvoiceEmail(params: InvoiceEmailParams): Promise<{ success: boolean; error?: string }> {
   try {
-    const dpp = Math.round(params.grandTotal / 1.11);
-    const ppn = params.grandTotal - dpp;
+    const taxRes = calculateInclusiveTax(params.grandTotal, DEFAULT_PPN_RATE);
+    const dpp = taxRes.dpp;
+    const ppn = taxRes.taxAmount;
     const isCnC = params.fulfillmentType === "click_and_collect";
     const formattedDate = params.orderDate || new Date().toLocaleDateString("id-ID", {
       day: "numeric",

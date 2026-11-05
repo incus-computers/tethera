@@ -1,6 +1,8 @@
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
+import fs from "fs";
+import path from "path";
 
 vi.mock("server-only", () => ({}));
 
@@ -137,6 +139,54 @@ describe("CUST-04 Indonesian Tax Itemization & PPN Breakdown", () => {
         expect(item.tax_amount_snapshot).toBeGreaterThan(0);
         expect(item.product_title_snapshot).toBeDefined();
       }
+    });
+  });
+
+  describe("UI Craftsmanship & Anti-NPWP Compliance", () => {
+    it("ensures checkout order summary displays DPP and PPN breakdown without NPWP or NIK capture", () => {
+      const checkoutFile = path.resolve(
+        process.cwd(),
+        "src/app/checkout/page.tsx"
+      );
+      const content = fs.readFileSync(checkoutFile, "utf-8");
+
+      expect(content).not.toContain("—"); // Zero em dashes
+      expect(content).toContain("Dasar Pengenaan Pajak (DPP)");
+      expect(content).toContain("PPN 11% (Included)");
+
+      // Strictly verify no customer NPWP or NIK inputs at checkout
+      expect(content).not.toMatch(/placeholder="[^"]*NPWP/i);
+      expect(content).not.toMatch(/placeholder="[^"]*NIK/i);
+      expect(content).not.toMatch(/name="npwp"/i);
+      expect(content).not.toMatch(/id="npwp"/i);
+      expect(content).not.toMatch(/name="nik"/i);
+      expect(content).not.toMatch(/id="nik"/i);
+    });
+
+    it("ensures invoice generators and email dispatchers harmonize on central tax engine", () => {
+      const invoiceDownloadFile = path.resolve(
+        process.cwd(),
+        "src/lib/utils/invoiceDownload.ts"
+      );
+      const invoiceContent = fs.readFileSync(invoiceDownloadFile, "utf-8");
+      expect(invoiceContent).toContain("calculateInclusiveTax");
+      expect(invoiceContent).not.toContain("—");
+
+      const emailFile = path.resolve(
+        process.cwd(),
+        "src/lib/notifications/email.ts"
+      );
+      const emailContent = fs.readFileSync(emailFile, "utf-8");
+      expect(emailContent).toContain("calculateInclusiveTax");
+      expect(emailContent).not.toContain("—");
+
+      const successFile = path.resolve(
+        process.cwd(),
+        "src/app/checkout/success/page.tsx"
+      );
+      const successContent = fs.readFileSync(successFile, "utf-8");
+      expect(successContent).toContain("calculateInclusiveTax");
+      expect(successContent).not.toContain("—");
     });
   });
 });

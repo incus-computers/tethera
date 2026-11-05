@@ -3,6 +3,8 @@
  * formatted for print and record-keeping without third-party PDF server requirements.
  */
 
+import { calculateInclusiveTax, DEFAULT_PPN_RATE } from "@/lib/tax/taxCalculation";
+
 export interface InvoiceDownloadData {
   orderNumber: string;
   paymentId?: string;
@@ -52,8 +54,9 @@ export interface InvoiceDownloadData {
 }
 
 export function generateInvoiceHtml(order: InvoiceDownloadData): string {
-  const dpp = Math.round(order.grandTotal / 1.11);
-  const ppn = order.grandTotal - dpp;
+  const taxRes = calculateInclusiveTax(order.grandTotal, DEFAULT_PPN_RATE);
+  const dpp = taxRes.dpp;
+  const ppn = taxRes.taxAmount;
   const dateFormatted = order.createdAt
     ? new Date(order.createdAt).toLocaleDateString("id-ID", {
         day: "numeric",

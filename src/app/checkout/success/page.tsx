@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { formatRupiah } from "@/lib/utils/currency";
 import { downloadInvoiceFile } from "@/lib/utils/invoiceDownload";
+import { calculateInclusiveTax, DEFAULT_PPN_RATE } from "@/lib/tax/taxCalculation";
 
 interface OrderSnapshot {
   orderNumber: string;
@@ -261,8 +262,9 @@ function OrderSuccessContent() {
   });
 
   // Calculate DPP (Dasar Pengenaan Pajak) and PPN (11% included)
-  const dpp = Math.round(currentOrder.grandTotal / 1.11);
-  const ppn = currentOrder.grandTotal - dpp;
+  const taxResult = calculateInclusiveTax(currentOrder.grandTotal, DEFAULT_PPN_RATE);
+  const dpp = taxResult.dpp;
+  const ppn = taxResult.taxAmount;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 py-8 sm:py-12 px-3 sm:px-6 lg:px-8 w-full max-w-full overflow-x-hidden transition-colors">

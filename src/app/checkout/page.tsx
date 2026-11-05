@@ -48,6 +48,7 @@ import {
 } from "@/components/shipping/CourierLogo";
 import { ShippingRateOption } from "@/lib/shipping/types";
 import { IncusLogo } from "@/components/navigation/IncusLogo";
+import { calculateInclusiveTax, DEFAULT_PPN_RATE } from "@/lib/tax/taxCalculation";
 
 type FulfillmentTier = "click_and_collect" | "standard" | "express";
 
@@ -181,6 +182,7 @@ export default function CheckoutPage() {
 
   const discountAmount = appliedDiscount ? appliedDiscount.amount : 0;
   const grandTotal = Math.max(0, rawSubtotal + shippingFee - discountAmount);
+  const checkoutTax = useMemo(() => calculateInclusiveTax(rawSubtotal, DEFAULT_PPN_RATE), [rawSubtotal]);
 
   // Generated Midtrans Payment Details
   const activePaymentDetails: MidtransGeneratedPayment = useMemo(() => {
@@ -600,6 +602,16 @@ export default function CheckoutPage() {
                   <span className="font-bold">-{formatRupiah(appliedDiscount.amount)}</span>
                 </div>
               )}
+              <div className="pt-2 pb-1 border-t border-dashed border-slate-200 dark:border-zinc-800/80 space-y-1 text-[11px]">
+                <div className="flex justify-between text-slate-400 dark:text-zinc-500">
+                  <span>Dasar Pengenaan Pajak (DPP)</span>
+                  <span>{formatRupiah(checkoutTax.dpp)}</span>
+                </div>
+                <div className="flex justify-between text-slate-400 dark:text-zinc-500">
+                  <span>PPN 11% (Included)</span>
+                  <span>{formatRupiah(checkoutTax.taxAmount)}</span>
+                </div>
+              </div>
               <div className="flex justify-between text-base font-bold text-zinc-900 dark:text-white pt-2 border-t border-slate-200 dark:border-zinc-800">
                 <span>Total</span>
                 <span className="text-xl font-black">{formatRupiah(grandTotal)}</span>
@@ -1740,13 +1752,25 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
+                {/* Indonesian Tax Itemization (PPN 11%) */}
+                <div className="pt-2 pb-1 border-t border-dashed border-slate-200 dark:border-zinc-800/80 space-y-1.5 text-[11px]">
+                  <div className="flex justify-between text-slate-400 dark:text-zinc-500">
+                    <span>Dasar Pengenaan Pajak (DPP)</span>
+                    <span>{formatRupiah(checkoutTax.dpp)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400 dark:text-zinc-500">
+                    <span>PPN 11% (Included)</span>
+                    <span>{formatRupiah(checkoutTax.taxAmount)}</span>
+                  </div>
+                </div>
+
                 <div className="flex justify-between items-baseline pt-4 border-t border-slate-200 dark:border-zinc-800">
                   <div>
                     <span className="text-base font-bold text-zinc-900 dark:text-white block">
                       Total
                     </span>
                     <span className="text-[11px] text-slate-400 dark:text-zinc-500">
-                      Including IDR tax where applicable
+                      Including 11% Indonesian PPN
                     </span>
                   </div>
                   <div className="text-right">
