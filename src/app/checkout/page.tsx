@@ -234,8 +234,8 @@ export default function CheckoutPage() {
       const promoItems = items.map((it) => ({
         id: it.item.id,
         quantity: it.quantity,
-        price: it.item.retail_price,
-        category: it.item.category_slug,
+        price: it.item.price ?? it.item.retail_price ?? 0,
+        category: it.item.category,
       }));
 
       const res = await fetch("/api/promotions/validate", {
