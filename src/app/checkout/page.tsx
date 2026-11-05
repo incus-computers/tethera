@@ -112,7 +112,9 @@ export default function CheckoutPage() {
     code: string;
     amount: number;
     description: string;
+    discountType?: string;
   } | null>(null);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [discountError, setDiscountError] = useState<string | null>(null);
 
   // Payment State
@@ -180,7 +182,13 @@ export default function CheckoutPage() {
       ? selectedStandardRate.price
       : selectedExpressRate.price;
 
-  const discountAmount = appliedDiscount ? appliedDiscount.amount : 0;
+  const discountAmount = useMemo(() => {
+    if (!appliedDiscount) return 0;
+    if (appliedDiscount.discountType === "free_shipping") {
+      return Math.min(shippingFee, appliedDiscount.amount || shippingFee);
+    }
+    return appliedDiscount.amount;
+  }, [appliedDiscount, shippingFee]);
   const grandTotal = Math.max(0, rawSubtotal + shippingFee - discountAmount);
   const checkoutTax = useMemo(() => calculateInclusiveTax(rawSubtotal, DEFAULT_PPN_RATE), [rawSubtotal]);
 
@@ -210,8 +218,8 @@ export default function CheckoutPage() {
     }
   };
 
-  // Handle Discount Code Application
-  const handleApplyDiscount = (e: React.FormEvent) => {
+  // Handle Discount Code Application via Rules Engine API
+  const handleApplyDiscount = async (e: React.FormEvent) => {
     e.preventDefault();
     setDiscountError(null);
     const code = discountCodeInput.trim().toUpperCase();
@@ -221,31 +229,44 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (code === "FLAGSHIPFREE") {
-      setAppliedDiscount({
-        code: "FLAGSHIPFREE",
-        amount: 150000,
-        description: "Rp 150.000 Flagship Pickup Promo",
+    setIsApplyingDiscount(true);
+    try {
+      const promoItems = items.map((it) => ({
+        id: it.item.id,
+        quantity: it.quantity,
+        price: it.item.retail_price,
+        category: it.item.category_slug,
+      }));
+
+      const res = await fetch("/api/promotions/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          subtotal: rawSubtotal,
+          shippingFee: selectedFulfillment === "click_and_collect" ? 0 : shippingFee,
+          items: promoItems,
+          customerEmail: contactEmailOrPhone.includes("@") ? contactEmailOrPhone : (user?.email || undefined),
+          customerId: user?.id || undefined,
+        }),
       });
-      setDiscountCodeInput("");
-    } else if (code === "RTXSUPER10" || code === "TETHERA10") {
-      const tenPercent = Math.round(rawSubtotal * 0.1);
-      const capped = Math.min(tenPercent, 1500000);
-      setAppliedDiscount({
-        code,
-        amount: capped,
-        description: `10% Off Voucher (-${formatRupiah(capped)})`,
-      });
-      setDiscountCodeInput("");
-    } else if (code === "WHITEFEST2026") {
-      setAppliedDiscount({
-        code: "WHITEFEST2026",
-        amount: 500000,
-        description: "Rp 500.000 White Edition Festival Discount",
-      });
-      setDiscountCodeInput("");
-    } else {
-      setDiscountError("Code not valid for items in your cart.");
+
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setDiscountError(data.detail || data.message || "Invalid or ineligible discount code.");
+      } else {
+        setAppliedDiscount({
+          code: data.code || code,
+          amount: Number(data.discountAmount || 0),
+          description: data.message || `Discount code ${data.code || code} applied`,
+          discountType: data.discountType,
+        });
+        setDiscountCodeInput("");
+      }
+    } catch (err: any) {
+      setDiscountError(err.message || "Failed to validate promotion code.");
+    } finally {
+      setIsApplyingDiscount(false);
     }
   };
 
@@ -343,6 +364,7 @@ export default function CheckoutPage() {
           subtotal: rawSubtotal,
           shippingFee,
           discountAmount,
+          promoCode: appliedDiscount ? appliedDiscount.code : undefined,
           total: grandTotal,
           notes: deliveryNotes,
         }),
@@ -568,20 +590,49 @@ export default function CheckoutPage() {
             </div>
 
             {/* Mobile Discount Form */}
-            <form onSubmit={handleApplyDiscount} className="flex gap-2 pt-2">
-              <input
-                type="text"
-                placeholder="Discount code or gift card"
-                value={discountCodeInput}
-                onChange={(e) => setDiscountCodeInput(e.target.value)}
-                className="flex-1 px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
-              />
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[44px]"
-              >
-                Apply
-              </button>
+            <form onSubmit={handleApplyDiscount} className="space-y-1 pt-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Discount code or gift card"
+                  value={discountCodeInput}
+                  onChange={(e) => setDiscountCodeInput(e.target.value)}
+                  className="flex-1 px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
+                />
+                <button
+                  type="submit"
+                  disabled={isApplyingDiscount}
+                  className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[44px] cursor-pointer disabled:opacity-50"
+                >
+                  {isApplyingDiscount ? "..." : "Apply"}
+                </button>
+              </div>
+
+              {discountError && (
+                <p className="text-[11px] text-red-600 dark:text-red-400 pt-1">
+                  {discountError}
+                </p>
+              )}
+
+              {appliedDiscount && (
+                <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs mt-2">
+                  <div className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-bold">
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>{appliedDiscount.code}</span>
+                    <span className="text-[11px] font-normal text-emerald-700 dark:text-emerald-400">
+                      ({appliedDiscount.description})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveDiscount}
+                    className="text-slate-400 hover:text-red-500 p-2 rounded min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
+                    title="Remove discount"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </form>
 
             {/* Mobile Breakdown */}
@@ -1694,9 +1745,10 @@ export default function CheckoutPage() {
                   />
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[44px] cursor-pointer"
+                    disabled={isApplyingDiscount}
+                    className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[44px] cursor-pointer disabled:opacity-50"
                   >
-                    Apply
+                    {isApplyingDiscount ? "..." : "Apply"}
                   </button>
                 </div>
 
@@ -1718,10 +1770,10 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={handleRemoveDiscount}
-                      className="text-slate-400 hover:text-red-500 p-1 rounded min-w-[28px] min-h-[28px] flex items-center justify-center cursor-pointer"
+                      className="text-slate-400 hover:text-red-500 p-2 rounded min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer"
                       title="Remove discount"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}

@@ -294,4 +294,27 @@ describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
       expect(updatedPromo!.total_discount_given).toBe(300000);
     });
   });
+
+  describe("Storefront Checkout Dynamic Promo Integration", () => {
+    it("dynamically validates promotions via API route instead of hardcoded code switches", async () => {
+      const fs = await import("fs");
+      const path = await import("path");
+      const checkoutPagePath = path.resolve(process.cwd(), "src/app/checkout/page.tsx");
+      const checkoutCode = fs.readFileSync(checkoutPagePath, "utf-8");
+
+      // Verify no hardcoded coupons in checkout page
+      expect(checkoutCode).not.toContain('code === "FLAGSHIPFREE"');
+      expect(checkoutCode).not.toContain('code === "RTXSUPER10"');
+      expect(checkoutCode).not.toContain('code === "WHITEFEST2026"');
+
+      // Verify dynamic validation call
+      expect(checkoutCode).toContain('fetch("/api/promotions/validate"');
+
+      // Verify promoCode is transmitted to order creation
+      expect(checkoutCode).toContain("promoCode: appliedDiscount ? appliedDiscount.code : undefined");
+
+      // Verify accessibility: min 44px tap targets on discount controls
+      expect(checkoutCode).toContain("min-w-[44px] min-h-[44px]");
+    });
+  });
 });
