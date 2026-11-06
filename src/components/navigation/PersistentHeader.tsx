@@ -915,7 +915,7 @@ export function PersistentHeader() {
               {/* Drawer Bottom Support Contact */}
               <div className="p-4 bg-slate-50 dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800 space-y-2.5">
                 <a
-                  href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
+                  href="https://wa.me/6281234567890?text=Hi%20Incus%20Computers%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"

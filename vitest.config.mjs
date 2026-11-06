@@ -19,7 +19,6 @@ export default {
     exclude: [
       "tests/*variations*.test.ts",
       "tests/catalog-tiles.test.ts",
-      "tests/promotional-banners.test.ts",
     ],
   },
 };

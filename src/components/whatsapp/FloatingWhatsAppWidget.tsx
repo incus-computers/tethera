@@ -11,7 +11,7 @@ interface FloatingWhatsAppWidgetProps {
 
 export function FloatingWhatsAppWidget({
   storePhone = "6281234567890",
-  storeName = "Tethera Tech Support Desk"
+  storeName = "Incus Tech Support Desk"
 }: FloatingWhatsAppWidgetProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);

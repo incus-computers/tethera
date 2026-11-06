@@ -46,14 +46,14 @@ export const DEFAULT_CUSTOM_PC_HERO: CustomPcHeroConfig = {
   primaryCtaLink: "/builder",
   secondaryCtaText: "Chat with Technician",
   secondaryCtaLink:
-    "https://wa.me/6281234567890?text=Hi%20Tethera%20technician,%20I'd%20like%20guidance%20on%20building%20a%20custom%20PC.",
+    "https://wa.me/6281234567890?text=Hi%20Incus%20Computers%20technician,%20I'd%20like%20guidance%20on%20building%20a%20custom%20PC.",
   guarantee1: "2-Yr Return-to-Base Warranty",
   guarantee2: "24h Prime95 Burn-In Test",
   guarantee3: "Flagship Counter Pickup",
   imageUrl: "https://images.unsplash.com/photo-1587202372775-e229f172b9d7?w=900&auto=format&fit=crop&q=80",
   imageBadge: "Flagship Hub",
   imageSubBadge: "Click & Collect Ready",
-  imageTitle: "Tethera Custom Architecture",
+  imageTitle: "Incus Custom Architecture",
   imageDescription: "Individually stress-tested workstations & enthusiast gaming rigs",
 };
 

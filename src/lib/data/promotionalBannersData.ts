@@ -89,7 +89,7 @@ export const CANONICAL_PROMO_BANNERS: DynamicBannerSlide[] = [
     title: "Corsair Dominator Titanium & iCUE LINK Ecosystem",
     highlight: "Smart Cable Architecture & High Frequency DDR5",
     description:
-      "Eliminate cable clutter with magnetic daisy-chaining. Precision-tuned DDR5-6000MHz memory profiles certified for Tethera gaming rigs.",
+      "Eliminate cable clutter with magnetic daisy-chaining. Precision-tuned DDR5-6000MHz memory profiles certified for Incus gaming rigs.",
     cta_text: "View Memory & Cooling",
     cta_link: "/components/ram",
     image_url:

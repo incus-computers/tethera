@@ -3050,7 +3050,7 @@ export default function AdminPortalPage() {
                     required
                     value={newBannerForm.title}
                     onChange={(e) => setNewBannerForm({ ...newBannerForm, title: e.target.value })}
-                    placeholder="e.g. Tethera Apex White Edition Rig"
+                    placeholder="e.g. Incus Apex White Edition Rig"
                     className="w-full min-h-[44px] bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
                   />
                 </div>

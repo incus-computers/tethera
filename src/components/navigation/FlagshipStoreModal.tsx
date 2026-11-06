@@ -20,14 +20,14 @@ export function FlagshipStoreModal({ isOpen, onClose }: FlagshipStoreModalProps)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-xl bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden transition-colors">
-        {/* Header with clean Tethera branding */}
+        {/* Header with clean Incus branding */}
         <div className="bg-slate-50 dark:bg-zinc-950 px-6 py-5 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-zinc-800 text-white flex items-center justify-center font-bold border border-transparent dark:border-zinc-700">
               <MapPin className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Tethera Flagship Experience Store</h2>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Incus Flagship Experience Store</h2>
               <p className="text-xs text-slate-500 dark:text-zinc-400">Retail Showroom, Tech Lab & Click-n-Collect Hub</p>
             </div>
           </div>
@@ -75,7 +75,7 @@ export function FlagshipStoreModal({ isOpen, onClose }: FlagshipStoreModalProps)
               <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                 Direct Desk: (021) 555-0199<br />
                 WhatsApp: +62 812-3456-7890<br />
-                Email: support@tethera.com
+                Email: support@incuscomputers.com
               </p>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-2">● Technicians on duty today</p>
             </div>
@@ -106,7 +106,7 @@ export function FlagshipStoreModal({ isOpen, onClose }: FlagshipStoreModalProps)
         {/* Footer */}
         <div className="bg-slate-50 dark:bg-zinc-950 px-6 py-4 border-t border-slate-200 dark:border-zinc-800 flex justify-between items-center">
           <a
-            href="https://wa.me/6281234567890?text=Hi%20Tethera%20team,%20I'm%20asking%20about%20store%20hours%20and%20stock."
+            href="https://wa.me/6281234567890?text=Hi%20Incus%20Computers%20team,%20I'm%20asking%20about%20store%20hours%20and%20stock."
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
