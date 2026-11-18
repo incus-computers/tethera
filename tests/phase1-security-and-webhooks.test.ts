@@ -9,12 +9,12 @@ import {
   generateMidtransSignature,
   verifyMidtransSignature,
 } from "@/lib/payment/midtrans";
-import { POST as createOrderPOST } from "@/app/api/checkout/create-order/route";
+import { createOrderPOST } from "./support/checkout";
 import { POST as webhookPOST } from "@/app/api/webhooks/midtrans/route";
 import { POST as chargePOST } from "@/app/api/checkout/midtrans/charge/route";
 
 describe("Phase 1 Security & Webhook Architecture", () => {
-  const TEST_SERVER_KEY = "SB-Mid-server-test-tethera";
+  const TEST_SERVER_KEY = "demo-midtrans-only";
 
   describe("Cryptographic SHA512 Midtrans Signature", () => {
     it("generates deterministic SHA512 signature matching Midtrans specification", () => {
@@ -308,7 +308,7 @@ describe("Phase 1 Security & Webhook Architecture", () => {
       const totalAmount = createJson.total;
 
       const orderBefore = await db.orders.findById(orderId);
-      expect(orderBefore?.status).toBe("order_received");
+      expect(orderBefore?.status).toBe("pending_payment");
 
       // Check inventory has 1 reserved
       const invBefore = await db.inventory.getByProductAndStore("cpu-3");
@@ -482,6 +482,7 @@ describe("Phase 1 Security & Webhook Architecture", () => {
       // Client sends charge request with tampered amount (e.g. 500 rupiah)
       const chargeReq = new NextRequest("http://localhost:3000/api/checkout/midtrans/charge", {
         method: "POST",
+        headers: {cookie: createRes.headers.get("set-cookie")!.split(";")[0]},
         body: JSON.stringify({
           orderId: orderId,
           orderNumber: createJson.orderNumber,

@@ -93,7 +93,7 @@ export class ReviewsRepository extends BaseRepository<ProductReviewRow> {
       const emailMatch = cleanEmail && o.customer_email.trim().toLowerCase() === cleanEmail;
       const userMatch = userId && o.customer_id === userId;
       const statusMatch = deliveredStatuses.includes(o.status);
-      return (emailMatch || userMatch) && statusMatch;
+      return Boolean(userMatch) && statusMatch;
     });
 
     for (const order of matchingCustomerOrders) {

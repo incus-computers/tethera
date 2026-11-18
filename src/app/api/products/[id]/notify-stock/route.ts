@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { withAccess } from "@/lib/auth/routeGuard";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -8,12 +12,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const instance = req.nextUrl?.pathname || `/api/products/${id}/notify-stock`;
 
     const product = await db.products.findById(id);
@@ -32,7 +36,9 @@ export async function POST(
       });
     }
 
-    const { email, phone, variantId } = body || {};
+    const { email, phone, variantId,verifiedOwnerId } = body || {};
+    if(variantId){const {BaseRepository}=await import("@/lib/db");const variant=await new BaseRepository<any>("product_variants").findById(String(variantId));if(!variant||variant.product_id!==id||!variant.is_active)return badRequestProblem("Choose an active variant belonging to this product.",{instance});}
+
 
     const emailStr = typeof email === "string" ? email.trim() : "";
     const phoneStr = typeof phone === "string" ? phone.trim() : "";
@@ -60,6 +66,7 @@ export async function POST(
 
     const notification = await db.stockNotifications.requestNotification({
       productId: id,
+      verifiedOwnerId,
       variantId: variantId ? String(variantId) : undefined,
       email: emailStr || undefined,
       phone: phoneStr || undefined,
@@ -68,16 +75,20 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-        message: "You will be notified when this item is back in stock.",
+        message: "Your stock alert is saved for your verified email address.",
         notification,
       },
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("[API NOTIFY STOCK ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return internalServerErrorProblem(
-      error.message || "Failed to process stock notification request",
-      { instance: req.nextUrl?.pathname || `/api/products/${params?.id}/notify-stock` }
+      "Failed to process stock notification request",
+      { instance: req.nextUrl?.pathname || "/api/products/notify-stock" }
     );
   }
 }
+
+export const POST=withApiProtection(withAccess(handlePOST));

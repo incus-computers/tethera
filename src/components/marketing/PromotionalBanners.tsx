@@ -23,6 +23,10 @@ import {
 
 export type { PromoSlide };
 
+// Keep the previous seeded/cached banner readable in the English storefront.
+const englishPerk = (perk?: string) => perk === "Hemat hingga Rp 3.500.000 untuk sasis putih & komponen premium"
+  ? "Save up to Rp 3,500,000 on white cases & premium components" : perk;
+
 export function PromotionalBanners() {
   const [slides, setSlides] = useState<PromoSlide[]>(CANONICAL_PROMO_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -188,7 +192,7 @@ export function PromotionalBanners() {
                           {slide.perk && (
                             <div className="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900/80 backdrop-blur-xs border border-white/20 rounded-lg text-xs sm:text-sm font-semibold text-slate-200">
                               <ShieldCheck className="w-4 h-4 text-[#37baf2] shrink-0" />
-                              <span>{slide.perk}</span>
+                              <span>{englishPerk(slide.perk)}</span>
                             </div>
                           )}
                           {slide.ctaText && (
@@ -265,7 +269,7 @@ export function PromotionalBanners() {
                     {slide.perk && (
                       <div className="mt-4 inline-flex items-center gap-2 px-3.5 py-1.5 bg-white/90 dark:bg-zinc-800/90 border border-slate-200/80 dark:border-zinc-700 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 dark:text-zinc-200 shadow-2xs">
                         <ShieldCheck className="w-4 h-4 shrink-0 text-[#37baf2]" />
-                        <span>{slide.perk}</span>
+                        <span>{englishPerk(slide.perk)}</span>
                       </div>
                     )}
                   </div>

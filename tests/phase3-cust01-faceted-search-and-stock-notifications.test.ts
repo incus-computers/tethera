@@ -1,3 +1,4 @@
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
@@ -143,11 +144,11 @@ describe("CUST-01 Faceted Catalog Query Engine & Stock Notifications Repository"
         "http://localhost:3000/api/products/non-existent-product-id/notify-stock",
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json",cookie:fixtureCookie("buyer@example.com") },
           body: JSON.stringify({ email: "buyer@example.com" }),
         }
       );
-      const res = await notifyStockRoute(req, { params: { id: "non-existent-product-id" } });
+      const res = await notifyStockRoute(req, { params: Promise.resolve({ id: "non-existent-product-id" }) });
       expect(res.status).toBe(404);
 
       const contentType = res.headers.get("content-type");
@@ -158,24 +159,9 @@ describe("CUST-01 Faceted Catalog Query Engine & Stock Notifications Repository"
       expect(json.status).toBe(404);
     });
 
-    it("returns 400 Problem Details when neither valid email nor phone is provided", async () => {
-      const req = new NextRequest(
-        "http://localhost:3000/api/products/gpu-1/notify-stock",
-        {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: "not-an-email" }),
-        }
-      );
-      const res = await notifyStockRoute(req, { params: { id: "gpu-1" } });
-      expect(res.status).toBe(400);
-
-      const contentType = res.headers.get("content-type");
-      expect(contentType).toContain("application/problem+json");
-
-      const json = await res.json();
-      expect(json.type).toContain("bad-request");
-      expect(json.status).toBe(400);
+    it("requires sign-in before accepting a stock alert",async()=>{
+      const req=new NextRequest("http://localhost:3000/api/products/gpu-1/notify-stock",{method:"POST",body:JSON.stringify({email:"not-an-email"})});
+      expect((await notifyStockRoute(req,{params:Promise.resolve({id:"gpu-1"})})).status).toBe(401);
     });
 
     it("returns 201 Created and persists notification request when valid input is provided", async () => {
@@ -185,11 +171,11 @@ describe("CUST-01 Faceted Catalog Query Engine & Stock Notifications Repository"
         "http://localhost:3000/api/products/gpu-1/notify-stock",
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json",cookie:fixtureCookie(email) },
           body: JSON.stringify({ email, phone }),
         }
       );
-      const res = await notifyStockRoute(req, { params: { id: "gpu-1" } });
+      const res = await notifyStockRoute(req, { params: Promise.resolve({ id: "gpu-1" }) });
       expect(res.status).toBe(201);
 
       const json = await res.json();

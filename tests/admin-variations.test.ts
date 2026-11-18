@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { ProductVariation } from "../src/lib/db/types";
 
 test("Admin variations manager state operations", () => {

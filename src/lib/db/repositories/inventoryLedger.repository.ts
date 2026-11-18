@@ -42,23 +42,11 @@ export class InventoryAdjustmentLedgerRepository extends BaseRepository<Inventor
   }
 
   async getRecentMovements(limit: number = 50): Promise<InventoryAdjustmentLedgerRow[]> {
-    const list = await this.findMany({});
-    return list
-      .sort(
-        (a, b) =>
-          new Date(b.created_at || "").getTime() -
-          new Date(a.created_at || "").getTime()
-      )
-      .slice(0, limit);
+    return this.findMany({}, {limit,orderBy:"created_at",orderDirection:"desc"});
   }
 
-  async getMovementsByProduct(productId: string): Promise<InventoryAdjustmentLedgerRow[]> {
-    const list = await this.findMany({ product_id: productId });
-    return list.sort(
-      (a, b) =>
-        new Date(b.created_at || "").getTime() -
-        new Date(a.created_at || "").getTime()
-    );
+  async getMovementsByProduct(productId: string,limit=50): Promise<InventoryAdjustmentLedgerRow[]> {
+    return this.findMany({product_id:productId}, {limit,orderBy:"created_at",orderDirection:"desc"});
   }
 
   async getMovementsByOrder(orderId: string): Promise<InventoryAdjustmentLedgerRow[]> {

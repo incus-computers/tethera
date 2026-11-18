@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
@@ -18,11 +22,7 @@ function resolveCartSession(req: NextRequest): {
   const headerToken = req.headers.get("x-cart-token");
   const authHeader = req.headers.get("authorization");
 
-  let userId: string | null = null;
-  // If bearer token has user id or similar auth simulation
-  if (authHeader?.startsWith("Bearer usr_")) {
-    userId = authHeader.replace("Bearer ", "").trim();
-  }
+  const userId = req.nextUrl.searchParams.get("_verifiedCustomer");
 
   const existingToken = cookieToken || headerToken;
   if (existingToken) {
@@ -37,7 +37,7 @@ function resolveCartSession(req: NextRequest): {
  * GET /api/cart
  * Hydrates cart with live product prices, SKU variants, and inventory stock availability
  */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
     const { anonymousToken, isNewToken, userId } = resolveCartSession(req);
 
@@ -66,9 +66,11 @@ export async function GET(req: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error("[CART GET ERROR]", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { error: error.message || "Failed to load cart" },
+      { error: "Failed to load cart" },
       { status: 500 }
     );
   }
@@ -78,7 +80,7 @@ export async function GET(req: NextRequest) {
  * POST /api/cart
  * Adds an item or updates quantity in the persistent session cart
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const { anonymousToken, isNewToken, userId } = resolveCartSession(req);
     const body = await req.json();
@@ -128,9 +130,11 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error("[CART POST ERROR]", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { error: error.message || "Failed to update cart" },
+      { error: "Failed to update cart" },
       { status: 500 }
     );
   }
@@ -140,7 +144,7 @@ export async function POST(req: NextRequest) {
  * DELETE /api/cart
  * Removes an item or clears the entire cart
  */
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   try {
     const { anonymousToken, userId } = resolveCartSession(req);
     const body = await req.json().catch(() => ({}));
@@ -170,10 +174,16 @@ export async function DELETE(req: NextRequest) {
       cart: hydrated,
     });
   } catch (error: any) {
-    console.error("[CART DELETE ERROR]", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { error: error.message || "Failed to remove cart item" },
+      { error: "Failed to remove cart item" },
       { status: 500 }
     );
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));
+export const DELETE = withApiProtection(withAccess(handleDELETE));

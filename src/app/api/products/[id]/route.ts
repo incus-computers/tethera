@@ -1,14 +1,18 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { publicCatalogProduct } from "@/lib/api/publicCatalog";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
+ async function protectedGET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Product identifier is required." },
@@ -21,7 +25,7 @@ export async function GET(
       product = await db.products.findBySlug(id);
     }
 
-    if (!product) {
+    if (!product || !product.is_active) {
       return NextResponse.json(
         { success: false, error: "Product not found." },
         { status: 404 }
@@ -34,16 +38,19 @@ export async function GET(
     return NextResponse.json({
       success: true,
       product: {
-        ...product,
-        stockCount: inventory ? inventory.stock_on_hand - inventory.stock_reserved : 10,
-        inStock: inventory ? inventory.stock_on_hand > inventory.stock_reserved : true,
+        ...publicCatalogProduct(product),
+        stockCount: inventory ? inventory.stock_on_hand - inventory.stock_reserved : 0,
+        inStock: inventory ? inventory.stock_on_hand > inventory.stock_reserved : false,
       },
     });
   } catch (error: any) {
-    console.error("[API PRODUCT BY ID ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch product" },
+      { success: false, error: "Failed to fetch product" },
       { status: 500 }
     );
   }
 }
+export const GET = withApiProtection(protectedGET);

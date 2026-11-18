@@ -25,7 +25,7 @@ export default function PrebuiltSystemsChoicePage() {
           <span className="text-slate-400 dark:text-zinc-600" aria-hidden="true">
             /
           </span>
-          <span className="text-zinc-900 dark:text-zinc-200 font-bold">
+          <span aria-current="page" className="text-zinc-900 dark:text-zinc-200 font-bold">
             Prebuilt Systems
           </span>
         </nav>

@@ -1,3 +1,4 @@
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
@@ -7,7 +8,7 @@ vi.mock("server-only", () => ({}));
 import { db } from "@/lib/db";
 import { Promotion } from "@/lib/db/types";
 import { POST as validatePromoPOST } from "@/app/api/promotions/validate/route";
-import { POST as createOrderPOST } from "@/app/api/checkout/create-order/route";
+import { createOrderPOST } from "./support/checkout";
 import {
   POST as adminPromoPOST,
   PUT as adminPromoPUT,
@@ -296,7 +297,7 @@ describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
       const updatedPromo = await db.promotions.findById(promo.id);
       expect(updatedPromo).toBeDefined();
       expect(updatedPromo!.usage_count).toBe(1);
-      expect(updatedPromo!.total_discount_given).toBe(300000);
+      expect(updatedPromo!.total_discount_given || 0).toBe(0); // Reserved until payment settles.
     });
   });
 
@@ -313,7 +314,7 @@ describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
       expect(checkoutCode).not.toContain('code === "WHITEFEST2026"');
 
       // Verify dynamic validation call
-      expect(checkoutCode).toContain('fetch("/api/promotions/validate"');
+      expect(checkoutCode).toContain('fetch("/api/checkout/quote"');
 
       // Verify promoCode is transmitted to order creation
       expect(checkoutCode).toContain("promoCode: appliedDiscount ? appliedDiscount.code : undefined");
@@ -333,7 +334,7 @@ describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: "Bearer superadmin",
+          cookie: fixtureCookie("SUPER_ADMIN"),
         },
         body: JSON.stringify({
           code,
@@ -374,7 +375,7 @@ describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
         method: "PUT",
         headers: {
           "content-type": "application/json",
-          authorization: "Bearer superadmin",
+          cookie: fixtureCookie("SUPER_ADMIN"),
         },
         body: JSON.stringify({
           id: promo.id,
@@ -406,7 +407,7 @@ describe("ADMIN-05 Tiered Promotional Discount Rules Engine", () => {
       const req = new NextRequest(`http://localhost:3000/api/admin/promotions?id=${promo.id}`, {
         method: "DELETE",
         headers: {
-          authorization: "Bearer superadmin",
+          cookie: fixtureCookie("SUPER_ADMIN"),
         },
       });
 

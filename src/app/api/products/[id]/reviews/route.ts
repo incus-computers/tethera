@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -9,12 +13,12 @@ import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
+async function handleGET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     if (!id) {
       return badRequestProblem("Product identifier is required.", {
         instance: req.nextUrl.pathname,
@@ -45,19 +49,21 @@ export async function GET(
       eligibility,
     });
   } catch (error: any) {
-    console.error("[API PRODUCT REVIEWS GET ERROR]:", error);
-    return internalServerErrorProblem(error.message || "Failed to fetch product reviews.", {
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Failed to fetch product reviews.", {
       instance: req.nextUrl.pathname,
     });
   }
 }
 
-export async function POST(
+async function handlePOST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     if (!id) {
       return badRequestProblem("Product identifier is required.", {
         instance: req.nextUrl.pathname,
@@ -139,9 +145,14 @@ export async function POST(
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("[API PRODUCT REVIEWS POST ERROR]:", error);
-    return internalServerErrorProblem(error.message || "Failed to submit review.", {
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Failed to submit review.", {
       instance: req.nextUrl.pathname,
     });
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));

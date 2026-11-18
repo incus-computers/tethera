@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { getExpandedCatalogItems, MOCK_COMPONENTS } from "../src/lib/data/mockHardware";
 
 test("Catalog items include variations with correct link URLs and titles", () => {

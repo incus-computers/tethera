@@ -1,3 +1,4 @@
+import { fixtureCookie } from "./support/session";
 import React from "react";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
@@ -359,7 +360,7 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
 
     it("validates homepage modules GET and PUT endpoints for featuredPrebuiltIds", async () => {
       // Test GET
-      const getRes = await GET();
+      const getRes = await GET(new NextRequest("http://localhost:3000/api/admin/homepage-modules"));
       expect(getRes.status).toBe(200);
       const getJson = await getRes.json();
       expect(Array.isArray(getJson.modules)).toBe(true);
@@ -370,7 +371,7 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       const newIds = ["pb-2", "pb-3", "pb-1", "pb-4"];
       const putReq = new NextRequest("http://localhost:3000/api/admin/homepage-modules", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      headers: { cookie: fixtureCookie(), "Content-Type": "application/json" },
         body: JSON.stringify({
           featuredPrebuiltIds: newIds,
         }),
@@ -384,7 +385,7 @@ describe("Comprehensive Verification & Quality Audit: Prebuilt Rigs Redesign", (
       // Restore to default
       const restoreReq = new NextRequest("http://localhost:3000/api/admin/homepage-modules", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      headers: { cookie: fixtureCookie(), "Content-Type": "application/json" },
         body: JSON.stringify({
           featuredPrebuiltIds: DEFAULT_FEATURED_PREBUILT_IDS,
         }),

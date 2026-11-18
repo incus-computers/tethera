@@ -13,6 +13,7 @@ export class StockNotificationsRepository extends BaseRepository<StockNotificati
    */
   async requestNotification(params: {
     productId: string;
+    verifiedOwnerId?: string;
     variantId?: string | null;
     email?: string | null;
     phone?: string | null;
@@ -20,6 +21,7 @@ export class StockNotificationsRepository extends BaseRepository<StockNotificati
     const cleanEmail = params.email ? params.email.trim().toLowerCase() : null;
     const cleanPhone = params.phone ? params.phone.trim() : null;
 
+    if(this.getClient()&&params.verifiedOwnerId){const {jobRpc}=await import("@/lib/jobs/store");return jobRpc("subscribe_stock_alert",{p_product:params.productId,p_variant:params.variantId||null,p_owner:params.verifiedOwnerId,p_email:cleanEmail});}
     // Check for existing pending notification
     const existing = await this.findMany({ product_id: params.productId });
     const match = existing.find((req) => {
@@ -31,12 +33,14 @@ export class StockNotificationsRepository extends BaseRepository<StockNotificati
     });
 
     if (match) {
-      return match;
+      return params.verifiedOwnerId?(await this.update(match.id,{owner_id:params.verifiedOwnerId,verified_contact:true}))!:match;
     }
 
     return this.create({
       id: `stk-notif-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
       product_id: params.productId,
+      owner_id: params.verifiedOwnerId||null,
+      verified_contact: Boolean(params.verifiedOwnerId),
       variant_id: params.variantId || null,
       email: cleanEmail,
       phone: cleanPhone,

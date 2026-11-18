@@ -255,7 +255,7 @@ export default function PrebuiltsPage() {
               <span className="text-[#555D68]" aria-hidden="true">
                 /
               </span>
-              <span className="text-zinc-200 font-semibold">Gaming</span>
+              <span aria-current="page" className="text-zinc-200 font-bold">Gaming</span>
             </nav>
 
             {/* Main Header Title */}

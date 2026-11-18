@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { getExpandedCatalogItems, MOCK_COMPONENTS } from "../src/lib/data/mockHardware";
 
 test("ProductVariation model and catalog expansion", () => {

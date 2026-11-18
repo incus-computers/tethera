@@ -1,47 +1,30 @@
 import "server-only";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { isDemoMode } from "@/lib/runtime/environment";
+import { DatabaseError } from "./errors";
+let cached: { url: string; key: string; client: SupabaseClient } | null = null;
 
-let cachedServerClient: SupabaseClient | null = null;
-let hasLoggedConfigWarning = false;
-
-/**
- * Returns true if Supabase URL and service role/anon keys are provided in environment variables.
- */
 export function isSupabaseConfigured(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return Boolean(url && key);
+  if (isDemoMode()) return false;
+  return Boolean((process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
-/**
- * Get the server-side Supabase client singleton.
- * Uses the privileged SUPABASE_SERVICE_ROLE_KEY for server-side trusted operations,
- * completely isolated from browser clients.
- */
+/** Null means explicit demo storage, never missing live configuration. */
 export function getServerSupabase(): SupabaseClient | null {
-  if (cachedServerClient) {
-    return cachedServerClient;
-  }
-
+  if (isDemoMode()) return null;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    if (!hasLoggedConfigWarning && process.env.NODE_ENV !== "production") {
-      console.warn(
-        "[DB SERVER] Supabase credentials (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) not found in environment. Database repositories will operate with graceful mock fallback mode."
-      );
-      hasLoggedConfigWarning = true;
-    }
-    return null;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new DatabaseError("configure", "database", "DATABASE_NOT_CONFIGURED");
+  if (cached?.url === url && cached.key === key) return cached.client;
+  try {
+    const client = createClient(url, key, {
+      db: { retry: false },
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: (input, init) => fetch(input, { ...init, signal: init?.signal || AbortSignal.timeout(10000) }) },
+    });
+    cached = { url, key, client };
+    return client;
+  } catch {
+    throw new DatabaseError("configure", "database", "DATABASE_NOT_CONFIGURED");
   }
-
-  cachedServerClient = createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-
-  return cachedServerClient;
 }

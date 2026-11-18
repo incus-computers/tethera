@@ -3,6 +3,7 @@ import "server-only";
 // Export Core Types & Client
 export * from "./types";
 export * from "./client";
+export * from "./errors";
 
 // Export Repositories
 export * from "./repositories/base.repository";

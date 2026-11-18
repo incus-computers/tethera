@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "completed": [
+    "Build & refine: inline swaps, exact totals, per-part undo and reset all.",
+    "Parts & compare: aligned specifications, live differences, category switching and starter-part restore.",
+    "Build tiles: eight-part overview, expand/collapse shelves, customized markers and exact subtotal.",
+    "All three: compact-case restrictions and corrective swaps, review/focus, six viewport widths, no overflow or missing images, compact mobile totals.",
+    "Mobile tile shelf opens below its two-tile row; selection and review work."
+  ],
+  "errors": []
+}

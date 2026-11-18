@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { ComponentItem, SERVICE_TIERS } from "../data/mockHardware";
+import { BuilderSlots, emptySlots, replacementIssues } from "../builder/configuration";
 
 export type BuilderSlotKey =
   | "cpu"
@@ -10,6 +11,8 @@ export type BuilderSlotKey =
   | "gpu"
   | "cooler"
   | "storage_primary"
+  | "storage_secondary"
+  | "storage_tertiary"
   | "case"
   | "psu"
   | "os"
@@ -30,6 +33,12 @@ export interface ServiceTier {
 interface BuilderState {
   slots: Record<BuilderSlotKey, ComponentItem | null>;
   selectedService: ServiceTier;
+  originalSlots: BuilderSlots;
+  originalService: ServiceTier;
+  buildName: string | null;
+  sourceProductId: string | null;
+  loadBuild: (slots: BuilderSlots, options?: { name?: string; sourceProductId?: string; serviceId?: string }) => void;
+  restoreBuild: () => void;
   selectSlotItem: (slot: BuilderSlotKey, item: ComponentItem) => void;
   removeSlotItem: (slot: BuilderSlotKey) => void;
   setServiceTier: (tier: ServiceTier) => void;
@@ -48,6 +57,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     gpu: null,
     cooler: null,
     storage_primary: null,
+    storage_secondary: null,
+    storage_tertiary: null,
     case: null,
     psu: null,
     os: null,
@@ -58,6 +69,16 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     other_peripherals: null,
   },
   selectedService: SERVICE_TIERS[0],
+  originalSlots: emptySlots(),
+  originalService: SERVICE_TIERS[0],
+  buildName: null,
+  sourceProductId: null,
+  loadBuild: (slots, options = {}) => {
+    const service = SERVICE_TIERS.find(tier => tier.id === options.serviceId) || SERVICE_TIERS[0];
+    set({ slots: { ...slots }, originalSlots: { ...slots }, selectedService: service, originalService: service,
+      buildName: options.name?.slice(0, 160) || null, sourceProductId: options.sourceProductId || null });
+  },
+  restoreBuild: () => set(state => ({ slots: { ...state.originalSlots }, selectedService: state.originalService })),
 
   selectSlotItem: (slot, item) =>
     set((state) => {
@@ -96,6 +117,7 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
 
   resetBuild: () =>
     set({
+      originalSlots: emptySlots(), originalService: SERVICE_TIERS[0], buildName: null, sourceProductId: null,
       slots: {
         cpu: null,
         motherboard: null,
@@ -103,6 +125,8 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         gpu: null,
         cooler: null,
         storage_primary: null,
+        storage_secondary: null,
+        storage_tertiary: null,
         case: null,
         psu: null,
         os: null,
@@ -179,19 +203,22 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
     }
 
     return {
-      isCompatible: issues.length === 0,
-      issues,
+      isCompatible: issues.length === 0 && Object.entries(slots).every(([slot, item]) => !item || replacementIssues(slot as BuilderSlotKey, item, slots).length === 0),
+      issues: Array.from(new Set([...issues, ...Object.entries(slots).flatMap(([slot, item]) => item ? replacementIssues(slot as BuilderSlotKey, item, slots) : [])])),
       warnings,
     };
   },
 
   getBuildShareUrl: () => {
-    const { slots } = get();
+    const { slots, selectedService, buildName, sourceProductId } = get();
     const partIds = Object.entries(slots)
       .filter(([_, item]) => item !== null)
       .map(([slot, item]) => `${slot}:${item?.id}`)
       .join(",");
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://tethera.com";
-    return `${baseUrl}/builder?parts=${encodeURIComponent(partIds)}`;
+    const params = new URLSearchParams({ parts: partIds, service: selectedService.id });
+    if (buildName) params.set("name", buildName);
+    if (sourceProductId) params.set("source", sourceProductId);
+    return `${baseUrl}/builder?${params}`;
   },
 }));

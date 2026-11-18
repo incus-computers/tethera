@@ -20,6 +20,8 @@ const mockOrderAccepted = {
   customer_email: "budi.pratama@example.com",
   customer_phone: "+62 812-3456-7890",
   status: "order_accepted",
+  fulfillment_type: "delivery",
+  paid_at: "2026-11-06T00:00:00Z",
   total: 18500000,
   subtotal: 18450000,
   shipping_fee: 50000,
@@ -136,7 +138,7 @@ describe("FluxOrdersTab - Workflow-Driven Dispatch and Simplified Inline View", 
     expect(html).toContain("Waybill Active");
   });
 
-  it("re-enables courier dispatch if there is a courier rejection or failure", () => {
+  it("opens the shipping workflow for investigation after a courier rejection or failure", () => {
     const html = renderToStaticMarkup(
       <FluxOrdersTab
         orders={[mockOrderCourierFailed]}
@@ -148,7 +150,7 @@ describe("FluxOrdersTab - Workflow-Driven Dispatch and Simplified Inline View", 
       />
     );
 
-    // Re-dispatch is available
+    // The operation still determines whether reconciliation or a first booking is allowed.
     expect(html).toContain("Find Courier &amp; Dispatch");
   });
 

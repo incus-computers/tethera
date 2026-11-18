@@ -1,3 +1,4 @@
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 
@@ -62,13 +63,13 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
       expect(res.status).toBe(401);
       const json = await res.json();
       expect(json.success).toBe(false);
-      expect(json.error).toMatch(/clearance required/i);
+      expect(json.error).toMatch(/sign-in required/i);
     });
 
     it("blocks SUPPORT_AGENT from updating product prices with 403 Forbidden", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/products", {
         method: "PUT",
-        headers: { authorization: "Bearer support" },
+        headers: { cookie: fixtureCookie("SUPPORT_AGENT") },
         body: JSON.stringify({ id: "cpu-1", retail_price: 7500000 }),
       });
 
@@ -82,7 +83,7 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
     it("blocks CATALOG_MANAGER from dispatching couriers with 403 Forbidden", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/courier/dispatch", {
         method: "POST",
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
         body: JSON.stringify({ orderId: "ord-1001", courierProvider: "jne" }),
       });
 
@@ -95,11 +96,11 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
 
     it("allows FULFILLMENT_OPERATOR to dispatch courier logistics", async () => {
       // First ensure ord-1001 is set to ready_for_dispatch
-      await db.orders.update("ord-1001", { status: "ready_for_dispatch" });
+      await db.orders.update("ord-1001", { status: "ready_for_dispatch",paid_at:new Date().toISOString() });
 
       const req = new NextRequest("http://localhost:3000/api/admin/courier/dispatch", {
         method: "POST",
-        headers: { authorization: "Bearer dispatch" },
+        headers: { cookie: fixtureCookie("FULFILLMENT_OPERATOR") },
         body: JSON.stringify({
           orderId: "ord-1001",
           courierProvider: "jne",
@@ -112,13 +113,13 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.success).toBe(true);
-      expect(json.order.status).toBe("dispatched");
+      expect(json.order.status).toBe("finding_courier");
     });
 
     it("allows CATALOG_MANAGER to update product pricing", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/products", {
         method: "PUT",
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
         body: JSON.stringify({
           id: "cpu-1",
           retail_price: 7299000,
@@ -141,7 +142,7 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
       const req = new NextRequest("http://localhost:3000/api/admin/products", {
         method: "PUT",
         headers: {
-          authorization: "Bearer catalog",
+          cookie: fixtureCookie("CATALOG_MANAGER"),
           "x-forwarded-for": "10.0.0.45",
           "user-agent": "StaffAdminBrowser/1.0",
         },
@@ -164,7 +165,7 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
       expect(latestLog.entity_type).toBe("product");
       expect(latestLog.entity_id).toBe("cpu-2");
       expect(latestLog.role).toBe("CATALOG_MANAGER");
-      expect(latestLog.actor_name).toBe("Catalog Lead");
+      expect(latestLog.actor_name).toBe("CATALOG MANAGER");
       expect(latestLog.ip_address).toBe("10.0.0.45");
       expect(latestLog.after_state?.retail_price).toBe(9499000);
     });
@@ -172,7 +173,7 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
     it("blocks unauthorized roles from viewing audit logs", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/audit-logs", {
         method: "GET",
-        headers: { authorization: "Bearer support" },
+        headers: { cookie: fixtureCookie("SUPPORT_AGENT") },
       });
 
       const res = await auditLogsGET(req);
@@ -185,7 +186,7 @@ describe("Phase 3 Milestone 2: Staff RBAC & Immutable Audit Logs (ADMIN-06)", ()
     it("allows SUPER_ADMIN to inspect audit logs descending by timestamp", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/audit-logs?limit=5", {
         method: "GET",
-        headers: { authorization: "Bearer superadmin" },
+        headers: { cookie: fixtureCookie("SUPER_ADMIN") },
       });
 
       const res = await auditLogsGET(req);

@@ -6,6 +6,7 @@ import { X, Search, Check, AlertCircle, Plus, ShieldCheck, Filter, Eye, EyeOff }
 import { MOCK_COMPONENTS, ComponentItem, getExpandedCatalogItems } from "../../lib/data/mockHardware";
 import { BuilderSlotKey, useBuilderStore } from "../../lib/store/useBuilderStore";
 import { formatRupiah } from "../../lib/utils/currency";
+import { builderCatalogSlot } from "../../lib/builder/configuration";
 
 interface ComponentSelectModalProps {
   slot: BuilderSlotKey | null;
@@ -19,7 +20,7 @@ export function ComponentSelectModal({ slot, onClose }: ComponentSelectModalProp
 
   const candidateItems = React.useMemo(() => {
     if (!slot) return [];
-    const rawSlotItems = MOCK_COMPONENTS.filter((item) => item.slot === slot);
+    const rawSlotItems = MOCK_COMPONENTS.filter((item) => item.slot === builderCatalogSlot(slot));
     return getExpandedCatalogItems(rawSlotItems);
   }, [slot]);
 
@@ -162,6 +163,8 @@ export function ComponentSelectModal({ slot, onClose }: ComponentSelectModalProp
     gpu: "Select Graphics Card (GPU)",
     cooler: "Select CPU Cooling",
     storage_primary: "Select Primary Solid State Drive (NVMe)",
+    storage_secondary: "Select Secondary Storage",
+    storage_tertiary: "Select Tertiary Storage",
     case: "Select PC Chassis / Case",
     psu: "Select Power Supply (PSU)",
     os: "Select Operating System",

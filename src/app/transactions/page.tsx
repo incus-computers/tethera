@@ -1,6 +1,9 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
+import { PageButtons } from "@/components/ui/CollectionPager";
+import type { Pagination } from "@/lib/db/pagination";
 
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -26,7 +29,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { formatRupiah } from "@/lib/utils/currency";
-import { downloadInvoiceFile, InvoiceDownloadData } from "@/lib/utils/invoiceDownload";
+import { downloadInvoiceFile, fetchInvoiceDocument } from "@/lib/utils/invoiceDownload";
 
 interface TransactionRecord {
   id: string;
@@ -56,6 +59,7 @@ interface TransactionRecord {
 }
 
 function TransactionsContent() {
+  const {t,formatDate}=useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isAuthenticated, initSession } = useAuthStore();
@@ -66,6 +70,9 @@ function TransactionsContent() {
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState("");
+  const historyRequest=useRef<AbortController|null>(null);
+  const [historyPage,setHistoryPage]=useState(1);
+  const [historyMeta,setHistoryMeta]=useState<Pagination>({page:1,limit:50,total:0,totalPages:1});
 
   // Email resending state tracker: orderNumber -> boolean
   const [sendingEmailMap, setSendingEmailMap] = useState<Record<string, boolean>>({});
@@ -84,13 +91,15 @@ function TransactionsContent() {
 
   // Load transactions from API and session storage
   const loadTransactions = useCallback(async () => {
+    historyRequest.current?.abort();
+    const controller=new AbortController();historyRequest.current=controller;
     setIsLoading(true);
     setErrorNotice(null);
 
     const mergedList: TransactionRecord[] = [];
 
     // 1. Check recent order saved in sessionStorage
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && historyPage===1) {
       try {
         const storedOrder = sessionStorage.getItem("tethera_last_order");
         if (storedOrder) {
@@ -134,14 +143,17 @@ function TransactionsContent() {
     // 2. If authenticated user exists, query backend orders API
     if (user?.email) {
       try {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams({page:String(historyPage),limit:"50",search:searchQuery});
         if (user.email) params.append("email", user.email);
         if (user.id) params.append("customerId", user.id);
 
-        const res = await fetch(`/api/account/orders?${params.toString()}`);
+        const res = await fetch(`/api/account/orders?${params.toString()}`,{signal:controller.signal});
         const data = await res.json();
+        if(!res.ok||!data.success)throw new Error(data.error||"Could not load order history.");
 
         if (data.success && Array.isArray(data.orders)) {
+          if(controller.signal.aborted)return;
+          if(data.pagination)setHistoryMeta(data.pagination);
           for (const ord of data.orders) {
             const exists = mergedList.some((m) => m.orderNumber === ord.order_number);
             if (!exists) {
@@ -177,18 +189,20 @@ function TransactionsContent() {
           }
         }
       } catch (apiErr) {
-        console.warn("Could not fetch remote customer orders:", apiErr);
+        if(!controller.signal.aborted)setErrorNotice(apiErr instanceof Error?apiErr.message:"Could not load order history.");
       }
     }
 
+    if(controller.signal.aborted)return;
     // Sort descending by creation date
     mergedList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     setTransactions(mergedList);
     setIsLoading(false);
-  }, [user]);
+  }, [user,historyPage,searchQuery]);
 
   useEffect(() => {
     loadTransactions();
+    return ()=>historyRequest.current?.abort();
   }, [loadTransactions]);
 
   const handleCopyOrder = (orderNum: string) => {
@@ -199,40 +213,16 @@ function TransactionsContent() {
     }
   };
 
-  const handleDownloadInvoice = (trx: TransactionRecord) => {
+  const handleDownloadInvoice = async (trx: TransactionRecord) => {
     setDownloadingMap((prev) => ({ ...prev, [trx.orderNumber]: true }));
     try {
-      const invoiceData: InvoiceDownloadData = {
-        orderNumber: trx.orderNumber,
-        paymentId: trx.paymentId,
-        paymentChannel: trx.paymentMethod,
-        createdAt: trx.createdAt,
-        customer: {
-          name: trx.customerName,
-          email: trx.customerEmail,
-          phone: trx.customerPhone || "",
-        },
-        fulfillmentMethod: trx.fulfillmentType,
-        items: trx.items.map((it) => ({
-          id: it.id,
-          name: it.name,
-          sku: it.sku,
-          brand: it.brand,
-          price: it.price,
-          quantity: it.quantity,
-        })),
-        subtotal: trx.subtotal,
-        shippingFee: trx.shippingFee,
-        grandTotal: trx.grandTotal,
-      };
-
-      downloadInvoiceFile(invoiceData);
+      downloadInvoiceFile(await fetchInvoiceDocument(trx.orderNumber));
       setDownloadSuccessMap((prev) => ({ ...prev, [trx.orderNumber]: true }));
       setTimeout(() => {
         setDownloadSuccessMap((prev) => ({ ...prev, [trx.orderNumber]: false }));
       }, 3000);
     } catch (err) {
-      console.error("Failed to generate invoice file:", err);
+      alert(err instanceof Error?err.message:"Invoice unavailable for this session.");
     } finally {
       setDownloadingMap((prev) => ({ ...prev, [trx.orderNumber]: false }));
     }
@@ -299,14 +289,12 @@ function TransactionsContent() {
         {/* Navigation Breadcrumbs */}
         <nav aria-label="Breadcrumb" className="text-xs text-slate-500 dark:text-zinc-400 flex items-center gap-2">
           <Link href="/" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-            Home
-          </Link>
-          <span>/</span>
+            {t("Home")}</Link>
+          <span aria-hidden="true">/</span>
           <Link href="/account" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-            Account
-          </Link>
-          <span>/</span>
-          <span className="text-zinc-900 dark:text-zinc-100 font-bold">Transactions</span>
+            {t("Account")}</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page" className="text-zinc-900 dark:text-zinc-100 font-bold">{t("Transactions")}</span>
         </nav>
 
         {/* Page Header */}
@@ -321,7 +309,7 @@ function TransactionsContent() {
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-              Review settled payments, download official tax invoices, and track your hardware orders.
+              Review settled payments, download commercial invoices, and track your hardware orders.
             </p>
           </div>
 
@@ -333,7 +321,7 @@ function TransactionsContent() {
               className="px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold flex items-center gap-2 min-h-[44px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-60"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`} />
-              <span>Refresh</span>
+              <span>{t("Refresh")}</span>
             </button>
 
             <Link
@@ -341,20 +329,22 @@ function TransactionsContent() {
               className="px-4 py-2.5 rounded-md bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] text-xs font-semibold flex items-center gap-2 min-h-[44px] transition-all shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52E394]"
             >
               <ShoppingBag className="w-3.5 h-3.5 text-[#0A0B0E]" />
-              <span>Shop Hardware</span>
+              <span>{t("Shop Hardware")}</span>
             </Link>
           </div>
         </div>
 
+        {user && <PageButtons meta={historyMeta} loading={isLoading} onPage={setHistoryPage} />}
         {/* Search Bar */}
-        {transactions.length > 0 && (
+        {(user || transactions.length > 0) && (
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 dark:text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Order Number, Payment Reference, or Customer..."
+              onChange={(e) => {setSearchQuery(e.target.value);setHistoryPage(1);}}
+              maxLength={120}
+              placeholder="Search all order records..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 min-h-[44px]"
             />
           </div>
@@ -422,13 +412,7 @@ function TransactionsContent() {
         {/* Transactions List */}
         <div className="space-y-4">
           {filtered.map((trx) => {
-            const dateStr = new Date(trx.createdAt).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
+            const dateStr = formatDate(trx.createdAt);
 
             const isDownloading = downloadingMap[trx.orderNumber] || false;
             const isDownloadSuccess = downloadSuccessMap[trx.orderNumber] || false;
@@ -451,7 +435,7 @@ function TransactionsContent() {
                         type="button"
                         onClick={() => handleCopyOrder(trx.orderNumber)}
                         className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 dark:text-zinc-500 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                        title="Copy order number"
+                        title={t("Copy order number")}
                       >
                         {copiedOrder === trx.orderNumber ? (
                           <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -606,7 +590,7 @@ function TransactionsContent() {
                       {isEmailSent ? (
                         <>
                           <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Invoice Dispatched!</span>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Invoice Queued!</span>
                         </>
                       ) : isSendingEmail ? (
                         <>

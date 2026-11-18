@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "completed": [
+    "Inline: selection stays in the list; missing parts, subtotal and review reconcile.",
+    "Guided: next/back preserve selections; empty steps block progress; review reconciles.",
+    "Preset: all starter totals and upgrade/downgrade differences reconcile; compact-case clearance blocks oversized GPUs until case is changed.",
+    "All three workflows render at 320, 390, 768, 1024, 1440 and 1920px without page overflow or broken images.",
+    "Mobile starter selection, compatible swaps, review and keyboard close/focus work."
+  ],
+  "failures": []
+}

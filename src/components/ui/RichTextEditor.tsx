@@ -1,4 +1,5 @@
 "use client";
+import { MEDIA_ACCEPT } from "@/lib/media/policy";
 
 import React, { useState, useRef } from "react";
 import {
@@ -376,12 +377,13 @@ export function RichTextEditor({
             {imageSourceMode === "upload" && (
               <div className="space-y-3">
                 <p className="text-[11px] text-slate-400">
-                  Select an image file from your computer. It will upload and automatically be placed right where your cursor is in the text.
+                  Select a JPEG, PNG or WebP up to 5 MB. It will be placed where your cursor is in the text.
                 </p>
                 <input
                   type="file"
                   ref={fileInputRef}
-                  accept="image/*"
+                  accept={MEDIA_ACCEPT}
+                  title="JPEG, PNG or WebP; up to 5 MB and 16 megapixels."
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];

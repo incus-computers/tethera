@@ -1,12 +1,13 @@
-/**
- * Utility to generate and download an official itemized Tax Invoice (Faktur Pajak)
- * formatted for print and record-keeping without third-party PDF server requirements.
- */
-
-import { calculateInclusiveTax, DEFAULT_PPN_RATE } from "@/lib/tax/taxCalculation";
+import { formatIndonesiaDate } from "@/lib/i18n/indonesia";
+/** Printable commercial order document using the committed financial snapshot. */
+import { assertFinancialSnapshot, type FinancialSnapshot } from "@/lib/checkout/financials";
 
 export interface InvoiceDownloadData {
   orderNumber: string;
+  orderId?: string;
+  status?: string;
+  paidAt?: string | null;
+  financialSnapshot?: FinancialSnapshot | null;
   paymentId?: string;
   paymentChannel?: string;
   createdAt?: string;
@@ -48,299 +49,48 @@ export interface InvoiceDownloadData {
     };
     parts?: Record<string, { name: string }>;
   }[];
+  assemblyFee?: number;
+  discountAmount?: number;
+  tax?: {dpp:number;taxAmount:number;taxRate:number};
   subtotal: number;
   shippingFee: number;
   grandTotal: number;
 }
 
-export function generateInvoiceHtml(order: InvoiceDownloadData): string {
-  const taxRes = calculateInclusiveTax(order.grandTotal, DEFAULT_PPN_RATE);
-  const dpp = taxRes.dpp;
-  const ppn = taxRes.taxAmount;
-  const dateFormatted = order.createdAt
-    ? new Date(order.createdAt).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : new Date().toLocaleDateString("id-ID");
 
-  const standardItemsRows = (order.items || [])
-    .map(
-      (item) => `
-      <tr>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px;">
-          <div style="font-weight: 600; color: #0f172a;">${item.name}</div>
-          <div style="font-size: 11px; color: #64748b; font-family: monospace;">SKU: ${item.sku || "N/A"}${item.brand ? ` | Brand: ${item.brand}` : ""}</div>
-        </td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center; color: #334155;">
-          ${item.quantity}
-        </td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right; color: #334155;">
-          Rp ${item.price.toLocaleString("id-ID")}
-        </td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; text-align: right; color: #0f172a;">
-          Rp ${(item.price * item.quantity).toLocaleString("id-ID")}
-        </td>
-      </tr>`
-    )
-    .join("");
-
-  const customPcRows = (order.customPCs || [])
-    .map((pc) => {
-      const partsSummary = pc.parts
-        ? Object.entries(pc.parts)
-            .map(([slot, part]) => `<span style="display:inline-block; margin-right:8px;">${slot.toUpperCase()}: ${part.name}</span>`)
-            .join(" | ")
-        : "";
-      return `
-      <tr style="background-color: #f8fafc;">
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px;">
-          <div style="font-weight: 700; color: #0f172a;">${pc.name} (${pc.isPrebuilt ? "Turnkey Pre-Built" : "Custom Built System"})</div>
-          ${partsSummary ? `<div style="font-size: 11px; color: #475569; margin-top: 4px;">${partsSummary}</div>` : ""}
-          ${pc.serviceTier ? `<div style="font-size: 11px; color: #059669; font-weight: 600;">Service: ${pc.serviceTier.name}</div>` : ""}
-        </td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: center; color: #334155;">1</td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; text-align: right; color: #334155;">
-          Rp ${pc.totalPrice.toLocaleString("id-ID")}
-        </td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: 600; text-align: right; color: #0f172a;">
-          Rp ${pc.totalPrice.toLocaleString("id-ID")}
-        </td>
-      </tr>`;
-    })
-    .join("");
-
-  const allRows = standardItemsRows + customPcRows || `
-    <tr>
-      <td colspan="4" style="padding: 16px; text-align: center; color: #64748b; font-size: 13px;">
-        Hardware Component Package
-      </td>
-    </tr>
-  `;
-
-  return `<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="utf-8">
-  <title>Tax Invoice ${order.orderNumber} - Incus Computers</title>
-  <style>
-    @media print {
-      body { margin: 0; padding: 12mm; background: #fff !important; color: #000 !important; }
-      .no-print { display: none !important; }
-      .page-break { page-break-after: always; }
-      .container { border: none !important; box-shadow: none !important; max-width: 100% !important; padding: 0 !important; }
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f1f5f9;
-      color: #0f172a;
-      margin: 0;
-      padding: 32px 16px;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      border-radius: 12px;
-      padding: 40px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-    .header-table td { vertical-align: top; }
-    .company-title { font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px; }
-    .company-subtitle { font-size: 12px; color: #64748b; margin-top: 3px; line-height: 1.4; }
-    .badge {
-      display: inline-block;
-      background: #059669;
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: 800;
-      padding: 4px 10px;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-    .meta-grid {
-      display: table;
-      width: 100%;
-      margin-bottom: 24px;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      background: #f8fafc;
-    }
-    .meta-cell {
-      display: table-cell;
-      width: 50%;
-      padding: 16px;
-      vertical-align: top;
-      font-size: 12px;
-      line-height: 1.5;
-    }
-    .meta-cell:first-child { border-right: 1px solid #e2e8f0; }
-    .meta-title { font-size: 10px; text-transform: uppercase; font-weight: 800; color: #64748b; margin-bottom: 4px; }
-    .table { width: 100%; border-collapse: collapse; margin: 24px 0; }
-    .table th {
-      background: #0f172a;
-      color: #ffffff;
-      padding: 10px 12px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      text-align: left;
-    }
-    .summary-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
-    .summary-table { width: 340px; border-collapse: collapse; font-size: 12px; }
-    .summary-table td { padding: 6px 8px; }
-    .total-row {
-      border-top: 2px solid #0f172a;
-      font-size: 15px;
-      font-weight: 900;
-      color: #047857;
-    }
-    .footer {
-      margin-top: 32px;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 16px;
-      font-size: 11px;
-      color: #64748b;
-      line-height: 1.5;
-      text-align: center;
-    }
-    .action-bar {
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-    .btn {
-      padding: 8px 16px;
-      font-size: 12px;
-      font-weight: 700;
-      border-radius: 6px;
-      cursor: pointer;
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
-      color: #0f172a;
-    }
-    .btn-primary { background: #0f172a; color: #ffffff; border: none; }
-  </style>
-</head>
-<body>
-  <div class="action-bar no-print">
-    <button class="btn btn-primary" onclick="window.print()">Print or Save as PDF</button>
-  </div>
-  <div class="container">
-    <table class="header-table">
-      <tr>
-        <td>
-          <div class="company-title">INCUS COMPUTERS</div>
-          <div class="company-subtitle">
-            NPWP: 01.345.678.9-021.000<br>
-            Mangga Dua Mall Lt. 3 No. 36, Jl. Mangga Dua Raya, Jakarta Pusat 10730<br>
-            Email: billing@incuscomputers.com | Tel: +62 21 6230 8899
-          </div>
-        </td>
-        <td style="text-align: right;">
-          <span class="badge">PAID IN FULL</span>
-          <div style="font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 6px; font-family: monospace;">${order.orderNumber}</div>
-          <div style="font-size: 11px; color: #64748b;">Issued: ${dateFormatted}</div>
-        </td>
-      </tr>
-    </table>
-
-    <div class="meta-grid">
-      <div class="meta-cell">
-        <div class="meta-title">Customer &amp; Billing Details</div>
-        <div style="font-weight: 700; color: #0f172a; font-size: 13px;">${order.customer?.name || "Valued Customer"}</div>
-        <div style="color: #475569;">Email: ${order.customer?.email || "customer@example.com"}</div>
-        <div style="color: #475569; font-family: monospace;">Phone: ${order.customer?.phone || "+62 812-3456-7890"}</div>
-        ${order.paymentChannel ? `<div style="margin-top: 4px; color: #0f172a;"><strong>Payment Method:</strong> ${order.paymentChannel.toUpperCase()}</div>` : ""}
-        ${order.paymentId ? `<div style="color: #64748b; font-family: monospace; font-size: 11px;">Payment ID: ${order.paymentId}</div>` : ""}
-      </div>
-      <div class="meta-cell">
-        <div class="meta-title">Fulfillment &amp; Delivery Destination</div>
-        ${
-          order.fulfillmentMethod === "click_and_collect"
-            ? `<div style="font-weight: 700; color: #047857;">In-Store Click &amp; Collect</div>
-               <div style="color: #475569;">Flagship Experience Store: Mangga Dua Mall Lt. 3 No. 36</div>
-               <div style="color: #64748b; font-size: 11px;">Trading Hours: Mon-Sat 09:00 - 18:00 WIB</div>`
-            : `<div style="font-weight: 700; color: #0f172a;">Courier Delivery Dispatch</div>
-               <div style="color: #475569;">${order.shippingAddress?.street || "Address provided at checkout"}${order.shippingAddress?.unit ? `, ${order.shippingAddress.unit}` : ""}</div>
-               <div style="color: #475569;">${order.shippingAddress?.subdistrict || ""}, ${order.shippingAddress?.city || "Jakarta"} ${order.shippingAddress?.postalCode || ""}</div>
-               ${order.courier ? `<div style="color: #047857; font-size: 11px; margin-top: 2px;">Courier: ${order.courier.courierName} ${order.courier.serviceName}</div>` : ""}`
-        }
-      </div>
-    </div>
-
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Item Description</th>
-          <th style="text-align: center; width: 60px;">Qty</th>
-          <th style="text-align: right; width: 130px;">Unit Price</th>
-          <th style="text-align: right; width: 140px;">Subtotal</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${allRows}
-      </tbody>
-    </table>
-
-    <div class="summary-wrap">
-      <table class="summary-table">
-        <tr>
-          <td style="color: #64748b;">Gross Subtotal:</td>
-          <td style="text-align: right; font-weight: 600; color: #0f172a;">Rp ${order.subtotal.toLocaleString("id-ID")}</td>
-        </tr>
-        <tr>
-          <td style="color: #64748b;">Fulfillment / Shipping:</td>
-          <td style="text-align: right; font-weight: 600; color: #0f172a;">
-            ${order.shippingFee > 0 ? `Rp ${order.shippingFee.toLocaleString("id-ID")}` : "Free"}
-          </td>
-        </tr>
-        <tr style="color: #94a3b8; font-size: 11px;">
-          <td>Dasar Pengenaan Pajak (DPP):</td>
-          <td style="text-align: right;">Rp ${dpp.toLocaleString("id-ID")}</td>
-        </tr>
-        <tr style="color: #94a3b8; font-size: 11px;">
-          <td>PPN 11% (Included):</td>
-          <td style="text-align: right;">Rp ${ppn.toLocaleString("id-ID")}</td>
-        </tr>
-        <tr class="total-row">
-          <td style="padding-top: 10px;">Grand Total:</td>
-          <td style="text-align: right; padding-top: 10px;">Rp ${order.grandTotal.toLocaleString("id-ID")}</td>
-        </tr>
-      </table>
-    </div>
-
-    <div class="footer">
-      Official digital tax invoice issued by Incus Computers pursuant to Indonesian tax regulations.<br>
-      A copy of this invoice has been sent to ${order.customer?.email || "your registered email"}.<br>
-      For technical support or warranty validation, visit incuscomputers.com or contact support@incuscomputers.com.
-    </div>
-  </div>
-</body>
-</html>`;
+export function escapeHtml(value:unknown):string{return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));}
+export function invoiceAmounts(order:InvoiceDownloadData){
+ const f=order.financialSnapshot;
+ if(f){assertFinancialSnapshot(f);return {subtotal:f.merchandiseSubtotal,assemblyFee:f.assemblyFee,shippingFee:f.shippingFee,discountAmount:f.discountAmount,grandTotal:f.total,net:f.netAmount,tax:f.taxAmount,taxPolicy:f.taxPolicy};}
+ return {subtotal:order.subtotal,assemblyFee:order.assemblyFee??0,shippingFee:order.shippingFee,discountAmount:order.discountAmount??0,grandTotal:order.grandTotal,net:null,tax:null,taxPolicy:null};
 }
-
-/**
- * Triggers an immediate browser file download for the official invoice document.
- */
-export function downloadInvoiceFile(order: InvoiceDownloadData): void {
-  if (typeof window === "undefined") return;
-
-  const htmlContent = generateInvoiceHtml(order);
-  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-
-  anchor.href = url;
-  anchor.download = `Invoice-${order.orderNumber || "Incus"}.html`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
+export function generateInvoiceHtml(order:InvoiceDownloadData):string{
+ const a=invoiceAmounts(order),h=escapeHtml,m=(n:number)=>`Rp ${n.toLocaleString("id-ID")}`;
+ const lines:Array<{name:string;sku?:string|null;quantity:number;price:number;discount:number;total:number;net:number|null;tax:number|null}>=order.financialSnapshot?.lines.map(l=>({name:l.name,sku:l.sku,quantity:l.quantity,price:l.unitPrice,discount:l.discount,total:l.gross,net:l.net,tax:l.tax}))
+  ??(order.items||[]).map(l=>({...l,discount:0,total:l.price*l.quantity,net:null,tax:null}));
+ if(order.financialSnapshot){const s=order.financialSnapshot.shipping;lines.push({name:"Shipping",sku:null,quantity:1,price:s.beforeDiscount,discount:s.discount,total:s.gross,net:s.net,tax:s.tax});}
+ const rows=lines.map(l=>`<tr><td>${h(l.name)}<small>${h(l.sku)}</small></td><td>${l.quantity}</td><td>${m(l.price)}</td><td>${m(l.discount)}</td><td>${m(l.total)}</td><td>${l.net==null?"Unavailable":m(l.net)}</td><td>${l.tax==null?"Unavailable":m(l.tax)}</td></tr>`).join("");
+ const address=order.shippingAddress;
+ const date=formatIndonesiaDate(order.createdAt,"id");
+ const summary=(label:string,value:string)=>`<tr><td>${h(label)}</td><td style="text-align:right">${value}</td></tr>`;
+ const tax=a.taxPolicy?summary("Amount before included tax",m(a.net!))+summary(a.taxPolicy.mode==="not_collected"?"Tax not collected":`Included tax (${a.taxPolicy.rateBps/100}% effective)`,m(a.tax!)):'<tr><td colspan="2">Historical tax breakdown unavailable.</td></tr>';
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Invoice ${h(order.orderNumber)}</title>
+ <style>body{font:14px Arial,sans-serif;color:#172033;margin:32px auto;padding:20px;max-width:900px}table{width:100%;border-collapse:collapse;margin:24px 0}th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}small{display:block;color:#64748b}.summary{max-width:450px;margin-left:auto}footer{font-size:12px;color:#64748b;margin-top:32px}@media print{button{display:none}body{margin:0;max-width:none}}</style></head><body>
+ <button onclick="window.print()">Print or Save as PDF</button><h1>Incus Computers - Commercial invoice</h1><p>Order ${h(order.orderNumber)} | ${h(date)}</p>
+ <p>Payment status: ${order.paidAt?"Payment received":"Payment not confirmed"}${order.status?` | Order status: ${h(order.status)}`:""}</p>
+ <p>${h(order.customer?.name)}<br>${h(order.customer?.email)}<br>${h(order.customer?.phone)}</p>
+ <p>${order.fulfillmentMethod==="click_and_collect"?"Click &amp; collect":h(address?[address.street,address.unit,address.subdistrict,address.city,address.province,address.postalCode].filter(Boolean).join(", "):"Delivery")}</p>
+ <p>Payment reference: ${h(order.paymentId||"Unavailable")}<br>Payment method: ${h(order.paymentChannel||"Unavailable")}</p>
+ <table><thead><tr><th>Item / service</th><th>Qty</th><th>Unit price</th><th>Discount</th><th>After discount</th><th>Before included tax</th><th>Included tax</th></tr></thead><tbody>${rows||'<tr><td colspan="7">Historical item details unavailable.</td></tr>'}</tbody></table>
+ <table class="summary">${summary("Merchandise",m(a.subtotal))}${summary("Assembly",m(a.assemblyFee))}${summary("Shipping",m(a.shippingFee))}${summary("Discount",`-${m(a.discountAmount)}`)}${tax}${summary("Order total",`<strong>${m(a.grandTotal)}</strong>`)}</table>
+ <footer>Commercial order record. Any legally required tax invoice must be issued through the applicable tax invoicing process. Refunds and returns are recorded separately from the original order total.</footer></body></html>`;
+}
+export async function fetchInvoiceDocument(orderNumber:string):Promise<InvoiceDownloadData>{
+ const response=await fetch(`/api/orders/invoice?orderNumber=${encodeURIComponent(orderNumber)}`,{cache:"no-store"});
+ const result=await response.json();if(!response.ok||!result.success)throw new Error(result.error||result.detail||"Invoice unavailable for this session.");return result.document;
+}
+export function downloadInvoiceFile(order:InvoiceDownloadData):void{
+ if(typeof window==="undefined")return;
+ const url=URL.createObjectURL(new Blob([generateInvoiceHtml(order)],{type:"text/html;charset=utf-8"}));
+ const anchor=document.createElement("a");anchor.href=url;anchor.download=`Invoice-${order.orderNumber.replace(/[^a-zA-Z0-9_-]/g,"_")}.html`;document.body.appendChild(anchor);anchor.click();anchor.remove();URL.revokeObjectURL(url);
 }

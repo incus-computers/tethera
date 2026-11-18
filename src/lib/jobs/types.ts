@@ -1,0 +1,4 @@
+export type JobStatus="pending"|"running"|"retry"|"accepted"|"simulated"|"blocked"|"review"|"dead"|"cancelled";
+export type JobKind="order_invoice"|"order_notice"|"whatsapp_notice"|"email"|"stock_alert"|"marketplace_sync"|"marketplace_inbound"|"payment_review"|"inventory_expiry"|"payment_reconcile"|"shipping_reconcile"|"refund_reconcile"|"stock_scan";
+export interface BackgroundJob {id:string;event_key:string;kind:JobKind;resource_key:string|null;payload:any;status:JobStatus;attempts:number;available_at:string;lease_token:string|null;lease_until:string|null;request:any;remote_started_at:string|null;provider_id:string|null;last_error:string|null;created_at:string;updated_at:string;}
+export class JobError extends Error {constructor(public code:string,public disposition:"retry"|"blocked"|"review"|"dead"|"cancelled"="retry"){super(code);}}

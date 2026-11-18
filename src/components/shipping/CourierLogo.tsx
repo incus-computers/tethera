@@ -1,7 +1,7 @@
 import React from "react";
 import { ShippingRateOption } from "../../lib/shipping/types";
 
-export function isExpressRate(rate: ShippingRateOption): boolean {
+export function isExpressRate(rate: Pick<ShippingRateOption, "serviceCode" | "serviceName" | "courierId">): boolean {
   const code = (rate.serviceCode || "").toLowerCase();
   const courier = (rate.courierId || "").toLowerCase();
   const name = (rate.serviceName || "").toLowerCase();

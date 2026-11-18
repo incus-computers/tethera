@@ -1,3 +1,4 @@
+import { DatabaseError } from "@/lib/db/errors";
 import { NextResponse } from "next/server";
 
 export interface InvalidParamError {
@@ -49,6 +50,7 @@ const DEFAULT_TYPE_SLUGS: Record<number, string> = {
   409: "conflict",
   422: "unprocessable-entity",
   500: "internal-server-error",
+  503: "database-unavailable",
 };
 
 /**
@@ -110,4 +112,12 @@ export function unprocessableEntityProblem(detail: string, options?: ProblemOpti
 
 export function internalServerErrorProblem(detail: string, options?: ProblemOptions) {
   return createProblemResponse(500, detail, options);
+}
+
+export function databaseFailureResponse(error: unknown): NextResponse<ProblemDetails> | null {
+  if (!(error instanceof DatabaseError)) return null;
+  const response = createProblemResponse(error.status, error.message);
+  response.headers.set("Cache-Control", "no-store");
+  if (error.status === 503) response.headers.set("Retry-After", "5");
+  return response;
 }

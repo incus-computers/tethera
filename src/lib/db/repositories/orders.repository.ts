@@ -1,6 +1,7 @@
 import "server-only";
+import { DatabaseError, databaseError } from "../errors";
 import { BaseRepository } from "./base.repository";
-import { Order, OrderItem, CourierDispatchInfo } from "../types";
+import { Order, OrderItem, CourierDispatchInfo, InventoryReservationRow, ProductVariantRow } from "../types";
 import { inventoryRepository } from "./inventory.repository";
 import { FLAGSHIP_STORE_ID } from "./stores.repository";
 
@@ -295,6 +296,20 @@ export class OrdersRepository extends BaseRepository<Order> {
     this.itemsRepository = new BaseRepository<OrderItem>("order_items", INITIAL_SAMPLE_ORDER_ITEMS);
   }
 
+  async update(id:string,patch:Partial<Order>):Promise<Order|null>{
+    if(!this.getClient()){
+      const old=await this.findById(id);
+      if(old?.financial_snapshot)for(const key of ["financial_snapshot","subtotal","assembly_fee","shipping_fee","discount_amount","promo_code","total","dpp_amount","tax_amount","tax_rate","shipping_tax_amount"] as const){
+        if(Object.prototype.hasOwnProperty.call(patch,key)&&JSON.stringify(patch[key])!==JSON.stringify(old[key]))throw new Error("Committed financial breakdown is immutable.");
+      }
+    }
+    if(!this.getClient()){
+      const {demoTransaction}=await import("@/lib/inventory/demoTransaction");
+      return demoTransaction(async()=>{const old=await this.findById(id);const next=await super.update(id,patch);if(old&&next){const {orderEffects}=await import("@/lib/jobs/effects");await orderEffects(old,next);}return next;});
+    }
+    return super.update(id,patch);
+  }
+
   async findByOrderNumber(orderNumber: string): Promise<Order | null> {
     return this.findOne({ order_number: orderNumber });
   }
@@ -309,10 +324,10 @@ export class OrdersRepository extends BaseRepository<Order> {
       return { order, items };
     }
 
-    const { data: items } = await client
+    const items = await this.execute<OrderItem[]>("getOrderItems", client
       .from("order_items")
       .select("*, products(sku, name, retail_price)")
-      .eq("order_id", orderId);
+      .eq("order_id", orderId));
 
     return { order, items: (items as OrderItem[]) || [] };
   }
@@ -321,18 +336,23 @@ export class OrdersRepository extends BaseRepository<Order> {
     orderData: Partial<Order>,
     items: Partial<OrderItem>[]
   ): Promise<{ order: Order; items: OrderItem[] }> {
+    const client = this.getClient();
+    if (client) {
+      const result = await this.execute<{ order: Order; items: OrderItem[] }>("createOrderWithItems", client.rpc("create_order_with_items", { p_order: orderData, p_items: items }));
+      if (!result?.order?.id || !Array.isArray(result.items) || result.items.length !== items.length) throw new DatabaseError("createOrderWithItems", "orders");
+      return result;
+    }
+    // Demo storage uses the same all-or-nothing contract, with local compensation.
     const order = await this.create(orderData);
     const createdItems: OrderItem[] = [];
-
-    for (const item of items) {
-      const created = await this.itemsRepository.create({
-        ...item,
-        order_id: order.id,
-      });
-      createdItems.push(created);
+    try {
+      for (const item of items) createdItems.push(await this.itemsRepository.create({ ...item, order_id: order.id }));
+      return { order, items: createdItems };
+    } catch (error) {
+      for (const item of createdItems) await this.itemsRepository.delete(item.id);
+      await this.delete(order.id);
+      throw error;
     }
-
-    return { order, items: createdItems };
   }
 
   async updateStage(
@@ -353,139 +373,13 @@ export class OrdersRepository extends BaseRepository<Order> {
   /**
    * Transition order to payment_received / ready_for_pickup and lock inventory.
    */
-  async processPaymentSuccess(
-    orderId: string,
-    paymentReference: string = "PAY-SUCCESS"
-  ): Promise<{ success: boolean; status?: string; error?: string; reservedItems?: any[] }> {
-    const client = this.getClient();
-
-    // If real Supabase is connected, call the atomic PostgreSQL procedure
-    if (client) {
-      const { data: rpcResult, error: rpcError } = await client.rpc(
-        "process_order_payment_success",
-        {
-          p_order_id: orderId,
-          p_payment_reference: paymentReference,
-        }
-      );
-
-      if (rpcError || !rpcResult?.success) {
-        return {
-          success: false,
-          error: rpcResult?.error || rpcError?.message || "Payment processing failed.",
-        };
-      }
-
-      return {
-        success: true,
-        status: rpcResult.status,
-        reservedItems: rpcResult.reserved_items,
-      };
-    }
-
-    // Local in-memory fallback execution
-    const order = await this.findById(orderId);
-    if (!order) return { success: false, error: "Order not found." };
-
-    const items = await this.itemsRepository.findMany({ order_id: orderId });
-    const reservedItems: any[] = [];
-
-    for (const item of items) {
-      if (item.product_id) {
-        await inventoryRepository.deductReservedStock(
-          item.product_id,
-          item.quantity,
-          FLAGSHIP_STORE_ID,
-          {
-            referenceOrderId: orderId,
-            actorId: "midtrans_webhook",
-            notes: `Settled order #${order.order_number}`,
-          }
-        );
-        reservedItems.push({ product_id: item.product_id, quantity: item.quantity });
-      }
-    }
-
-    const isCustomPc = items.some((i) => i.is_custom_build || i.custom_build_id);
-    const nextStatus = isCustomPc
-      ? "assembly_in_progress"
-      : order.fulfillment_type === "click_and_collect"
-      ? "ready_for_pickup"
-      : "order_accepted";
-
-    const pickupCode =
-      order.pickup_code ||
-      (order.fulfillment_type === "click_and_collect"
-        ? Math.floor(1000 + Math.random() * 9000).toString()
-        : null);
-
-    const updated = await this.update(orderId, {
-      status: nextStatus,
-      payment_reference: paymentReference,
-      pickup_code: pickupCode,
-      paid_at: new Date().toISOString(),
-    });
-
-    return {
-      success: true,
-      status: updated?.status || nextStatus,
-      reservedItems,
-    };
+  async processPaymentSuccess(orderId: string, paymentReference = "PAY-SUCCESS") {
+    const { transitionInventory } = await import("@/lib/inventory/lifecycle");
+    return transitionInventory(orderId,"settle",paymentReference);
   }
-
-  /**
-   * Cancel order and release any reserved inventory back to available stock.
-   */
-  async cancelOrder(
-    orderId: string,
-    reason: string = "Order cancelled or payment expired."
-  ): Promise<{ success: boolean; order?: Order; error?: string }> {
-    const order = await this.findById(orderId);
-    if (!order) return { success: false, error: "Order not found." };
-    if (order.status === "cancelled") {
-      return { success: true, order };
-    }
-
-    const items = await this.itemsRepository.findMany({ order_id: orderId });
-    const isPaid = Boolean(order.paid_at) || [
-      "paid",
-      "order_accepted",
-      "assembly_in_progress",
-      "testing_bench",
-      "ready_for_dispatch",
-      "ready_for_pickup",
-    ].includes(order.status);
-
-    for (const item of items) {
-      if (item.product_id) {
-        if (isPaid) {
-          const inv = await inventoryRepository.getByProductAndStore(item.product_id);
-          const currentOnHand = inv ? inv.stock_on_hand : 0;
-          await inventoryRepository.updateOnHandStock(
-            item.product_id,
-            currentOnHand + (item.quantity || 1),
-            FLAGSHIP_STORE_ID,
-            {
-              reasonCode: "CANCELLED_ORDER",
-              referenceOrderId: orderId,
-              actorId: "system",
-              notes: `Order cancellation restock: ${reason}`,
-            }
-          );
-        } else {
-          await inventoryRepository.releaseReservedStock(item.product_id, item.quantity);
-        }
-      }
-    }
-
-    const updated = await this.update(orderId, {
-      status: "cancelled",
-      notes: order.notes ? `${order.notes} | ${reason}` : reason,
-      updated_at: new Date().toISOString(),
-    });
-
-    return { success: true, order: updated || undefined };
+  async cancelOrder(orderId: string, reason = "Order cancelled.") {
+    const { transitionInventory } = await import("@/lib/inventory/lifecycle");
+    return transitionInventory(orderId,"cancel","",reason);
   }
 }
-
 export const ordersRepository = new OrdersRepository();

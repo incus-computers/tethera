@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 
@@ -24,7 +26,7 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
     it("blocks SUPPORT_AGENT lacking orders:dispatch with 403 Forbidden", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/fulfillments", {
         method: "POST",
-        headers: { authorization: "Bearer support" },
+        headers: { cookie: fixtureCookie("SUPPORT_AGENT") },
         body: JSON.stringify({
           orderId: "ord-1002",
           carrier: "sicepat",
@@ -40,13 +42,14 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
     });
 
     it("allows FULFILLMENT_OPERATOR to create split fulfillment and records audit log", async () => {
+      await db.orders.update("ord-1002",{paid_at:new Date().toISOString()});
       const initialLogs = await db.auditLogs.getRecentLogs(10, "fulfillment");
       const initialCount = initialLogs.length;
 
       const req = new NextRequest("http://localhost:3000/api/admin/fulfillments", {
         method: "POST",
         headers: {
-          authorization: "Bearer dispatch",
+          cookie: fixtureCookie("FULFILLMENT_OPERATOR"),
           "x-forwarded-for": "192.168.1.100",
         },
         body: JSON.stringify({
@@ -79,7 +82,7 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
         "http://localhost:3000/api/admin/fulfillments?orderId=ord-1002",
         {
           method: "GET",
-          headers: { authorization: "Bearer dispatch" },
+          headers: { cookie: fixtureCookie("FULFILLMENT_OPERATOR") },
         }
       );
 
@@ -105,18 +108,20 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
       });
 
       const res = await customerRmaPOST(req);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(404);
       const json = await res.json();
       expect(json.success).toBe(false);
-      expect(json.error).toMatch(/does not match/i);
+      expect(json.error).toMatch(/not found/i);
     });
 
     it("creates RMA return request for authentic customer order", async () => {
+      await db.orders.update("ord-1001",{paid_at:new Date().toISOString()});
       const order = await db.orders.findById("ord-1001");
       expect(order).toBeDefined();
 
       const req = new NextRequest("http://localhost:3000/api/orders/rma", {
         method: "POST",
+        headers: {cookie:fixtureCookie("alex.gamer@example.com")},
         body: JSON.stringify({
           orderNumber: order!.order_number,
           email: order!.customer_email,
@@ -135,7 +140,7 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
       // Verify customer can query their active return request
       const getReq = new NextRequest(
         `http://localhost:3000/api/orders/rma?orderNumber=${order!.order_number}&email=${order!.customer_email}`,
-        { method: "GET" }
+        { method: "GET",headers:{cookie:fixtureCookie("alex.gamer@example.com")} }
       );
       const getRes = await customerRmaGET(getReq);
       expect(getRes.status).toBe(200);
@@ -150,7 +155,7 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
     it("allows staff to list and update RMA status to approved", async () => {
       const listReq = new NextRequest("http://localhost:3000/api/admin/rma", {
         method: "GET",
-        headers: { authorization: "Bearer support" },
+        headers: { cookie: fixtureCookie("SUPPORT_AGENT") },
       });
 
       const listRes = await adminRmaGET(listReq);
@@ -164,7 +169,7 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
       // Staff transitions RMA status to approved
       const putReq = new NextRequest("http://localhost:3000/api/admin/rma", {
         method: "PUT",
-        headers: { authorization: "Bearer superadmin" },
+        headers: { cookie: fixtureCookie("SUPER_ADMIN") },
         body: JSON.stringify({
           rmaId: createdRmaId,
           status: "approved",
@@ -179,7 +184,7 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
       expect(putJson.returnRequest.status).toBe("approved");
     });
 
-    it("processes refund with inventory restocking and marks order refunded", async () => {
+    it("processes a dummy refund without automatically restocking or completing inspection", async () => {
       // Find order to refund (e.g. ord-1001)
       const order = await db.orders.findById("ord-1001");
       expect(order).toBeDefined();
@@ -190,15 +195,16 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
       const refundReq = new NextRequest("http://localhost:3000/api/admin/rma", {
         method: "POST",
         headers: {
-          authorization: "Bearer superadmin",
+          cookie: fixtureCookie("SUPER_ADMIN"),
           "x-forwarded-for": "10.0.0.8",
+          "Idempotency-Key":randomUUID(),
         },
         body: JSON.stringify({
           orderId: order!.id,
           returnRequestId: createdRmaId,
           amount: order!.total,
           reason: "Approved RMA replacement credit",
-          restockInventory: true,
+          restockInventory: false,
         }),
       });
 
@@ -215,16 +221,16 @@ describe("Phase 3 Milestone 3: Split Fulfillment & RMA Return / Refund Engine", 
 
       // Verify inventory was restocked (on hand increased)
       const afterInv = await db.inventory.getByProductAndStore("cpu-1");
-      expect(afterInv?.stock_on_hand).toBeGreaterThan(initialStock);
+      expect(afterInv?.stock_on_hand).toBe(initialStock);
 
       // Verify linked RMA was completed
       const updatedRma = await db.rma.returnRequests.findById(createdRmaId);
-      expect(updatedRma?.status).toBe("completed");
+      expect(updatedRma?.status).toBe("approved");
 
-      // Verify audit log recorded REFUND_PROCESSED
+      // Verify audit log recorded REFUND_CONFIRMED
       const auditLogs = await db.auditLogs.getRecentLogs(5, "refund");
       expect(auditLogs.length).toBeGreaterThan(0);
-      expect(auditLogs[0].action).toBe("REFUND_PROCESSED");
+      expect(auditLogs[0].action).toBe("REFUND_CONFIRMED");
     });
   });
 });

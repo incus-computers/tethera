@@ -1,4 +1,5 @@
 "use client";
+import { MEDIA_ACCEPT } from "@/lib/media/policy";
 
 import React, { useState, useRef } from "react";
 import {
@@ -162,7 +163,7 @@ export function ProductGalleryManager({
         <div className="py-10 text-center bg-[#12141A] rounded-xl border border-dashed border-white/10 p-6 space-y-2">
           <ImageIcon className="w-8 h-8 text-zinc-500 mx-auto" />
           <p className="text-zinc-400 font-medium text-xs">No pictures added for this product yet.</p>
-          <p className="text-xs text-zinc-500">Upload pictures below or paste a direct image URL.</p>
+          <p className="text-xs text-zinc-500">Upload a JPEG, PNG or WebP up to 5 MB, or paste a direct image URL.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
@@ -277,7 +278,8 @@ export function ProductGalleryManager({
             type="file"
             ref={fileInputRef}
             multiple
-            accept="image/*"
+            accept={MEDIA_ACCEPT}
+            title="JPEG, PNG or WebP; up to 5 MB and 16 megapixels."
             className="hidden"
             onChange={(e) => {
               handleFilesSelected(e.target.files);

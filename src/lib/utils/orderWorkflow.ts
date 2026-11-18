@@ -119,12 +119,13 @@ export function isOrderDispatched(status: string): boolean {
 }
 
 export function getNextWorkflowStep(
-  status: string
+  status: string, fulfillmentType?: string
 ): { nextStatus: string; nextActionLabel: string } | null {
   const s = (status || "").toLowerCase().trim();
   if (s === "cancelled" || s === "refunded") return null;
 
   const currentIndex = getWorkflowStageIndex(s);
+  if (fulfillmentType === "delivery" && currentIndex >= 4) return null;
   if (currentIndex < WORKFLOW_STAGES.length - 1) {
     const currentStage = WORKFLOW_STAGES[currentIndex];
     const nextStage = WORKFLOW_STAGES[currentIndex + 1];

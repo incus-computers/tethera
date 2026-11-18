@@ -1,5 +1,9 @@
 "use client";
+import { usePagedCollection, CollectionControls } from "@/components/ui/CollectionPager";
+import { MEDIA_ACCEPT } from "@/lib/media/policy";
 
+import { BackgroundJobsPanel } from "@/components/admin/BackgroundJobsPanel";
+import { OperationsPanel } from "@/components/admin/OperationsPanel";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -64,6 +68,7 @@ import { useAdminStore } from "@/lib/store/useAdminStore";
 import { formatRupiah } from "@/lib/utils/currency";
 import { Product, Order, Promotion, DynamicBannerSlide, CustomerProfileRow } from "@/lib/db/types";
 import { ProductGalleryManager } from "@/components/admin/ProductGalleryManager";
+import { PackageProfileEditor } from "@/components/admin/PackageProfileEditor";
 import { ProductVariationsManager } from "@/components/admin/ProductVariationsManager";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import {
@@ -109,16 +114,21 @@ export default function AdminPortalPage() {
   // Login Form State
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [demoAccess, setDemoAccess] = useState<{demo:boolean;password:string;admins:{role:string;email:string}[]}|null>(null);
+  useEffect(() => { fetch("/api/auth/environment").then(r=>r.json()).then(d=>setDemoAccess(d.demo?d:null)).catch(()=>{}); }, []);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Data Collections State
-  const [orders, setOrders] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const orderPage = usePagedCollection("/api/admin/orders", "orders", isAuthenticated);
+  const {rows:orders,setRows:setOrders}=orderPage;
+  const productPage = usePagedCollection("/api/admin/products", "products", isAuthenticated);
+  const {rows:products,setRows:setProducts}=productPage;
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [banners, setBanners] = useState<DynamicBannerSlide[]>([]);
-  const [customers, setCustomers] = useState<CustomerProfileRow[]>([]);
-  const [crmStats, setCrmStats] = useState<any>(null);
+  const customerPage = usePagedCollection<CustomerProfileRow>("/api/admin/customers", "customers", isAuthenticated);
+  const {rows:customers,setRows:setCustomers,stats:crmStats}=customerPage;
 
   const [loadingData, setLoadingData] = useState(false);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
@@ -143,6 +153,11 @@ export default function AdminPortalPage() {
   const [pickupMode, setPickupMode] = useState<"now" | "scheduled">("now");
   const [pickupDate, setPickupDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [pickupTime, setPickupTime] = useState<string>("14:00");
+  const [reconcileProviderId,setReconcileProviderId]=useState("");
+  const [demoShipping,setDemoShipping]=useState(false);
+  const [packingConfirmed,setPackingConfirmed]=useState(false);
+  useEffect(()=>{if(dispatchModalOrder){const info=dispatchModalOrder.courier_info;setSelectedCourierProvider(info?.courier_company||"jne");setSelectedServiceCode(info?.service_code||"jne-reg");setPickupMode("now");setPackingConfirmed(false);}},[dispatchModalOrder]);
+  useEffect(()=>{fetch("/api/auth/environment").then(r=>r.json()).then(d=>setDemoShipping(d.demo===true)).catch(()=>{});},[]);
   const [dispatchingLoading, setDispatchingLoading] = useState(false);
   const [simulatingWebhookOrderId, setSimulatingWebhookOrderId] = useState<string | null>(null);
   const [activeWebhookMenuOrderId, setActiveWebhookMenuOrderId] = useState<string | null>(null);
@@ -732,28 +747,16 @@ export default function AdminPortalPage() {
   // Fetch Data when authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      loadAllDashboardData();
+      loadAllDashboardData(false);
     }
   }, [isAuthenticated, isSuperAdmin]);
 
-  const loadAllDashboardData = async () => {
+  const loadAllDashboardData = async (refreshCollections = true) => {
     setLoadingData(true);
     try {
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // 1. Load Orders
-      const resOrders = await fetch("/api/admin/orders", { headers });
-      if (resOrders.ok) {
-        const d = await resOrders.json();
-        if (d.success) setOrders(d.orders || []);
-      }
-
-      // 2. Load Products
-      const resProducts = await fetch("/api/admin/products", { headers });
-      if (resProducts.ok) {
-        const d = await resProducts.json();
-        if (d.success) setProducts(d.products || []);
-      }
+      if(refreshCollections)await Promise.all([orderPage.reload(),productPage.reload(),customerPage.reload()]);
 
       // 3. Load Promotions & Banners
       const resPromos = await fetch("/api/admin/promotions", { headers });
@@ -766,16 +769,6 @@ export default function AdminPortalPage() {
       if (resBanners.ok) {
         const d = await resBanners.json();
         if (d.success) setBanners(d.banners || []);
-      }
-
-      // 4. Load Customers (for all authenticated admins)
-      const resCustomers = await fetch("/api/admin/customers", { headers });
-      if (resCustomers.ok) {
-        const d = await resCustomers.json();
-        if (d.success) {
-          setCustomers(d.customers || []);
-          setCrmStats(d.stats);
-        }
       }
 
       // 5. Load Homepage Modules & Custom PC Hero
@@ -838,27 +831,20 @@ export default function AdminPortalPage() {
     e.preventDefault();
     setLoginSubmitting(true);
     setLoginError(null);
-    const result = await login(loginIdentifier, loginPassword);
+    const result = await login(loginIdentifier, loginPassword, totpCode);
     if (!result.success) {
       setLoginError(result.error || "Authentication failed.");
     }
     setLoginSubmitting(false);
   };
 
-  const quickDemoLogin = async (type: "superadmin" | "admin") => {
-    if (type === "superadmin") {
-      setLoginIdentifier("superadmin@tethera.com");
-      setLoginPassword("SuperAdmin2026!");
-      setLoginSubmitting(true);
-      await login("superadmin@tethera.com", "SuperAdmin2026!");
-      setLoginSubmitting(false);
-    } else {
-      setLoginIdentifier("admin@tethera.com");
-      setLoginPassword("AdminPass2026!");
-      setLoginSubmitting(true);
-      await login("admin@tethera.com", "AdminPass2026!");
-      setLoginSubmitting(false);
-    }
+  const quickDemoLogin = async (role: string) => {
+    const account=demoAccess?.admins.find(a=>a.role===role);
+    if(!account || !demoAccess)return;
+    setLoginSubmitting(true);setLoginError(null);
+    const result=await login(account.email,demoAccess.password);
+    if(!result.success)setLoginError(result.error || "Demo sign-in failed.");
+    setLoginSubmitting(false);
   };
 
   // --------------------------------------------------------------------------
@@ -1151,6 +1137,7 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.success) {
         showToast(data.message);
+        void orderPage.reload();
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
         );
@@ -1191,6 +1178,7 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.success) {
         showToast(data.message);
+        void orderPage.reload();
         setOrders((prev) =>
           prev.map((o) =>
             o.id === rejectModalOrder.id
@@ -1222,6 +1210,8 @@ export default function AdminPortalPage() {
         },
         body: JSON.stringify({
           orderId: dispatchModalOrder.id,
+          packingConfirmed,
+          ...(reconcileProviderId.trim()?{action:"reconcile",biteshipOrderId:reconcileProviderId.trim()}:{}),
           courierProvider: selectedCourierProvider,
           serviceCode: selectedServiceCode,
           deliveryType: pickupMode,
@@ -1233,11 +1223,12 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.success) {
         showToast(data.message);
+        void orderPage.reload();
         setOrders((prev) =>
-          prev.map((o) => (o.id === dispatchModalOrder.id ? { ...data.order, status: "dispatched" } : o))
+          prev.map((o) => (o.id === dispatchModalOrder.id ? {...o,...data.order} : o))
         );
         setSelectedOrderForDrawer((prev: any) =>
-          prev && prev.id === dispatchModalOrder.id ? { ...data.order, status: "dispatched" } : prev
+          prev && prev.id === dispatchModalOrder.id ? {...prev,...data.order} : prev
         );
         setDispatchModalOrder(null);
       } else {
@@ -1265,12 +1256,13 @@ export default function AdminPortalPage() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Courier assignment rejected. Re-dispatch is now unlocked.");
+        showToast(data.message);
+        void orderPage.reload();
         setOrders((prev) =>
-          prev.map((o) => (o.id === orderId ? { ...o, status: "courier_failed" } : o))
+          prev.map((o) => (o.id === orderId ? {...o,...data.order} : o))
         );
         setSelectedOrderForDrawer((prev: any) =>
-          prev && prev.id === orderId ? { ...prev, status: "courier_failed" } : prev
+          prev && prev.id === orderId ? {...prev,...data.order} : prev
         );
       } else {
         alert(data.error || "Failed to simulate courier rejection");
@@ -1299,9 +1291,11 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.success) {
         showToast(data.message);
+        void orderPage.reload();
         setOrders((prev) =>
-          prev.map((o) => (o.id === orderId ? data.order : o))
+          prev.map((o) => (o.id === orderId ? {...o,...data.order} : o))
         );
+        setSelectedOrderForDrawer((prev:any)=>prev?.id===orderId?{...prev,...data.order}:prev);
         setActiveWebhookMenuOrderId(null);
       } else {
         alert(data.error || "Failed to simulate Biteship tracking webhook");
@@ -1336,9 +1330,7 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.success) {
         showToast("Product changes, category, and images saved successfully.");
-        setProducts((prev) =>
-          prev.map((p) => (p.id === editingProduct.id ? data.product : p))
-        );
+        await productPage.reload();
         setEditingProduct(null);
       } else {
         alert(data.error || "Failed to save product");
@@ -1361,7 +1353,7 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.success) {
         showToast(data.message);
-        setProducts((prev) => prev.filter((p) => p.id !== productId));
+        await productPage.reload();
       } else {
         alert(data.error || "Failed to delete product");
       }
@@ -1435,7 +1427,7 @@ export default function AdminPortalPage() {
       const data = await res.json();
       if (data.success) {
         showToast(data.message);
-        setProducts((prev) => [data.product, ...prev]);
+        await productPage.reload();
         setNewProductModalOpen(false);
         setNewProductImageUrl("");
         setNewProductImages([]);
@@ -1758,6 +1750,10 @@ export default function AdminPortalPage() {
                 />
               </div>
 
+              {!demoAccess && <label className="block text-xs text-slate-300">Authenticator code
+                <input aria-label="Authenticator code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={totpCode} onChange={e=>setTotpCode(e.target.value.replace(/\D/g,""))} className="mt-2 w-full rounded-xl bg-[#0A0B0E] px-4 py-3 text-white" />
+              </label>}
+
               <button
                 type="submit"
                 disabled={loginSubmitting}
@@ -1772,30 +1768,11 @@ export default function AdminPortalPage() {
               </button>
             </form>
 
-            {/* Quick Demo Fill Buttons */}
-            <div className="pt-5 border-t border-white/10 space-y-2.5">
-              <p className="text-[11px] text-slate-400 text-center font-medium">
-                Quick-Access Demo Clearance:
-              </p>
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => quickDemoLogin("admin")}
-                  className="min-h-[44px] px-3 py-2 rounded-xl bg-[#0A0B0E] hover:bg-white/5 border border-white/10 text-xs text-[#37baf2] font-semibold flex items-center justify-center gap-1.5 transition"
-                >
-                  <ShieldCheck className="w-4 h-4 text-[#37baf2]" />
-                  <span>Store Admin</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => quickDemoLogin("superadmin")}
-                  className="min-h-[44px] px-3 py-2 rounded-xl bg-[#0A0B0E] hover:bg-white/5 border border-white/10 text-xs text-purple-300 font-semibold flex items-center justify-center gap-1.5 transition"
-                >
-                  <Crown className="w-4 h-4 text-purple-400" />
-                  <span>Superadmin</span>
-                </button>
-              </div>
-            </div>
+            {demoAccess && <div className="space-y-2 border-t border-white/10 pt-4">
+              <p className="text-xs text-amber-200">Demo accounts: choose a role</p>
+              {demoAccess.admins.map(account=><button key={account.role} type="button" onClick={()=>quickDemoLogin(account.role)} className="m-1 rounded border border-white/20 px-3 py-2 text-xs text-white">{account.role.replaceAll("_"," ")}</button>)}
+            </div>}
+
           </div>
 
           <div className="text-center">
@@ -1940,6 +1917,10 @@ export default function AdminPortalPage() {
             </div>
           )}
 
+          {activeTab === "orders" && <CollectionControls refine orders meta={orderPage.meta} query={orderPage.query} onQuery={orderPage.setQuery} loading={orderPage.loading} error={orderPage.error} />}
+          {activeTab === "products" && <CollectionControls refine meta={productPage.meta} query={productPage.query} onQuery={productPage.setQuery} loading={productPage.loading} error={productPage.error} />}
+          {activeTab === "crm" && <CollectionControls refine meta={customerPage.meta} query={customerPage.query} onQuery={customerPage.setQuery} loading={customerPage.loading} error={customerPage.error} />}
+          {(activeTab === "overview" || activeTab === "analytics") && (orderPage.meta.total>orders.length || productPage.meta.total>products.length) && <p role="status" className="mb-4 text-sm text-amber-300">This overview covers the loaded pages of orders and products. Use their lists to search or review other pages.</p>}
           {/* Active Tab View with Flux Smooth Transition */}
           <div key={activeTab} className="flux-animate-fade flux-animate-slide-up">
             {/* Tab 0: Overview */}
@@ -1965,14 +1946,16 @@ export default function AdminPortalPage() {
               />
             )}
 
+            {activeTab==="orders" && user?.role==="SUPER_ADMIN" && <OperationsPanel/>}
+            {activeTab==="orders" && ["SUPER_ADMIN","FULFILLMENT_OPERATOR","SUPPORT_AGENT"].includes(user?.role||"") && <BackgroundJobsPanel canManage={user?.role==="SUPER_ADMIN"}/>}
             {/* Tab 1: Orders */}
             {activeTab === "orders" && (
               <FluxOrdersTab
                 orders={orders}
                 onInspectOrder={(ord) => setSelectedOrderForDrawer(ord)}
-                onOpenDispatchModal={(ord) => setDispatchModalOrder(ord)}
+                onOpenDispatchModal={(ord) => {setReconcileProviderId("");setDispatchModalOrder(ord);}}
                 onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
-                onSimulateCourierFailure={handleSimulateCourierFailure}
+                onSimulateCourierFailure={demoShipping?handleSimulateCourierFailure:undefined}
                 onOpenRejectModal={(ord) => {
                   setRejectModalOrder(ord);
                   setRejectReason("Out of stock in warehouse");
@@ -2069,9 +2052,14 @@ export default function AdminPortalPage() {
 
       {/* Slide-over Right Drawers */}
       <FluxOrderDrawer
+        onRefundStatus={(id,status)=>{void orderPage.reload();setOrders(prev=>prev.map(order=>order.id===id?{...order,status:status as any}:order));setSelectedOrderForDrawer((prev:any)=>prev?.id===id?{...prev,status}:prev);}}
+        canDispatchParcels={user?.role==="SUPER_ADMIN"||user?.role==="FULFILLMENT_OPERATOR"}
+        canManageReturns={user?.role==="SUPER_ADMIN"}
+        canReadReturns={user?.role!=="CATALOG_MANAGER"}
         order={selectedOrderForDrawer}
+        onSimulateWebhook={demoShipping?handleSimulateBiteshipWebhook:undefined}
         onClose={() => setSelectedOrderForDrawer(null)}
-        onOpenDispatchModal={(ord) => setDispatchModalOrder(ord)}
+        onOpenDispatchModal={(ord) => {setReconcileProviderId("");setDispatchModalOrder(ord);}}
         onUpdateStatus={(orderId, status) => advanceOrderStage(orderId, status)}
       />
 
@@ -2349,6 +2337,7 @@ export default function AdminPortalPage() {
                 <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 block">
                   Product Variations
                 </span>
+                <PackageProfileEditor productId={editingProduct.id} />
                 <ProductVariationsManager
                   productId={editingProduct.id}
                   variations={editingProduct.variations || []}
@@ -2501,12 +2490,12 @@ export default function AdminPortalPage() {
             </div>
 
             <p className="text-xs text-slate-300">
-              Order <strong>#{dispatchModalOrder.order_number}</strong> for <strong>{dispatchModalOrder.customer_name}</strong> is packed and ready at Mangga Dua Flagship Hub. Select carrier to create shipment, generate official Waybill (AWB), and trigger courier pickup.
+              Order <strong>#{dispatchModalOrder.order_number}</strong> for <strong>{dispatchModalOrder.customer_name}</strong> is packed and ready at Mangga Dua Flagship Hub. Use the saved courier selection to book pickup. Waybill and driver details appear when the provider supplies them.
             </p>
 
             {/* Courier Selection Grid */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300">Select Courier Partner:</label>
+              <label className="block text-xs font-semibold text-slate-300">Saved courier: {selectedCourierProvider} / {selectedServiceCode}</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {[
                   {
@@ -2562,6 +2551,7 @@ export default function AdminPortalPage() {
                   return (
                     <button
                       key={c.id}
+                      disabled={Boolean(dispatchModalOrder.courier_info?.courier_company)}
                       type="button"
                       onClick={() => {
                         setSelectedCourierProvider(c.id as any);
@@ -2607,12 +2597,13 @@ export default function AdminPortalPage() {
                   <Zap className="w-3.5 h-3.5" />
                   <div>
                     <div className="font-bold">Immediate Pickup</div>
-                    <div className="text-[10px] opacity-70">Courier dispatched now</div>
+                    <div className="text-[10px] opacity-70">Request pickup now</div>
                   </div>
                 </button>
 
                 <button
                   type="button"
+                  disabled={!demoShipping}
                   onClick={() => setPickupMode("scheduled")}
                   className={`min-h-[44px] p-2.5 rounded-lg border text-xs font-semibold text-left transition flex items-center gap-2 ${
                     pickupMode === "scheduled"
@@ -2622,7 +2613,7 @@ export default function AdminPortalPage() {
                 >
                   <Clock className="w-3.5 h-3.5" />
                   <div>
-                    <div className="font-bold">Schedule Slot</div>
+                    <div className="font-bold">{demoShipping?"Schedule Slot":"Scheduling unavailable"}</div>
                     <div className="text-[10px] opacity-70">Specify date & time</div>
                   </div>
                 </button>
@@ -2661,6 +2652,8 @@ export default function AdminPortalPage() {
               </div>
             </div>
 
+            <label className="block text-xs text-slate-300 space-y-2"><span>Recover an existing booking (optional)</span><input className="w-full rounded-lg bg-slate-900 border border-slate-700 p-3" value={reconcileProviderId} onChange={e=>setReconcileProviderId(e.target.value)} placeholder="Biteship order ID from the provider dashboard" /><span className="block text-slate-400">Use this after an uncertain booking result. It checks that shipment without creating another.</span></label>
+            <label className="flex gap-2 text-xs"><input type="checkbox" checked={packingConfirmed} onChange={e=>setPackingConfirmed(e.target.checked)}/>Packed measurements match the saved quote; fragile contents secured.</label>
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
               <button
@@ -2679,12 +2672,12 @@ export default function AdminPortalPage() {
                 {dispatchingLoading ? (
                   <>
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Booking with Biteship API...</span>
+                    <span>Checking shipment...</span>
                   </>
                 ) : (
                   <>
                     <Truck className="w-3.5 h-3.5" />
-                    <span>Generate Waybill & Dispatch ({selectedCourierProvider.toUpperCase()})</span>
+                    <span>{reconcileProviderId.trim()?"Reconcile existing shipment":"Book courier pickup"}</span>
                   </>
                 )}
               </button>
@@ -3012,7 +3005,8 @@ export default function AdminPortalPage() {
                   <input
                     type="file"
                     ref={bannerFileInputRef}
-                    accept="image/*"
+                    accept={MEDIA_ACCEPT}
+                    title="JPEG, PNG or WebP; up to 5 MB and 16 megapixels."
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];

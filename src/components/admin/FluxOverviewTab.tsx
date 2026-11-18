@@ -799,7 +799,7 @@ export function FluxOverviewTab({
                 <tbody className="divide-y divide-white/5 text-xs">
                   {recentOrders.map((order) => {
                     const badge = getStatusBadge(order.status);
-                    const nextStep = getNextWorkflowStep(order.status);
+                    const nextStep = getNextWorkflowStep(order.status,order.fulfillment_type);
                     const totalVal = Number(order.total ?? order.total_amount ?? order.totalPrice) || 0;
                     const customerName =
                       order.customer_name ||

@@ -1,10 +1,14 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { publicCatalogProduct } from "@/lib/api/publicCatalog";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { internalServerErrorProblem } from "@/lib/api/problemDetails";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+ async function protectedGET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || undefined;
@@ -24,14 +28,8 @@ export async function GET(req: NextRequest) {
 
     const minPriceParam = searchParams.get("minPrice");
     const maxPriceParam = searchParams.get("maxPrice");
-    const minPrice =
-      minPriceParam !== null && minPriceParam !== "" && !Number.isNaN(Number(minPriceParam))
-        ? Number(minPriceParam)
-        : undefined;
-    const maxPrice =
-      maxPriceParam !== null && maxPriceParam !== "" && !Number.isNaN(Number(maxPriceParam))
-        ? Number(maxPriceParam)
-        : undefined;
+    const minPrice=minPriceParam===null?undefined:Number(minPriceParam);
+    const maxPrice=maxPriceParam===null?undefined:Number(maxPriceParam);
 
     const inStockParam = searchParams.get("inStock");
     const inStockOnly = inStockParam === "true" || inStockParam === "1";
@@ -39,8 +37,8 @@ export async function GET(req: NextRequest) {
     const sort = (searchParams.get("sort") as any) || undefined;
     const pageParam = searchParams.get("page");
     const limitParam = searchParams.get("limit");
-    const page = pageParam ? Number(pageParam) : undefined;
-    const limit = limitParam ? Number(limitParam) : undefined;
+    const page = pageParam===null ? undefined : Number(pageParam);
+    const limit = limitParam===null ? undefined : Number(limitParam);
 
     const result = await db.products.getFacetedCatalog({
       search,
@@ -58,14 +56,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       count: result.pagination.total,
-      products: result.products,
+      products: result.products.map(publicCatalogProduct),
       facets: result.facets,
       pagination: result.pagination,
     });
   } catch (error: any) {
-    console.error("[API PRODUCTS ERROR]:", error);
-    return internalServerErrorProblem(error.message || "Failed to fetch products", {
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Failed to fetch products", {
       instance: req.nextUrl?.pathname || "/api/products",
     });
   }
 }
+export const GET = withApiProtection(protectedGET);

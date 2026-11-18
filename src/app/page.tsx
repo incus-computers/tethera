@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
@@ -56,6 +57,7 @@ function getGridColumns(width: number): number {
 }
 
 export default function HomePage() {
+  const {t}=useTranslation();
   const [columns, setColumns] = useState<number>(4);
   const { addStandardItem, addCustomPC, openCart } = useCartStore();
 
@@ -505,8 +507,7 @@ export default function HomePage() {
                       )}
                       {item.stockCount <= 0 && (
                         <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-normal tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
-                          Out of Stock
-                        </span>
+                          {t("Out of Stock")}</span>
                       )}
                     </div>
 
@@ -525,14 +526,13 @@ export default function HomePage() {
                       }}
                       disabled={item.stockCount <= 0}
                       className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#37baf2]"
-                      title="Add to Cart"
+                      title={t("Add to Cart")}
                       aria-label={`Add ${item.name} to Cart`}
                     >
                       <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-[#52E394] hover:brightness-105 text-[#0A0B0E] shadow-md transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
                         <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 stroke-[2.5] transition-transform duration-300 group-hover/cart:rotate-90" />
                         <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-semibold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5">
-                          Add to Cart
-                        </span>
+                          {t("Add to Cart")}</span>
                       </div>
                     </button>
                   </div>

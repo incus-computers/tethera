@@ -3,12 +3,16 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { ComponentItem } from "../data/mockHardware";
+import type { BuilderSlotKey } from "./useBuilderStore";
 
 export interface CartCustomPC {
+  catalogProductId?: string;
   id: string;
   name: string;
   parts: Record<string, Partial<ComponentItem> | ComponentItem>;
+  customizedSlots?: BuilderSlotKey[];
   serviceTier: {
+    id?: string;
     name: string;
     price: number;
     leadTime: string;

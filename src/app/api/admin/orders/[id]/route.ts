@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
@@ -5,12 +9,12 @@ import { requireAdminPermission } from "@/lib/auth/rbac";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET(
+async function handleGET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const perm = requireAdminPermission(req, "orders:read");
+    const perm = await requireAdminPermission(req, "orders:read");
     if (!perm.authorized) {
       return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
     }
@@ -55,17 +59,19 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    console.error("[ADMIN SINGLE ORDER GET ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return NextResponse.json({ success: false, error: "Service temporarily unavailable. Please retry." }, { status: 500 });
   }
 }
 
-export async function PUT(
+async function handlePUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const perm = requireAdminPermission(req, "orders:write");
+    const perm = await requireAdminPermission(req, "orders:write");
     if (!perm.authorized) {
       return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 401 });
     }
@@ -114,29 +120,22 @@ export async function PUT(
       );
     }
 
-    // Release reserved stock on cancel/refund
-    if (nextStatus === "cancelled" || nextStatus === "refunded") {
-      try {
-        const { items } = await db.orders.getOrderWithItems(orderId);
-        for (const it of items) {
-          if (it.product_id) {
-            const inv = await db.inventory.getByProductAndStore(it.product_id);
-            if (inv && inv.stock_reserved > 0) {
-              await db.inventory.update(inv.id, {
-                stock_reserved: Math.max(0, inv.stock_reserved - (it.quantity || 1)),
-              });
-            }
-          }
-        }
-      } catch (stockErr) {
-        console.warn("[ADMIN ORDER ID] Could not release reserved stock:", stockErr);
-      }
-    }
+    const guardedOrder=await db.orders.findById(orderId);
+    if (!guardedOrder) return NextResponse.json({success:false,error:"Order not found."},{status:404});
+    if(nextStatus === "refunded" || nextStatus === "payment_received") return NextResponse.json({success:false,error:"Use the verified payment/refund workflow."},{status:409});
+    if(nextStatus && nextStatus !== guardedOrder.status && ["cancelled","refunded"].includes(guardedOrder.status)) return NextResponse.json({success:false,error:"Terminal orders cannot be reopened."},{status:409});
+    if(guardedOrder.fulfillment_type==="delivery" && nextStatus && nextStatus!==guardedOrder.status && ["dispatched","on_delivery","delivery_arrived","delivered","shipped","partially_fulfilled","finished"].includes(nextStatus))return NextResponse.json({success:false,error:"Use verified shipment updates for shipping progress."},{status:409});
+    if(guardedOrder.fulfillment_type==="delivery" && [waybill_id,tracking_number,courier_provider,courier_service_code].some(value=>value!==undefined)) return NextResponse.json({success:false,error:"Use the verified shipment workflow for courier details."},{status:409});
+    if(nextStatus === "cancelled") {
+      const cancelled=await db.orders.cancelOrder(orderId,notes || "Cancelled by staff.");
+      if(!cancelled.success)return NextResponse.json({success:false,error:cancelled.error},{status:409});
+    } else if(nextStatus && !["order_received","pending_payment"].includes(nextStatus) && !guardedOrder.paid_at) return NextResponse.json({success:false,error:"Payment is required before fulfillment."},{status:409});
+    if(["pending_payment","order_received"].includes(nextStatus) && guardedOrder.paid_at)return NextResponse.json({success:false,error:"Paid state cannot regress."},{status:409});
 
     const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
-    if (nextStatus) updatePayload.status = nextStatus;
+    if (nextStatus && nextStatus !== "cancelled") updatePayload.status = nextStatus;
     if (notes !== undefined) updatePayload.notes = notes;
     if (waybill_id !== undefined) updatePayload.waybill_id = waybill_id;
     if (tracking_number !== undefined) updatePayload.tracking_number = tracking_number;
@@ -176,14 +175,20 @@ export async function PUT(
       order: updated,
     });
   } catch (error: any) {
-    console.error("[ADMIN ORDER ID PUT ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return NextResponse.json({ success: false, error: "Service temporarily unavailable. Please retry." }, { status: 500 });
   }
 }
 
-export async function PATCH(
+async function handlePATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   return PUT(req, context);
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const PUT = withApiProtection(withAccess(handlePUT));
+export const PATCH = withApiProtection(withAccess(handlePATCH));

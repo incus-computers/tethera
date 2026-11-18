@@ -1,4 +1,6 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
+import { isPaymentFlowRoute } from "@/lib/storefront/routes";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -72,6 +74,7 @@ function MonitorTowerIcon({ className = "w-5 h-5" }: { className?: string }) {
 }
 
 export function PersistentHeader() {
+  const {t,profile,locale}=useTranslation();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
@@ -80,6 +83,11 @@ export function PersistentHeader() {
   const categoriesTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const categoriesContainerRef = React.useRef<HTMLDivElement | null>(null);
   const lastScrollYRef = React.useRef(0);
+  const headerRef = React.useRef<HTMLElement | null>(null);
+  const categoryBarRef = React.useRef<HTMLDivElement | null>(null);
+  const categoryContentRef = React.useRef<HTMLDivElement | null>(null);
+  const categoryExpandedRef = React.useRef(true);
+  const measureHeaderRef = React.useRef<(() => void) | null>(null);
 
   const { userLocation, openLocationModal, selectedRate, initLocation } = useLocationStore();
   const { user, isAuthenticated, initSession, logout } = useAuthStore();
@@ -144,7 +152,44 @@ export function PersistentHeader() {
   const subtotal = getSubtotal();
 
   useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    let publishedHeight = -1;
+    const measure = () => {
+      const height = header.getBoundingClientRect().height;
+      const categoryHeight = categoryBarRef.current?.getBoundingClientRect().height || 0;
+      const fullCategoryHeight = categoryContentRef.current?.getBoundingClientRect().height || 0;
+      // Reserve the full bar before its reveal starts. During collapse, follow
+      // the animated header height so sticky content never moves underneath it.
+      const reservedHeight = categoryExpandedRef.current
+        ? Math.max(height, height - categoryHeight + fullCategoryHeight)
+        : height;
+      const nextHeight = Math.ceil(reservedHeight);
+      if (nextHeight !== publishedHeight) {
+        publishedHeight = nextHeight;
+        document.documentElement.style.setProperty("--persistent-header-height", `${nextHeight}px`);
+      }
+    };
+    measureHeaderRef.current = measure;
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    if (categoryContentRef.current) observer.observe(categoryContentRef.current);
+    return () => {
+      observer.disconnect();
+      measureHeaderRef.current = null;
+      document.documentElement.style.removeProperty("--persistent-header-height");
+    };
+  }, [pathname]);
+
+  useEffect(() => {
     let ticking = false;
+    const showCategories = (visible: boolean) => {
+      categoryExpandedRef.current = visible;
+      measureHeaderRef.current?.();
+      setIsScrolled(!visible);
+      setIsCategoryBarVisible(visible);
+    };
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
@@ -153,8 +198,7 @@ export function PersistentHeader() {
 
           // Near top (within or just past header height): always keep category bar visible
           if (currentY <= 60) {
-            setIsScrolled(false);
-            setIsCategoryBarVisible(true);
+            showCategories(true);
           } else if (diff > 10 && currentY > 140) {
             // Scrolling down past full header height: tuck category bar
             if (categoriesTimeoutRef.current) {
@@ -162,12 +206,10 @@ export function PersistentHeader() {
               categoriesTimeoutRef.current = null;
             }
             setIsAllCategoriesOpen(false);
-            setIsScrolled(true);
-            setIsCategoryBarVisible(false);
+            showCategories(false);
           } else if (diff < -15) {
             // Deliberate upward scroll: bring category bar back
-            setIsScrolled(false);
-            setIsCategoryBarVisible(true);
+            showCategories(true);
           }
 
           lastScrollYRef.current = currentY;
@@ -193,6 +235,14 @@ export function PersistentHeader() {
   }, [isMobileMenuOpen]);
 
   useEffect(() => {
+    if (isPaymentFlowRoute(pathname)) {
+      setIsMobileMenuOpen(false);
+      setIsAllCategoriesOpen(false);
+      setIsStoreModalOpen(false);
+    }
+  }, [pathname]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setIsMobileMenuOpen(false);
@@ -206,9 +256,12 @@ export function PersistentHeader() {
   if (pathname?.startsWith("/admin")) {
     return null;
   }
+  if (isPaymentFlowRoute(pathname)) return <GlobalLocationModal />;
 
   return (
     <header
+      ref={headerRef}
+      data-persistent-header
       style={{ overflowAnchor: "none" }}
       className="sticky top-0 z-50 w-full bg-white dark:bg-zinc-950 shadow-sm dark:shadow-zinc-950/40 [overflow-anchor:none]"
     >
@@ -219,17 +272,17 @@ export function PersistentHeader() {
         <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex justify-between items-center gap-2 text-[11px] sm:text-xs">
           <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200">
             <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
-            <span className="text-zinc-900 dark:text-zinc-100 font-bold whitespace-nowrap">Open 9:00 AM to 6:00 PM WIB</span>
+            <span className="text-zinc-900 dark:text-zinc-100 font-bold">{profile?.openingHours || (locale==="id"?"Konfirmasikan jam toko":"Confirm store opening hours")}</span>
           </div>
 
           <a
-            href="https://wa.me/6281234567890?text=Hi%20Incus%20Computers%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
+            href="/contact"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-slate-600 dark:text-[#8B949E] hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors font-medium whitespace-nowrap"
           >
             <MessageSquare className="w-3.5 h-3.5 text-[#37baf2] shrink-0" />
-            <span>WhatsApp: +62 812-3456-7890</span>
+            <span>{locale==="id"?"Kontak toko":"Store contact"}</span>
           </a>
         </div>
       </div>
@@ -238,7 +291,7 @@ export function PersistentHeader() {
       {/* TIER 2: Main Search & Action Bar (Fixed comfortable height, does not shrink) */}
       {/* ========================================================================= */}
       <div className="relative z-20 bg-white dark:bg-[#0A0B0E] border-b border-slate-200 dark:border-white/10 w-full max-w-full py-2.5 sm:py-3 shadow-xs">
-        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex items-center gap-3 sm:gap-4 md:gap-5 relative">
+        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 flex flex-wrap lg:flex-nowrap items-center gap-3 sm:gap-4 md:gap-5 relative">
           {/* Mobile Hamburger Menu Toggle (Visible on <lg screens) */}
           <button
             type="button"
@@ -255,7 +308,7 @@ export function PersistentHeader() {
           </Link>
 
           {/* Predictive Autocomplete Search Bar & Dropdown */}
-          <div className="flex-1 min-w-0 max-w-xl lg:max-w-2xl xl:max-w-3xl">
+          <div className="order-last basis-full lg:order-none lg:basis-auto flex-1 min-w-0 lg:max-w-2xl xl:max-w-3xl">
             <PredictiveSearchDropdown />
           </div>
 
@@ -264,12 +317,12 @@ export function PersistentHeader() {
             {/* Custom PC Builder Button (Borderless with Monitor & Tower logo) */}
             <Link
               href="/builder"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 min-h-[44px] rounded-xl bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group tactile-btn"
-              aria-label="Custom PC Builder"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 min-h-[44px] rounded-xl bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-800 dark:text-zinc-200 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group tactile-btn"
+              aria-label={t("Custom PC Builder")}
               title="Custom PC Builder - Configurator"
             >
               <MonitorTowerIcon className="w-5 h-5 transition-transform group-hover:scale-105 shrink-0" />
-              <span className="hidden sm:inline font-bold text-xs whitespace-nowrap">PC Builder</span>
+              <span className="hidden sm:inline font-bold text-xs whitespace-nowrap">{t("PC Builder")}</span>
             </Link>
 
             {/* 1. Shopping Cart */}
@@ -292,9 +345,9 @@ export function PersistentHeader() {
             <button
               type="button"
               onClick={() => setIsStoreModalOpen(true)}
-              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="hidden lg:flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label="Flagship Store Location"
-              title="Flagship Store Location (Mangga Dua Mall Lt. 3)"
+              title={locale==="id"?"Informasi toko dan pengambilan":"Store and collection information"}
             >
               <MapPin className="w-5 h-5 transition-transform group-hover:scale-105" />
             </button>
@@ -302,7 +355,7 @@ export function PersistentHeader() {
             {/* 3. Notifications */}
             <button
               type="button"
-              className="relative flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="relative hidden lg:flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label="Notifications"
               title="Notifications"
             >
@@ -313,9 +366,9 @@ export function PersistentHeader() {
             <button
               type="button"
               onClick={openLocationModal}
-              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="hidden lg:flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label="Delivery Location"
-              title={`Delivery to: ${isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : "Set Delivery Location"}`}
+              title={`Delivery to: ${isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : t("Set Delivery Location")}`}
             >
               <Truck className="w-5 h-5 transition-transform group-hover:scale-105" />
             </button>
@@ -326,9 +379,9 @@ export function PersistentHeader() {
             {/* 6. Profile */}
             <Link
               href={isMounted && isAuthenticated ? "/account" : "/auth"}
-              className="flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
+              className="hidden lg:flex items-center justify-center bg-transparent border-0 hover:bg-slate-100/80 dark:hover:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:text-[#37baf2] dark:hover:text-[#37baf2] transition-colors cursor-pointer group p-2 min-h-[44px] min-w-[44px] rounded-xl"
               aria-label={isMounted && isAuthenticated ? "User Profile" : "Sign In to Incus Computers"}
-              title={isMounted && isAuthenticated ? `My Profile (${user?.fullName || "Account"})` : "Sign In"}
+              title={isMounted && isAuthenticated ? `My Profile (${user?.fullName || "Account"})` : t("Sign In")}
             >
               <User className="w-5 h-5 transition-transform group-hover:scale-105" />
             </Link>
@@ -340,6 +393,8 @@ export function PersistentHeader() {
       {/* TIER 3: Category Mega-Nav (Tucks behind Tier 2 on scroll) */}
       {/* ========================================================================= */}
       <div
+        ref={categoryBarRef}
+        data-category-bar
         className={`relative w-full transition-all duration-300 ease-in-out ${
           isAllCategoriesOpen ? "z-30" : "z-10"
         } ${
@@ -348,7 +403,7 @@ export function PersistentHeader() {
             : "translate-y-0 max-h-12 opacity-100 overflow-visible pointer-events-auto"
         }`}
       >
-        <div className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-300 dark:border-white/40 w-full transition-colors">
+        <div ref={categoryContentRef} className="bg-slate-50/95 dark:bg-zinc-950/95 border-b border-slate-300 dark:border-white/40 w-full transition-colors">
         {/* Mobile Category Quick Strip (<sm viewports) */}
         <div className="sm:hidden flex items-center gap-1.5 py-1 px-3 overflow-x-auto scrollbar-none w-full max-w-full">
           <Link
@@ -356,13 +411,13 @@ export function PersistentHeader() {
             className="flex items-center gap-1.5 bg-zinc-900 dark:bg-zinc-800 text-white font-bold px-3 py-1 rounded-lg text-xs shrink-0 shadow-xs border border-transparent dark:border-zinc-700 tactile-btn active:scale-95 min-h-[34px]"
           >
             <Cpu className="w-3.5 h-3.5 text-zinc-300 dark:text-emerald-400" />
-            <span>PC Builder</span>
+            <span>{t("PC Builder")}</span>
           </Link>
           <Link
             href="/prebuilt-systems"
             className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold px-3 py-1 rounded-lg text-xs shrink-0 border border-transparent tactile-btn active:scale-95 min-h-[34px]"
           >
-            <span>Pre-Builts</span>
+            <span>{t("Pre-Builts")}</span>
           </Link>
           <Link
             href="/components/cpu"
@@ -380,20 +435,17 @@ export function PersistentHeader() {
             href="/components/motherboards"
             className="flex items-center px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors min-h-[34px]"
           >
-            Motherboards
-          </Link>
+            {t("Motherboards")}</Link>
           <Link
             href="/components/cooling"
             className="flex items-center px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors min-h-[34px]"
           >
-            Cooling
-          </Link>
+            {t("Cooling")}</Link>
           <Link
             href="/components/cases"
             className="flex items-center px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors min-h-[34px]"
           >
-            Cases
-          </Link>
+            {t("Cases")}</Link>
           <Link
             href="/components/ram"
             className="flex items-center px-2.5 py-1 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold shrink-0 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors min-h-[34px]"
@@ -444,7 +496,7 @@ export function PersistentHeader() {
                 aria-expanded={isAllCategoriesOpen}
               >
                 <Menu className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0" />
-                <span>All Categories</span>
+                <span>{t("All Categories")}</span>
                 <ChevronDown
                   className={`w-4 h-4 text-zinc-500 transition-transform duration-200 shrink-0 ${
                     isAllCategoriesOpen ? "rotate-180 text-zinc-900 dark:text-zinc-100" : ""
@@ -470,8 +522,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Processors (CPUs)
-                    </Link>
+                      {t("Processors (CPUs)")}</Link>
 
                     {/* Graphics Cards */}
                     <Link
@@ -479,8 +530,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Graphics Cards (GPUs)
-                    </Link>
+                      {t("Graphics Cards (GPUs)")}</Link>
 
                     {/* Motherboards */}
                     <Link
@@ -488,8 +538,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Motherboards
-                    </Link>
+                      {t("Motherboards")}</Link>
 
                     {/* Cooling */}
                     <Link
@@ -497,8 +546,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Cooling Solutions
-                    </Link>
+                      {t("Cooling Solutions")}</Link>
 
                     {/* Cases */}
                     <Link
@@ -506,8 +554,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      PC Cases &amp; Chassis
-                    </Link>
+                      {t("PC Cases & Chassis")}</Link>
 
                     {/* Memory */}
                     <Link
@@ -515,8 +562,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Memory (RAM)
-                    </Link>
+                      {t("Memory (RAM)")}</Link>
 
                     {/* Storage */}
                     <Link
@@ -524,8 +570,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Storage (SSDs)
-                    </Link>
+                      {t("Storage (SSDs)")}</Link>
 
                     {/* Power Supplies */}
                     <Link
@@ -533,8 +578,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Power Supplies (PSUs)
-                    </Link>
+                      {t("Power Supplies (PSUs)")}</Link>
 
                     {/* Prebuilts */}
                     <Link
@@ -542,8 +586,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-[#37baf2]/10 text-sm font-bold text-[#37baf2] transition-colors tactile-item"
                     >
-                      Pre-Built Systems
-                    </Link>
+                      {t("Pre-Built Systems")}</Link>
 
                     {/* PC Builder */}
                     <Link
@@ -551,8 +594,7 @@ export function PersistentHeader() {
                       onClick={() => setIsAllCategoriesOpen(false)}
                       className="flex items-center px-3 py-2 min-h-[40px] rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:text-zinc-950 dark:hover:text-white transition-colors tactile-item"
                     >
-                      Custom PC Configurator
-                    </Link>
+                      {t("Custom PC Configurator")}</Link>
                   </div>
                 </div>
               </div>
@@ -576,43 +618,37 @@ export function PersistentHeader() {
                 href="/components/motherboards"
                 className="flex items-center px-2.5 sm:px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white text-sm font-semibold transition-colors whitespace-nowrap"
               >
-                Motherboards
-              </Link>
+                {t("Motherboards")}</Link>
               <Link
                 href="/components/cooling"
                 className="flex items-center px-2.5 sm:px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white text-sm font-semibold transition-colors whitespace-nowrap"
               >
-                Cooling
-              </Link>
+                {t("Cooling")}</Link>
               <Link
                 href="/components/cases"
                 className="flex items-center px-2.5 sm:px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white text-sm font-semibold transition-colors whitespace-nowrap"
               >
-                Cases
-              </Link>
+                {t("Cases")}</Link>
               <Link
                 href="/components/ram"
                 className="flex items-center px-2.5 sm:px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white text-sm font-semibold transition-colors whitespace-nowrap"
               >
-                Memory (RAM)
-              </Link>
+                {t("Memory (RAM)")}</Link>
               <Link
                 href="/components/storage"
                 className="flex items-center px-2.5 sm:px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white text-sm font-semibold transition-colors whitespace-nowrap"
               >
-                Storage (SSDs)
-              </Link>
+                {t("Storage (SSDs)")}</Link>
               <Link
                 href="/components/power-supplies"
                 className="flex items-center px-2.5 sm:px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-zinc-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white text-sm font-semibold transition-colors whitespace-nowrap"
               >
-                Power Supplies
-              </Link>
+                {t("Power Supplies")}</Link>
               <Link
                 href="/prebuilt-systems"
                 className="flex items-center gap-1.5 px-3 py-1 min-h-[38px] sm:min-h-[40px] rounded-lg text-[#37baf2] bg-[#37baf2]/10 hover:bg-[#37baf2]/20 text-sm font-bold transition-colors whitespace-nowrap border border-[#37baf2]/25"
               >
-                <span>Pre-Built Systems</span>
+                <span>{t("Pre-Built Systems")}</span>
               </Link>
             </nav>
           </div>
@@ -670,8 +706,7 @@ export function PersistentHeader() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="text-[10px] font-bold text-[#52E394] uppercase tracking-wider block">
-                            Logged In
-                          </span>
+                            {t("Logged In")}</span>
                           <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm truncate block">
                             {user.fullName || "Customer"}
                           </span>
@@ -686,8 +721,7 @@ export function PersistentHeader() {
                           onClick={() => setIsMobileMenuOpen(false)}
                           className="flex-1 min-h-[44px] flex items-center justify-center py-2 px-3 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-lg text-xs font-bold text-center transition-colors tactile-btn"
                         >
-                          My Account
-                        </Link>
+                          {t("My Account")}</Link>
                         <button
                           type="button"
                           onClick={() => {
@@ -695,7 +729,7 @@ export function PersistentHeader() {
                             setIsMobileMenuOpen(false);
                           }}
                           className="min-h-[44px] py-2 px-3.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors tactile-btn"
-                          title="Sign Out"
+                          title={t("Sign Out")}
                         >
                           <LogOut className="w-3.5 h-3.5" />
                           <span>Out</span>
@@ -710,11 +744,9 @@ export function PersistentHeader() {
                         </div>
                         <div className="min-w-0">
                           <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block truncate">
-                            Welcome to Incus Computers
-                          </span>
+                            {t("Welcome to Incus Computers")}</span>
                           <span className="text-[11px] text-slate-500 dark:text-zinc-400 block truncate">
-                            Sign in for order tracking
-                          </span>
+                            {t("Sign in for order tracking")}</span>
                         </div>
                       </div>
                       <Link
@@ -722,8 +754,7 @@ export function PersistentHeader() {
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="min-h-[44px] flex items-center justify-center py-2 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 rounded-xl text-xs font-bold transition-all shadow-xs tactile-btn shrink-0"
                       >
-                        Sign In
-                      </Link>
+                        {t("Sign In")}</Link>
                     </div>
                   )}
                 </div>
@@ -736,8 +767,7 @@ export function PersistentHeader() {
                 {/* Delivery & Pickup Selector Buttons */}
                 <div className="p-4 border-b border-slate-100 dark:border-zinc-800 space-y-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 block">
-                    Fulfillment &amp; Location
-                  </span>
+                    {t("Fulfillment & Location")}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -749,9 +779,9 @@ export function PersistentHeader() {
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Truck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[10px] text-slate-400 dark:text-zinc-400 font-medium block">Deliver to</span>
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-400 font-medium block">{t("Deliver to")}</span>
                         <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate block">
-                          {isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : "Set Location"}
+                          {isMounted && userLocation ? (userLocation.subdistrict || userLocation.city || userLocation.address.split(",")[0]) : t("Set Location")}
                         </span>
                       </div>
                     </div>
@@ -769,8 +799,8 @@ export function PersistentHeader() {
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Store className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-[10px] text-slate-400 dark:text-zinc-400 font-medium block">Click &amp; Collect Counter</span>
-                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate block">Mangga Dua Mall Lt. 3 No. 36</span>
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-400 font-medium block">{t("Click & Collect Counter")}</span>
+                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate block">{profile?.pickupAddress || (locale==="id"?"Konfirmasikan alamat toko":"Confirm collection address")}</span>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
@@ -780,8 +810,7 @@ export function PersistentHeader() {
                 {/* Primary Tools (Custom PC Configurator & Prebuilts) */}
                 <div className="p-4 border-b border-slate-100 dark:border-zinc-800 space-y-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 block">
-                    Studio Tools &amp; Rigs
-                  </span>
+                    {t("Studio Tools & Rigs")}</span>
 
                   <Link
                     href="/builder"
@@ -791,8 +820,8 @@ export function PersistentHeader() {
                     <div className="flex items-center gap-2.5">
                       <Cpu className="w-4 h-4 text-emerald-400" />
                       <div>
-                        <div className="text-xs font-black">Custom PC Builder</div>
-                        <div className="text-[10px] text-slate-300 dark:text-zinc-400">Socket &amp; Clearance Engine</div>
+                        <div className="text-xs font-black">{t("Custom PC Builder")}</div>
+                        <div className="text-[10px] text-slate-300 dark:text-zinc-400">{t("Socket & Clearance Engine")}</div>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
@@ -806,8 +835,8 @@ export function PersistentHeader() {
                     <div className="flex items-center gap-2.5">
                       <Monitor className="w-4 h-4 text-[#37baf2]" />
                       <div>
-                        <div className="text-xs font-black">Pre-Built Performance PCs</div>
-                        <div className="text-[10px] text-[#37baf2]">24h Prime95 Benchmarked</div>
+                        <div className="text-xs font-black">{t("Pre-Built Performance PCs")}</div>
+                        <div className="text-[10px] text-[#37baf2]">{locale==="id"?"Periksa layanan perakitan yang dipilih":"Check selected assembly services"}</div>
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-[#37baf2] group-hover:translate-x-0.5 transition-transform" />
@@ -818,15 +847,13 @@ export function PersistentHeader() {
                 <div className="p-4 space-y-1">
                   <div className="flex items-center justify-between pb-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                      Hardware Categories
-                    </span>
+                      {t("Hardware Categories")}</span>
                     <Link
                       href="/components"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
                     >
-                      Master Catalog
-                    </Link>
+                      {t("Master Catalog")}</Link>
                   </div>
 
                   <Link
@@ -837,7 +864,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <Cpu className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">Processors (CPUs)</span>
+                    <span className="text-zinc-900 dark:text-white">{t("Processors (CPUs)")}</span>
                   </Link>
                   <Link
                     href="/components/gpu"
@@ -847,7 +874,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <Monitor className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">Graphics Cards (GPUs)</span>
+                    <span className="text-zinc-900 dark:text-white">{t("Graphics Cards (GPUs)")}</span>
                   </Link>
                   <Link
                     href="/components/motherboards"
@@ -857,7 +884,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <Layers className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">Motherboards</span>
+                    <span className="text-zinc-900 dark:text-white">{t("Motherboards")}</span>
                   </Link>
                   <Link
                     href="/components/cooling"
@@ -867,7 +894,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <Wind className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">Cooling Solutions</span>
+                    <span className="text-zinc-900 dark:text-white">{t("Cooling Solutions")}</span>
                   </Link>
                   <Link
                     href="/components/cases"
@@ -877,7 +904,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <Box className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">PC Cases &amp; Chassis</span>
+                    <span className="text-zinc-900 dark:text-white">{t("PC Cases & Chassis")}</span>
                   </Link>
                   <Link
                     href="/components/ram"
@@ -887,7 +914,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <CircuitBoard className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">Memory (RAM)</span>
+                    <span className="text-zinc-900 dark:text-white">{t("Memory (RAM)")}</span>
                   </Link>
                   <Link
                     href="/components/storage"
@@ -897,7 +924,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <HardDrive className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">Storage (SSDs)</span>
+                    <span className="text-zinc-900 dark:text-white">{t("Storage (SSDs)")}</span>
                   </Link>
                   <Link
                     href="/components/power-supplies"
@@ -907,7 +934,7 @@ export function PersistentHeader() {
                     <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-zinc-700/60 group-hover:text-zinc-950 dark:group-hover:text-white transition-colors item-frame">
                       <Zap className="w-4 h-4" />
                     </div>
-                    <span className="text-zinc-900 dark:text-white">Power Supplies (PSUs)</span>
+                    <span className="text-zinc-900 dark:text-white">{t("Power Supplies (PSUs)")}</span>
                   </Link>
                 </div>
               </div>
@@ -915,16 +942,16 @@ export function PersistentHeader() {
               {/* Drawer Bottom Support Contact */}
               <div className="p-4 bg-slate-50 dark:bg-zinc-950 border-t border-slate-200 dark:border-zinc-800 space-y-2.5">
                 <a
-                  href="https://wa.me/6281234567890?text=Hi%20Incus%20Computers%20team,%20I'd%20like%20to%20inquire%20about%20a%20product."
+                  href="/contact"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full min-h-[44px] flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>WhatsApp Tech Consultation</span>
+                  <span>{t("WhatsApp Tech Consultation")}</span>
                 </a>
                 <div className="text-[11px] text-slate-500 dark:text-zinc-400 text-center">
-                  Direct Line: (021) 612-8836 • Mon-Sat 09:00 to 18:00 WIB
+                  {profile?.supportEmail || (locale==="id"?"Kontak belum tersedia":"Contact details unavailable")}
                 </div>
               </div>
             </div>

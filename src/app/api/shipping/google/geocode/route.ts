@@ -1,5 +1,8 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { isDemoMode } from "@/lib/runtime/environment";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
-import { FLAGSHIP_ORIGIN, calculateHaversineDistanceKm, POPULAR_LOCATIONS } from "@/lib/shipping/distance";
 import { biteship, SEED_AREAS } from "@/lib/shipping/biteship";
 import { DeliveryLocation, BiteshipArea } from "@/lib/shipping/types";
 
@@ -8,7 +11,7 @@ export const dynamic = "force-dynamic";
 const GOOGLE_API_KEY =
   process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-export async function GET(req: NextRequest) {
+ async function protectedGET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const latParam = searchParams.get("lat");
@@ -20,11 +23,12 @@ export async function GET(req: NextRequest) {
     let formattedAddress = "";
     let subdistrict = "";
     let district = "";
-    let city = "Jakarta";
-    let province = "DKI Jakarta";
+    let city = "";
+    let province = "";
     let postalCode = "";
 
     // Case A: OSM synthetic place_id containing coordinates (osm_lat_lng_idx)
+    if(placeId && placeId.length>200)return NextResponse.json({success:false,error:"Invalid location."},{status:400});
     if (placeId && placeId.startsWith("osm_")) {
       const parts = placeId.split("_");
       if (parts.length >= 3) {
@@ -34,20 +38,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Case B: Biteship synthetic fallback place_id (biteship_areaId)
-    if (placeId && placeId.startsWith("biteship_")) {
+    if (placeId && placeId.startsWith("biteship_") && isDemoMode()) {
       const areaId = placeId.replace("biteship_", "");
       const match = SEED_AREAS.find((a: BiteshipArea) => a.id === areaId);
       if (match) {
-        const preset = POPULAR_LOCATIONS.find((l) => l.areaId === areaId);
-        latitude = preset?.latitude || -6.2088;
-        longitude = preset?.longitude || 106.8456;
-        const dist = calculateHaversineDistanceKm(
-          FLAGSHIP_ORIGIN.latitude!,
-          FLAGSHIP_ORIGIN.longitude!,
-          latitude,
-          longitude
-        );
-
         const loc: DeliveryLocation = {
           address: `${match.administrative_division_level_3_name}, ${match.administrative_division_level_2_name}`,
           areaId: match.id,
@@ -56,15 +50,14 @@ export async function GET(req: NextRequest) {
           city: match.administrative_division_level_2_name,
           province: match.administrative_division_level_1_name,
           postalCode: String(match.postal_code),
-          latitude,
-          longitude,
-          distanceKm: dist,
+
         };
 
         return NextResponse.json({ success: true, location: loc });
       }
     }
 
+    if((latitude!==undefined||longitude!==undefined)&&(!Number.isFinite(latitude)||!Number.isFinite(longitude)||latitude! < -11.5||latitude! > 6.5||longitude! < 94||longitude! > 142))return NextResponse.json({success:false,error:"Select a valid location within Indonesia."},{status:400});
     // Case C: Google Maps API (if key is configured)
     const hasGoogleKey = GOOGLE_API_KEY && GOOGLE_API_KEY !== "your_google_maps_api_key_here";
 
@@ -82,7 +75,7 @@ export async function GET(req: NextRequest) {
         }
 
         if (apiUrl) {
-          const res = await fetch(apiUrl);
+          const res = await fetch(apiUrl,{signal:AbortSignal.timeout(5000)});
           if (res.ok) {
             const data = await res.json();
             const result = (placeId && !placeId.startsWith("osm_")) ? data.result : data.results?.[0];
@@ -95,6 +88,7 @@ export async function GET(req: NextRequest) {
               }
 
               const components = result.address_components || [];
+              if(!components.some((c:any)=>c.types?.includes("country")&&c.short_name==="ID"))return NextResponse.json({success:false,error:"Select an address within Indonesia."},{status:400});
               for (const comp of components) {
                 const types: string[] = comp.types || [];
                 if (
@@ -116,7 +110,7 @@ export async function GET(req: NextRequest) {
           }
         }
       } catch (gErr) {
-        console.warn("[GOOGLE GEOCODE API ERROR]:", gErr);
+        safeFailure();
       }
     }
 
@@ -125,7 +119,8 @@ export async function GET(req: NextRequest) {
       try {
         const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
         const nRes = await fetch(nominatimUrl, {
-          headers: { "User-Agent": "Tethera-Ecommerce/1.0 (contact@tethera.id)" },
+          headers: { "User-Agent": "IncusComputers/1.0 (incuscomputers@gmail.com)" },
+          signal:AbortSignal.timeout(5000),
           next: { revalidate: 60 },
         });
 
@@ -133,6 +128,7 @@ export async function GET(req: NextRequest) {
           const nData = await nRes.json();
           formattedAddress = nData.display_name || "";
           const addr = nData.address || {};
+          if(addr.country_code!=="id")return NextResponse.json({success:false,error:"Select an address within Indonesia."},{status:400});
           subdistrict =
             addr.suburb ||
             addr.neighbourhood ||
@@ -142,24 +138,16 @@ export async function GET(req: NextRequest) {
             addr.town ||
             "";
           district = subdistrict;
-          city = addr.city || addr.county || addr.regency || "Jakarta";
-          province = addr.state || "DKI Jakarta";
+          city = addr.city || addr.county || addr.regency || "";
+          province = addr.state || "";
           postalCode = addr.postcode || "";
         }
       } catch (nomErr) {
-        console.warn("Nominatim reverse geocode error:", nomErr);
+        safeFailure();
       }
     }
 
-    // Ultimate fallback if geocoding services failed
-    if (!formattedAddress) {
-      if (latitude !== undefined && longitude !== undefined) {
-        formattedAddress = `Location Point (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
-        subdistrict = "Jakarta";
-      } else {
-        formattedAddress = "Jakarta, Indonesia";
-      }
-    }
+    if(!formattedAddress)return NextResponse.json({success:false,error:"Address lookup is unavailable. Enter the actual address manually."},{status:503});
 
     // Clean subdistrict / city Indonesian prefixes
     const cleanSubdistrict = subdistrict
@@ -177,33 +165,22 @@ export async function GET(req: NextRequest) {
     let matchedArea: BiteshipArea | null = null;
     const query = cleanSubdistrict || postalCode || cleanCity;
     if (query) {
-      const areas = await biteship.searchAreas(query);
+      let areas:BiteshipArea[]=[];try{areas=await biteship.searchAreas(query);}catch{/* Postal address remains usable without a routing-area lookup. */}
       if (areas.length > 0) {
-        matchedArea = postalCode ? areas.find((a: BiteshipArea) => String(a.postal_code) === postalCode) || areas[0] : areas[0];
+        matchedArea = postalCode ? areas.find((a: BiteshipArea) => String(a.postal_code) === postalCode) || null : null;
       }
     }
-
-    const dist =
-      latitude !== undefined && longitude !== undefined
-        ? calculateHaversineDistanceKm(
-            FLAGSHIP_ORIGIN.latitude!,
-            FLAGSHIP_ORIGIN.longitude!,
-            latitude,
-            longitude
-          )
-        : 12;
 
     const finalLocation: DeliveryLocation = {
       address: formattedAddress,
       areaId: matchedArea ? matchedArea.id : undefined,
       subdistrict: cleanSubdistrict || (matchedArea ? matchedArea.administrative_division_level_3_name : undefined),
       district: district || cleanSubdistrict,
-      city: cleanCity || (matchedArea ? matchedArea.administrative_division_level_2_name : "Jakarta"),
-      province: province || (matchedArea ? matchedArea.administrative_division_level_1_name : "DKI Jakarta"),
+      city: cleanCity,
+      province,
       postalCode: postalCode || (matchedArea ? String(matchedArea.postal_code) : undefined),
       latitude,
       longitude,
-      distanceKm: dist,
     };
 
     return NextResponse.json({
@@ -211,10 +188,13 @@ export async function GET(req: NextRequest) {
       location: finalLocation,
     });
   } catch (err: any) {
-    console.error("Geocoding API handler error:", err);
+    const databaseFailure = databaseFailureResponse(err);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: err.message || "Failed to geocode location" },
+      { success: false, error: "Address lookup is unavailable. Enter the address manually." },
       { status: 500 }
     );
   }
 }
+export const GET = withApiProtection(protectedGET);

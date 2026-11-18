@@ -277,7 +277,7 @@ export default function WorkstationsPage() {
               <span className="text-[#555D68]" aria-hidden="true">
                 /
               </span>
-              <span className="text-zinc-200 font-semibold">Workstations</span>
+              <span aria-current="page" className="text-zinc-200 font-bold">Workstations</span>
             </nav>
 
             {/* Main Header Title */}

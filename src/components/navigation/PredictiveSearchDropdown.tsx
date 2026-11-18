@@ -165,6 +165,7 @@ export function PredictiveSearchDropdown({ isCompact = false }: PredictiveSearch
       originalPrice,
       wattage: 750,
       isPrebuilt: true,
+      catalogProductId: pb.id,
       image: pb.image,
     });
 

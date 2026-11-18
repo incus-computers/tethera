@@ -1,5 +1,6 @@
 "use client";
 
+import { FinancialSummary } from "@/components/orders/FinancialSummary";
 import React from "react";
 import Image from "next/image";
 import {
@@ -30,6 +31,8 @@ import {
   canDispatchOrder,
 } from "@/lib/utils/orderWorkflow";
 import { getStatusBadge } from "./FluxOverviewTab";
+import { OrderParcelsPanel } from "./OrderParcelsPanel";
+import { OrderReturnsPanel } from "./OrderReturnsPanel";
 
 interface FluxOrderDrawerProps {
   order: any | null;
@@ -37,6 +40,10 @@ interface FluxOrderDrawerProps {
   onOpenDispatchModal: (order: any) => void;
   onUpdateStatus: (orderId: string, status: string) => void;
   onSimulateWebhook?: (orderId: string, status: string) => void;
+  canManageReturns?: boolean;
+  canReadReturns?: boolean;
+  canDispatchParcels?: boolean;
+  onRefundStatus?: (orderId: string, status: string) => void;
 }
 
 export function FluxOrderDrawer({
@@ -44,6 +51,11 @@ export function FluxOrderDrawer({
   onClose,
   onOpenDispatchModal,
   onUpdateStatus,
+  onSimulateWebhook,
+  canManageReturns,
+  canReadReturns,
+  canDispatchParcels,
+  onRefundStatus,
 }: FluxOrderDrawerProps) {
   if (!order) return null;
 
@@ -55,7 +67,8 @@ export function FluxOrderDrawer({
     order.customer_name || address.full_name || order.user?.name || "Customer";
   const badgeInfo = getStatusBadge(order.status);
   const currentStageIndex = getWorkflowStageIndex(order.status);
-  const nextStep = getNextWorkflowStep(order.status);
+  const candidateStep = getNextWorkflowStep(order.status,order.fulfillment_type);
+  const nextStep = order.fulfillment_type==="delivery" && candidateStep && ["dispatched","finished"].includes(candidateStep.nextStatus)?null:candidateStep;
 
   const copyToClipboard = (text: string) => {
     if (navigator?.clipboard) {
@@ -305,21 +318,9 @@ export function FluxOrderDrawer({
             </div>
           </div>
 
-          {/* Financial Summary */}
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Subtotal</span>
-              <span>{formatRupiah(totalAmount)}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span>Shipping Fee</span>
-              <span>Rp 0 (Calculated)</span>
-            </div>
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-sm font-bold text-white">
-              <span>Total Paid</span>
-              <span className="text-[#37baf2]">{formatRupiah(totalAmount)}</span>
-            </div>
-          </div>
+          {order.fulfillment_type==="delivery" && <OrderParcelsPanel key={"parcels-"+order.id} order={order} canDispatch={Boolean(canDispatchParcels)} onChanged={status=>onRefundStatus?.(order.id,status)} />}
+          {canReadReturns && <OrderReturnsPanel key={order.id} order={order} canWrite={Boolean(canManageReturns)} onChanged={status=>onRefundStatus?.(order.id,status)} />}
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-slate-300"><FinancialSummary order={order}/></div>
         </div>
 
         {/* Footer Actions */}
@@ -346,10 +347,11 @@ export function FluxOrderDrawer({
               <option value="finding_courier" className="bg-[#12141A] text-white">
                 Finding Courier
               </option>
-              <option value="dispatched" className="bg-[#12141A] text-white">
+              {["on_delivery","delivery_arrived","courier_failed","courier_rejected"].includes(status) && <option value={status}>{badgeInfo.label}</option>}
+              <option disabled={order.fulfillment_type==="delivery"} value="dispatched" className="bg-[#12141A] text-white">
                 Dispatched
               </option>
-              <option value="finished" className="bg-[#12141A] text-white">
+              <option disabled={order.fulfillment_type==="delivery"} value="finished" className="bg-[#12141A] text-white">
                 Finished
               </option>
               <option value="ready_for_pickup" className="bg-[#12141A] text-white">
@@ -361,7 +363,8 @@ export function FluxOrderDrawer({
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {onSimulateWebhook && order.courier_info?.biteship_order_id && <div className="flex flex-wrap gap-2">{[["in_transit","Demo: in transit"],["delivered","Demo: delivered"],["failed","Demo: failed"]].map(([value,label])=><button type="button" key={value} onClick={()=>onSimulateWebhook(order.id,value)} className="min-h-[44px] rounded-lg px-3 text-xs border border-cyan-700 text-cyan-300">{label}</button>)}</div>}
             {nextStep && (
               <button
                 type="button"
@@ -373,7 +376,7 @@ export function FluxOrderDrawer({
               </button>
             )}
 
-            {canDispatchOrder(order.status) && (
+            {(order.fulfillment_type==="delivery" && canDispatchOrder(order.status)) && (
               <button
                 type="button"
                 onClick={() => {

@@ -4,6 +4,9 @@ import { verifyAdminClearance, AdminUser } from "./adminAuth";
 import { AdminRole } from "../db/types";
 
 export type AdminPermission =
+  | "privacy:read"
+  | "privacy:manage"
+  | "operations:read"
   // Product Catalog
   | "products:read"
   | "products:write"
@@ -27,13 +30,17 @@ export type AdminPermission =
   | "refunds:write"
   // Administration & Audit
   | "admin_users:manage"
-  | "audit_logs:read";
+  | "audit_logs:read"
+  | "jobs:read"
+  | "jobs:manage";
 
 /**
  * Role to Granular Permissions Matrix (ADMIN-06)
  */
 export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
   SUPER_ADMIN: [
+    "privacy:read", "privacy:manage", "operations:read",
+    "jobs:read", "jobs:manage",
     "products:read",
     "products:write",
     "products:delete",
@@ -64,6 +71,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     "audit_logs:read",
   ],
   FULFILLMENT_OPERATOR: [
+    "jobs:read",
     "orders:read",
     "orders:write",
     "orders:dispatch",
@@ -74,6 +82,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     "audit_logs:read",
   ],
   SUPPORT_AGENT: [
+    "jobs:read",
     "orders:read",
     "customers:read",
     "refunds:read",
@@ -87,21 +96,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
  */
 export function normalizeAdminRole(roleString?: string): AdminRole {
   if (!roleString) return "SUPPORT_AGENT";
-  const clean = roleString.trim().toUpperCase();
-
-  if (clean === "SUPERADMIN" || clean === "SUPER_ADMIN" || clean === "ADMIN") {
-    return "SUPER_ADMIN";
-  }
-  if (clean === "CATALOG_MANAGER" || clean === "CATALOG") {
-    return "CATALOG_MANAGER";
-  }
-  if (clean === "FULFILLMENT_OPERATOR" || clean === "DISPATCH" || clean === "LOGISTICS") {
-    return "FULFILLMENT_OPERATOR";
-  }
-  if (clean === "SUPPORT_AGENT" || clean === "SUPPORT" || clean === "CS") {
-    return "SUPPORT_AGENT";
-  }
-
+  if (Object.prototype.hasOwnProperty.call(ROLE_PERMISSIONS, roleString)) return roleString as AdminRole;
   return "SUPPORT_AGENT";
 }
 
@@ -109,7 +104,8 @@ export function normalizeAdminRole(roleString?: string): AdminRole {
  * Checks if a specific AdminRole possesses a given permission
  */
 export function hasPermission(role: AdminRole | string, permission: AdminPermission): boolean {
-  const canonicalRole = normalizeAdminRole(role);
+  if (!Object.prototype.hasOwnProperty.call(ROLE_PERMISSIONS, role)) return false;
+  const canonicalRole = role as AdminRole;
   const permissions = ROLE_PERMISSIONS[canonicalRole] || [];
   return permissions.includes(permission);
 }
@@ -117,11 +113,11 @@ export function hasPermission(role: AdminRole | string, permission: AdminPermiss
 /**
  * RBAC Route Middleware Guard: enforces that the requesting staff member possesses the required permission.
  */
-export function requireAdminPermission(
+export async function requireAdminPermission(
   req: NextRequest,
   permission: AdminPermission
-): { authorized: boolean; user?: AdminUser; status?: number; error?: string } {
-  const clearance = verifyAdminClearance(req);
+): Promise<{ authorized: boolean; user?: AdminUser; status?: number; error?: string }> {
+  const clearance = await verifyAdminClearance(req);
 
   if (!clearance.authorized || !clearance.user) {
     return {
@@ -153,20 +149,8 @@ export async function authorizeAdminRequest(
   req: NextRequest,
   allowedRoles: AdminRole[] = ["SUPER_ADMIN"]
 ): Promise<{ authorized: boolean; user: AdminUser; role: AdminRole; error?: string }> {
-  const clearance = verifyAdminClearance(req);
+  const clearance = await verifyAdminClearance(req);
   if (!clearance.authorized || !clearance.user) {
-    // If testing or dev without header, fallback to default superadmin
-    if (process.env.NODE_ENV === "test" || !req.headers.get("authorization")) {
-      const fallback: AdminUser = {
-        id: "admin-super",
-        username: "superadmin",
-        email: "superadmin@tethera.com",
-        name: "Master Superadmin",
-        role: "SUPER_ADMIN",
-        clearanceLevel: 2,
-      };
-      return { authorized: true, user: fallback, role: normalizeAdminRole(fallback.role) };
-    }
     return {
       authorized: false,
       user: {} as AdminUser,

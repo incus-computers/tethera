@@ -59,7 +59,7 @@ export class CartRepository extends BaseRepository<Cart> {
     }
 
     // 2. Try finding active anonymous cart
-    if (anonymousToken) {
+    if (anonymousToken && !userId) {
       const existingGuestCart = await this.findOne({
         anonymous_session_token: anonymousToken,
         status: "active",
@@ -71,7 +71,7 @@ export class CartRepository extends BaseRepository<Cart> {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     return this.create({
       user_id: userId || null,
-      anonymous_session_token: anonymousToken || null,
+      anonymous_session_token: userId ? null : anonymousToken || null,
       status: "active",
       expires_at: expiresAt,
       created_at: new Date().toISOString(),
@@ -274,7 +274,7 @@ export class CartRepository extends BaseRepository<Cart> {
 
     const userCart = await this.getOrCreateCart({ userId });
 
-    if (!guestCart || guestCart.id === userCart.id) {
+    if (!guestCart || guestCart.user_id || guestCart.id === userCart.id) {
       return this.getCartWithItems(userCart.id);
     }
 

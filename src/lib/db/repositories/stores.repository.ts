@@ -1,3 +1,4 @@
+import { DatabaseError } from "../errors";
 import "server-only";
 import { BaseRepository } from "./base.repository";
 import { Store } from "../types";
@@ -40,7 +41,8 @@ export class StoresRepository extends BaseRepository<Store> {
 
   async getFlagshipStore(): Promise<Store> {
     const store = await this.findById(FLAGSHIP_STORE_ID);
-    return store || INITIAL_STORES[0];
+    if (!store) throw new DatabaseError("getFlagshipStore", "stores", "STORE_NOT_CONFIGURED");
+    return store;
   }
 }
 

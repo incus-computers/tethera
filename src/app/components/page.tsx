@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 import React, { useState, useMemo, useEffect, useRef, Suspense, useCallback } from "react";
 import Link from "next/link";
@@ -12,7 +13,6 @@ import { useCartStore } from "../../lib/store/useCartStore";
 import { formatRupiah } from "../../lib/utils/currency";
 import {
   Plus,
-  ChevronRight,
   SlidersHorizontal,
   Cpu,
   Search,
@@ -93,6 +93,7 @@ function UrlSyncWatcher({ onSync }: { onSync: (params: ParsedUrlParams) => void 
 }
 
 export default function ComponentsCatalogPage() {
+  const {t}=useTranslation();
   const router = useRouter();
   const pathname = typeof usePathname === "function" ? usePathname() : "/components";
 
@@ -350,12 +351,11 @@ export default function ComponentsCatalogPage() {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-6 border-b border-slate-300 dark:border-white/40 gap-4">
         <div>
-          <nav className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-zinc-400 font-medium mb-1.5">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-zinc-400 font-medium mb-1.5">
             <Link href="/" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-              Home
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
-            <span className="text-zinc-900 dark:text-zinc-100 font-bold">PC Components</span>
+              {t("Home")}</Link>
+            <span className="text-slate-400 dark:text-zinc-600" aria-hidden="true">/</span>
+            <span aria-current="page" className="text-zinc-900 dark:text-zinc-100 font-bold">{t("PC Components")}</span>
           </nav>
           <h1 className="text-2xl sm:text-4xl font-black text-zinc-900 dark:text-white tracking-tight">
             PC Components &amp; Hardware Catalog
@@ -496,8 +496,8 @@ export default function ComponentsCatalogPage() {
                 className="bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-[#37baf2] min-h-[44px] cursor-pointer"
               >
                 <option value="featured">Featured First</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
+                <option value="price-asc">{t("Price: Low to High")}</option>
+                <option value="price-desc">{t("Price: High to Low")}</option>
                 <option value="newest">Newest First</option>
               </select>
             </div>
@@ -642,8 +642,7 @@ export default function ComponentsCatalogPage() {
                         )}
                         {item.stockCount <= 0 && (
                           <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-normal tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
-                            Out of Stock
-                          </span>
+                            {t("Out of Stock")}</span>
                         )}
                       </div>
 
@@ -662,14 +661,13 @@ export default function ComponentsCatalogPage() {
                         }}
                         disabled={item.stockCount <= 0}
                         className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400"
-                        title="Add to Cart"
+                        title={t("Add to Cart")}
                         aria-label={`Add ${item.name} to Cart`}
                       >
                         <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] shadow-md hover:shadow-lg transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
                           <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover/cart:rotate-90 text-[#0A0B0E]" />
                           <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5 text-[#0A0B0E]">
-                            Add to Cart
-                          </span>
+                            {t("Add to Cart")}</span>
                         </div>
                       </button>
                     </div>

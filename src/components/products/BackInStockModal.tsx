@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 import React, { useState, useEffect } from "react";
 import { X, Bell, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
@@ -21,6 +22,7 @@ export function BackInStockModal({
   variantId,
   variantName,
 }: BackInStockModalProps) {
+  const {t}=useTranslation();
   const { user } = useAuthStore();
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -53,7 +55,8 @@ export function BackInStockModal({
     e.preventDefault();
     setError(null);
 
-    const trimmedEmail = email.trim();
+    if(!user){setError("Sign in with a verified email address to save a stock alert.");return;}
+    const trimmedEmail = user.email;
     const trimmedPhone = phone.trim();
 
     if (!trimmedEmail && !trimmedPhone) {
@@ -121,7 +124,7 @@ export function BackInStockModal({
                 Notification Confirmed
               </h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                We will notify you immediately once fresh units of this item arrive at our Jakarta warehouse.
+                Your alert is saved. We will queue an email when this item becomes available.
               </p>
             </div>
             <button
@@ -140,8 +143,7 @@ export function BackInStockModal({
               </div>
               <div>
                 <h3 id="back-in-stock-title" className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                  Notify Me When Back in Stock
-                </h3>
+                  {t("Notify Me When Back in Stock")}</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 line-clamp-2">
                   {productTitle} {variantName ? `(${variantName})` : ""}
                 </p>
@@ -149,9 +151,10 @@ export function BackInStockModal({
             </div>
 
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
-              Leave your contact info below. We will send you an alert the instant new inventory is verified and shelved.
+              Stock alerts use your signed-in, verified email address. Sign in first to save an alert.
             </p>
 
+            {!user&&<a href="/auth" className="underline text-sm">Sign in to save an alert</a>}
             {error && (
               <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900/50 flex items-start gap-2.5 text-xs text-red-700 dark:text-red-300">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -165,34 +168,18 @@ export function BackInStockModal({
                   htmlFor="stock-notify-email"
                   className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1"
                 >
-                  Email Address
-                </label>
+                  {t("Email Address")}</label>
                 <input
                   id="stock-notify-email"
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={user?.email||""}
+                  readOnly
                   placeholder="name@example.com"
                   className="w-full min-h-[44px] px-3.5 py-2 text-sm bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-colors"
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="stock-notify-phone"
-                  className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1"
-                >
-                  WhatsApp Phone Number (Optional)
-                </label>
-                <input
-                  id="stock-notify-phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+62 812 3456 7890"
-                  className="w-full min-h-[44px] px-3.5 py-2 text-sm bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-300 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-colors"
-                />
-              </div>
+
             </div>
 
             <div className="pt-2 flex items-center justify-end gap-2.5">
@@ -201,8 +188,7 @@ export function BackInStockModal({
                 onClick={onClose}
                 className="min-h-[44px] px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
               >
-                Cancel
-              </button>
+                {t("Cancel")}</button>
               <button
                 type="submit"
                 disabled={loading}

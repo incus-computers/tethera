@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -7,7 +11,7 @@ export const dynamic = "force-dynamic";
  * POST /api/cart/merge
  * Merges anonymous guest items into customer account cart upon authentication
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const body = await req.json();
     const { anonymousToken, userId } = body;
@@ -27,10 +31,14 @@ export async function POST(req: NextRequest) {
       cart: mergedCart,
     });
   } catch (error: any) {
-    console.error("[CART MERGE ERROR]", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { error: error.message || "Failed to merge carts." },
+      { error: "Failed to merge carts." },
       { status: 500 }
     );
   }
 }
+
+export const POST = withApiProtection(withAccess(handlePOST));

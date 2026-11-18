@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 import React from "react";
 import { X, MapPin } from "lucide-react";
@@ -7,6 +8,7 @@ import { DeliveryLocation } from "../../lib/shipping/types";
 import { GoogleMapPicker } from "./GoogleMapPicker";
 
 export function GlobalLocationModal() {
+  const {t}=useTranslation();
   const {
     isLocationModalOpen,
     closeLocationModal,
@@ -32,11 +34,9 @@ export function GlobalLocationModal() {
             </div>
             <div>
               <h3 className="text-sm sm:text-base font-black text-zinc-900 dark:text-white">
-                Select Delivery Location
-              </h3>
+                {t("Select Delivery Location")}</h3>
               <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
-                Search or select your doorstep delivery address
-              </p>
+                {t("Search or select your doorstep delivery address")}</p>
             </div>
           </div>
           <button

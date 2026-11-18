@@ -1,15 +1,17 @@
+import { safeFailure } from "@/lib/operations/telemetry";
+import { DatabaseError } from "../errors";
 import "server-only";
 import { BaseRepository } from "./base.repository";
 import { StoreInventory } from "../types";
 import { FLAGSHIP_STORE_ID } from "./stores.repository";
-import { MOCK_COMPONENTS } from "../../data/mockHardware";
+import { MOCK_COMPONENTS, PREBUILT_SYSTEMS } from "../../data/mockHardware";
 import { inventoryLedgerRepository } from "./inventoryLedger.repository";
 
-const INITIAL_INVENTORY: StoreInventory[] = MOCK_COMPONENTS.map((item) => ({
+const INITIAL_INVENTORY: StoreInventory[] = [...MOCK_COMPONENTS, ...PREBUILT_SYSTEMS].map((item) => ({
   id: `inv-${item.id}`,
   store_id: FLAGSHIP_STORE_ID,
   product_id: item.id,
-  stock_on_hand: item.stockCount,
+  stock_on_hand: item.stockCount ?? 0,
   stock_reserved: 0,
   low_stock_threshold: 2,
   aisle_bin: "A-01",
@@ -99,7 +101,8 @@ export class InventoryRepository extends BaseRepository<StoreInventory> {
         notes: options?.notes || "Settled order sale",
       });
     } catch (err) {
-      console.warn("[LEDGER WARN] Failed to log inventory deduction:", err);
+      if (err instanceof DatabaseError) throw err;
+      safeFailure();
     }
 
     return { success: true };
@@ -158,7 +161,8 @@ export class InventoryRepository extends BaseRepository<StoreInventory> {
         notes: ledgerOptions?.notes,
       });
     } catch (err) {
-      console.warn("[LEDGER WARN] Failed to log inventory adjustment:", err);
+      if (err instanceof DatabaseError) throw err;
+      safeFailure();
     }
 
     return result;

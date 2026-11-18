@@ -1,3 +1,9 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { readOrderPage } from "@/lib/db/collectionQueries";
+import { DatabaseError } from "@/lib/db/errors";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db, OrderStatus } from "@/lib/db";
 import { verifyAdminClearance } from "@/lib/auth/adminAuth";
@@ -5,102 +11,29 @@ import { verifyAdminClearance } from "@/lib/auth/adminAuth";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "admin");
+    const clearance = await verifyAdminClearance(req, "admin");
     if (!clearance.authorized) {
       return NextResponse.json({ success: false, error: clearance.error }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const statusFilter = searchParams.get("status");
-    const orderId = searchParams.get("id");
-
-    if (orderId) {
-      const order = await db.orders.findById(orderId);
-      if (!order) {
-        return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 });
-      }
-
-      const { items } = await db.orders.getOrderWithItems(order.id);
-      const enrichedItems = await Promise.all(
-        items.map(async (it) => {
-          const product = it.product_id ? await db.products.findById(it.product_id) : null;
-          return {
-            ...it,
-            product: product
-              ? {
-                  id: product.id,
-                  name: product.name,
-                  sku: product.sku,
-                  brand: product.brand,
-                  images: product.images,
-                  retail_price: product.retail_price,
-                }
-              : null,
-          };
-        })
-      );
-
-      return NextResponse.json({
-        success: true,
-        order: {
-          ...order,
-          items: enrichedItems,
-        },
-      });
-    }
-
-    const orders = await db.orders.findMany(
-      statusFilter ? { status: statusFilter as any } : undefined,
-      { orderBy: "created_at", orderDirection: "desc" }
-    );
-
-    // Enrich each order with its items
-    const enrichedOrders = await Promise.all(
-      orders.map(async (ord) => {
-        const { items } = await db.orders.getOrderWithItems(ord.id);
-        const enrichedItems = await Promise.all(
-          items.map(async (it) => {
-            const product = it.product_id ? await db.products.findById(it.product_id) : null;
-            return {
-              ...it,
-              product: product
-                ? {
-                    id: product.id,
-                    name: product.name,
-                    sku: product.sku,
-                    brand: product.brand,
-                    images: product.images,
-                    retail_price: product.retail_price,
-                  }
-                : null,
-            };
-          })
-        );
-
-        return {
-          ...ord,
-          items: enrichedItems,
-        };
-      })
-    );
-
-    return NextResponse.json({
-      success: true,
-      count: enrichedOrders.length,
-      orders: enrichedOrders,
-    });
+    const q=req.nextUrl.searchParams;
+    const result=await readOrderPage({id:q.get("id")||undefined,status:q.get("status")||undefined,search:q.get("search")||undefined,sort:q.get("sort")||undefined},q.get("page"),q.get("limit"));
+    if(q.get("id"))return result.rows[0]?NextResponse.json({success:true,order:result.rows[0]}):NextResponse.json({success:false,error:"Order not found"},{status:404});
+    return NextResponse.json({success:true,count:result.pagination.total,orders:result.rows,pagination:result.pagination,stats:result.stats});
   } catch (error: any) {
-    console.error("[ADMIN ORDERS GET ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return NextResponse.json({ success: false, error: "Service temporarily unavailable. Please retry." }, { status: 500 });
   }
 }
 
 // PUT: Advance/Toggle stage manually (order_received -> order_accepted -> finding_stock -> finding_courier)
-export async function PUT(req: NextRequest) {
+async function handlePUT(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "admin");
+    const clearance = await verifyAdminClearance(req, "admin");
     if (!clearance.authorized) {
       return NextResponse.json({ success: false, error: clearance.error }, { status: 401 });
     }
@@ -155,29 +88,22 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // If order is rejected/cancelled, release any reserved stock back to available inventory
-    if (nextStatus === "cancelled") {
-      try {
-        const { items } = await db.orders.getOrderWithItems(orderId);
-        for (const it of items) {
-          if (it.product_id) {
-            const inv = await db.inventory.getByProductAndStore(it.product_id);
-            if (inv && inv.stock_reserved > 0) {
-              await db.inventory.update(inv.id, {
-                stock_reserved: Math.max(0, inv.stock_reserved - (it.quantity || 1)),
-              });
-            }
-          }
-        }
-      } catch (stockErr) {
-        console.warn("[ADMIN ORDERS] Could not release reserved stock on rejection:", stockErr);
-      }
-    }
+    const guardedOrder=await db.orders.findById(orderId);
+    if (!guardedOrder) return NextResponse.json({success:false,error:"Order not found."},{status:404});
+    if(nextStatus === "refunded" || nextStatus === "payment_received") return NextResponse.json({success:false,error:"Use the verified payment/refund workflow."},{status:409});
+    if(nextStatus && nextStatus !== guardedOrder.status && ["cancelled","refunded"].includes(guardedOrder.status)) return NextResponse.json({success:false,error:"Terminal orders cannot be reopened."},{status:409});
+    if(guardedOrder.fulfillment_type==="delivery" && nextStatus && nextStatus!==guardedOrder.status && ["dispatched","on_delivery","delivery_arrived","delivered","shipped","partially_fulfilled","finished"].includes(nextStatus))return NextResponse.json({success:false,error:"Use verified shipment updates for shipping progress."},{status:409});
+    if(guardedOrder.fulfillment_type==="delivery" && [waybill_id,tracking_number,courier_provider,courier_service_code].some(value=>value!==undefined)) return NextResponse.json({success:false,error:"Use the verified shipment workflow for courier details."},{status:409});
+    if(nextStatus === "cancelled") {
+      const cancelled=await db.orders.cancelOrder(orderId,notes || "Cancelled by staff.");
+      if(!cancelled.success)return NextResponse.json({success:false,error:cancelled.error},{status:409});
+    } else if(nextStatus && !["order_received","pending_payment"].includes(nextStatus) && !guardedOrder.paid_at) return NextResponse.json({success:false,error:"Payment is required before fulfillment."},{status:409});
+    if(["pending_payment","order_received"].includes(nextStatus) && guardedOrder.paid_at)return NextResponse.json({success:false,error:"Paid state cannot regress."},{status:409});
 
     const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
-    if (nextStatus) updatePayload.status = nextStatus;
+    if (nextStatus && nextStatus !== "cancelled") updatePayload.status = nextStatus;
     if (notes !== undefined) updatePayload.notes = notes;
     if (waybill_id !== undefined) updatePayload.waybill_id = waybill_id;
     if (tracking_number !== undefined) updatePayload.tracking_number = tracking_number;
@@ -203,7 +129,12 @@ export async function PUT(req: NextRequest) {
       order: updated,
     });
   } catch (error: any) {
-    console.error("[ADMIN ORDERS PUT ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return NextResponse.json({ success: false, error: "Service temporarily unavailable. Please retry." }, { status: 500 });
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const PUT = withApiProtection(withAccess(handlePUT));

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 
 interface OrderTrackingData {
+  shipments?:Array<{id:string;carrier:string;serviceCode:string;status:string;waybillId?:string|null;trackingUrl?:string|null;insuranceStatus?:string|null}>;
   orderNumber: string;
   status: string;
   fulfillmentType: "delivery" | "click_and_collect";
@@ -90,6 +92,7 @@ function getStageIndex(status: string, fulfillmentType: string): number {
     case "testing_bench":
     case "ready_for_dispatch":
       return 2;
+    case "partially_fulfilled":
     case "finding_courier":
     case "dispatched":
     case "on_delivery":
@@ -105,6 +108,7 @@ function getStageIndex(status: string, fulfillmentType: string): number {
 }
 
 function OrderTrackerContent() {
+  const {t,formatDate}=useTranslation();
   const searchParams = useSearchParams();
   const tokenFromUrl = searchParams.get("token");
 
@@ -226,8 +230,7 @@ function OrderTrackerContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5 uppercase tracking-wide">
-                    Order Number
-                  </label>
+                    {t("Order Number")}</label>
                   <input
                     type="text"
                     required
@@ -239,8 +242,7 @@ function OrderTrackerContent() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5 uppercase tracking-wide">
-                    Email Address
-                  </label>
+                    {t("Email Address")}</label>
                   <input
                     type="email"
                     required
@@ -300,13 +302,7 @@ function OrderTrackerContent() {
                   </span>
                 </div>
                 <div className="text-xs text-slate-400 mt-1">
-                  Placed on {new Date(orderData.createdAt).toLocaleDateString("id-ID", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  Placed on {formatDate(orderData.createdAt)}
                 </div>
               </div>
 
@@ -457,6 +453,7 @@ function OrderTrackerContent() {
                   <span>Courier Delivery Tracking</span>
                 </div>
 
+                {orderData.shipments?.map(shipment=><div key={shipment.id} className="rounded-xl border border-sky-500/20 p-3 my-3 text-xs space-y-2"><p>{shipment.carrier} / {shipment.serviceCode} ? {shipment.status.replace(/_/g," ")}</p><p>Waybill: {shipment.waybillId||"Awaiting courier assignment"}</p>{shipment.insuranceStatus&&<p>Insurance: {shipment.insuranceStatus==="confirmed"?"Provider confirmed":"Awaiting verification"}</p>}{shipment.trackingUrl&&<a className="underline" href={shipment.trackingUrl} target="_blank" rel="noopener noreferrer">Track this parcel</a>}</div>)}
                 {orderData.courierInfo ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                     <div className="space-y-2 text-xs text-slate-300">
@@ -549,7 +546,7 @@ function OrderTrackerContent() {
 
               <div className="pt-4 border-t border-white/10 space-y-1.5 text-xs sm:text-sm">
                 <div className="flex justify-between text-slate-400">
-                  <span>Subtotal</span>
+                  <span>{t("Subtotal")}</span>
                   <span className="font-mono text-white">
                     Rp {orderData.subtotal.toLocaleString("id-ID")}
                   </span>
@@ -558,7 +555,7 @@ function OrderTrackerContent() {
                   <span>Shipping & Delivery Fee</span>
                   <span className="font-mono text-white">
                     {orderData.shippingFee === 0
-                      ? "FREE"
+                      ? t("FREE")
                       : `Rp ${orderData.shippingFee.toLocaleString("id-ID")}`}
                   </span>
                 </div>

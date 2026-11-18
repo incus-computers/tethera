@@ -1,4 +1,9 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
+import { safeShippingUrl } from "@/lib/shipping/gateway";
 import { db } from "@/lib/db";
 import {
   generateGuestTrackingToken,
@@ -10,7 +15,7 @@ export const dynamic = "force-dynamic";
 /**
  * Format order details for guest presentation (scrubbing internal notes and PII)
  */
-function sanitizeOrderForTracking(order: any, items: any[]) {
+async function sanitizeOrderForTracking(order: any, items: any[]) {
   const token = generateGuestTrackingToken(order.order_number, order.customer_email);
 
   return {
@@ -19,7 +24,7 @@ function sanitizeOrderForTracking(order: any, items: any[]) {
     fulfillmentType: order.fulfillment_type,
     createdAt: order.created_at,
     paidAt: order.paid_at,
-    pickupCode: order.fulfillment_type === "click_and_collect" ? order.pickup_code : null,
+    pickupCode: null, // Shared tracking capabilities never disclose pickup credentials.
     pickupStore:
       order.fulfillment_type === "click_and_collect"
         ? {
@@ -37,6 +42,7 @@ function sanitizeOrderForTracking(order: any, items: any[]) {
           postalCode: order.shipping_address.postalCode,
         }
       : null,
+    shipments:(await db.fulfillments.findMany({order_id:order.id})).map(f=>({id:f.id,carrier:f.carrier,serviceCode:f.service_code,status:f.status,waybillId:f.waybill_id||null,trackingUrl:safeShippingUrl(f.tracking_url),insuranceStatus:f.package_snapshot?.insurance_status||null})),
     courierInfo: order.courier_info
       ? {
           provider: order.courier_info.provider,
@@ -75,7 +81,7 @@ function sanitizeOrderForTracking(order: any, items: any[]) {
  * GET /api/orders/track?token=...
  * Tracks order using cryptographic signed token
  */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
     const token = req.nextUrl.searchParams.get("token");
 
@@ -87,7 +93,7 @@ export async function GET(req: NextRequest) {
     }
 
     const parts = token.trim().split(".");
-    if (parts.length !== 2) {
+    if (parts.length !== 3) {
       return NextResponse.json(
         { error: "Invalid token format." },
         { status: 400 }
@@ -118,16 +124,18 @@ export async function GET(req: NextRequest) {
     }
 
     const { items } = await db.orders.getOrderWithItems(order.id);
-    const trackingData = sanitizeOrderForTracking(order, items);
+    const trackingData = await sanitizeOrderForTracking(order, items);
 
     return NextResponse.json({
       success: true,
       order: trackingData,
     });
   } catch (error: any) {
-    console.error("[ORDER TRACK GET ERROR]", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { error: error.message || "Failed to retrieve order tracking information." },
+      { error: "Failed to retrieve order tracking information." },
       { status: 500 }
     );
   }
@@ -137,7 +145,7 @@ export async function GET(req: NextRequest) {
  * POST /api/orders/track
  * Tracks order using Order Number and Email verification
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const body = await req.json();
     const { orderNumber, email } = body;
@@ -168,17 +176,22 @@ export async function POST(req: NextRequest) {
     }
 
     const { items } = await db.orders.getOrderWithItems(order.id);
-    const trackingData = sanitizeOrderForTracking(order, items);
+    const trackingData = await sanitizeOrderForTracking(order, items);
 
     return NextResponse.json({
       success: true,
       order: trackingData,
     });
   } catch (error: any) {
-    console.error("[ORDER TRACK POST ERROR]", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { error: error.message || "Failed to verify order details." },
+      { error: "Failed to verify order details." },
       { status: 500 }
     );
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));

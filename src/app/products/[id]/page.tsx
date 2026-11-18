@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import Link from "next/link";
@@ -19,243 +20,31 @@ import { WishlistToggleButton } from "../../../components/products/WishlistToggl
 import { ProductReviewsSection } from "../../../components/products/ProductReviewsSection";
 import { BackInStockModal } from "../../../components/products/BackInStockModal";
 import { useCartStore } from "../../../lib/store/useCartStore";
-import { useLocationStore } from "../../../lib/store/useLocationStore";
+import { prebuiltBuilderUrl } from "../../../lib/builder/configuration";
 import { useHeaderStore } from "../../../lib/store/useHeaderStore";
 import { formatRupiah } from "../../../lib/utils/currency";
-import { DeliveryEstimatorWidget } from "../../../components/shipping/DeliveryEstimatorWidget";
+import { ProductDeliverySimulation } from "../../../components/shipping/ProductDeliverySimulation";
 import { RichTextRenderer } from "../../../components/ui/RichTextRenderer";
-import { ShippingRateOption } from "../../../lib/shipping/types";
 import {
   ShieldCheck,
-  Store,
-  Truck,
   ArrowLeft,
+  ArrowRight,
   CheckCircle,
   Plus,
   Minus,
   ShoppingCart,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Info,
   FileText,
   Tag,
-  Zap,
   X,
   Maximize2,
   Bell,
 } from "lucide-react";
 
-function isExpressRate(rate: ShippingRateOption): boolean {
-  const code = (rate.serviceCode || "").toLowerCase();
-  const courier = (rate.courierId || "").toLowerCase();
-  const name = (rate.serviceName || "").toLowerCase();
-
-  return (
-    courier === "gojek" ||
-    courier === "grab" ||
-    code.includes("instant") ||
-    code.includes("sameday") ||
-    name.includes("instant") ||
-    name.includes("same day") ||
-    name.includes("sameday") ||
-    code.includes("yes") ||
-    code.includes("best") ||
-    code.includes("nextday") ||
-    code.includes("next-day") ||
-    name.includes("yes") ||
-    name.includes("best") ||
-    name.includes("next day")
-  );
-}
-
-function CourierLogo({ courierId }: { courierId: string }) {
-  const id = (courierId || "").toLowerCase();
-  switch (id) {
-    case "jne":
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#003399] flex items-center justify-center text-white shrink-0 select-none shadow-2xs font-black text-[11px] italic tracking-tight">
-          JNE
-        </div>
-      );
-    case "jnt":
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#ED1C24] flex items-center justify-center text-white shrink-0 select-none shadow-2xs font-black text-[11px] italic tracking-tight">
-          J&amp;T
-        </div>
-      );
-    case "sicepat":
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#D31515] flex items-center justify-center text-white shrink-0 select-none shadow-2xs font-black text-[8px] uppercase tracking-tighter">
-          SICEPAT
-        </div>
-      );
-    case "anteraja":
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#E91E63] flex flex-col items-center justify-center text-white shrink-0 select-none shadow-2xs font-black text-[8px] leading-tight lowercase">
-          <span>anter</span>
-          <span>aja</span>
-        </div>
-      );
-    case "gojek":
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#00AA13] flex items-center justify-center text-white shrink-0 select-none shadow-2xs" title="Gojek GoSend">
-          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white" aria-hidden="true">
-            <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="3" />
-            <circle cx="12" cy="12" r="2.8" fill="currentColor" />
-          </svg>
-        </div>
-      );
-    case "grab":
-      return (
-        <div className="w-8 h-8 rounded-lg bg-[#00B14F] flex items-center justify-center text-white shrink-0 select-none shadow-2xs font-black text-[10px] tracking-tight">
-          Grab
-        </div>
-      );
-    default:
-      return (
-        <div className="w-8 h-8 rounded-lg bg-zinc-800 dark:bg-zinc-700 flex items-center justify-center text-white shrink-0 select-none shadow-2xs font-bold text-[10px]">
-          EXP
-        </div>
-      );
-  }
-}
-
-const DEFAULT_STANDARD_PROVIDERS: ShippingRateOption[] = [
-  {
-    courierId: "jne",
-    courierName: "JNE Express",
-    courierBadge: "Official Carrier",
-    brandColor: "#003399",
-    brandBg: "bg-blue-50 text-blue-800 border-blue-200",
-    serviceCode: "jne-reg",
-    serviceName: "JNE REG (Reguler)",
-    serviceDescription: "Standard nationwide courier service with pickup from warehouse.",
-    vehicleType: "van",
-    etd: "1 to 2 Days",
-    distanceKm: 12.5,
-    price: 11000,
-    priceFormatted: "Rp 11.000",
-    isAvailable: true,
-  },
-  {
-    courierId: "jnt",
-    courierName: "J&T Express",
-    courierBadge: "Fast Freight",
-    brandColor: "#ED1C24",
-    brandBg: "bg-red-50 text-red-800 border-red-200",
-    serviceCode: "jnt-ez",
-    serviceName: "J&T EZ",
-    serviceDescription: "Fast 365-day operation with automated shop pickup.",
-    vehicleType: "van",
-    etd: "1 to 2 Days",
-    distanceKm: 12.5,
-    price: 12000,
-    priceFormatted: "Rp 12.000",
-    isAvailable: true,
-  },
-  {
-    courierId: "sicepat",
-    courierName: "SiCepat Ekspres",
-    courierBadge: "E-Commerce Choice",
-    brandColor: "#D31515",
-    brandBg: "bg-rose-50 text-rose-800 border-rose-200",
-    serviceCode: "sicepat-reg",
-    serviceName: "SiCepat REG (Reguler)",
-    serviceDescription: "Standard courier service with real-time tracking.",
-    vehicleType: "van",
-    etd: "1 to 2 Days",
-    distanceKm: 12.5,
-    price: 10500,
-    priceFormatted: "Rp 10.500",
-    isAvailable: true,
-  },
-  {
-    courierId: "anteraja",
-    courierName: "AnterAja",
-    courierBadge: "Tech Courier",
-    brandColor: "#E91E63",
-    brandBg: "bg-pink-50 text-pink-800 border-pink-200",
-    serviceCode: "anteraja-reg",
-    serviceName: "AnterAja Reguler",
-    serviceDescription: "Reliable barcode scanning and automated courier assignment.",
-    vehicleType: "van",
-    etd: "1 to 3 Days",
-    distanceKm: 12.5,
-    price: 10000,
-    priceFormatted: "Rp 10.000",
-    isAvailable: true,
-  },
-];
-
-const DEFAULT_EXPRESS_PROVIDERS: ShippingRateOption[] = [
-  {
-    courierId: "gojek",
-    courierName: "Gojek (GoSend)",
-    courierBadge: "Instant Motorbike",
-    brandColor: "#00AA13",
-    brandBg: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    serviceCode: "gosend-instant",
-    serviceName: "GoSend Instant Motor",
-    serviceDescription: "Direct courier dispatch to your doorstep within 1-2 hours.",
-    vehicleType: "bike",
-    etd: "1 to 2 Hours",
-    distanceKm: 12.5,
-    price: 20000,
-    priceFormatted: "Rp 20.000",
-    isAvailable: true,
-  },
-  {
-    courierId: "grab",
-    courierName: "Grab (GrabExpress)",
-    courierBadge: "Express Rider",
-    brandColor: "#00B14F",
-    brandBg: "bg-green-50 text-green-800 border-green-200",
-    serviceCode: "grab-instant",
-    serviceName: "GrabExpress Instant",
-    serviceDescription: "Fast point-to-point motorcycle courier dispatch.",
-    vehicleType: "bike",
-    etd: "1 to 2 Hours",
-    distanceKm: 12.5,
-    price: 22000,
-    priceFormatted: "Rp 22.000",
-    isAvailable: true,
-  },
-  {
-    courierId: "jne",
-    courierName: "JNE Express",
-    courierBadge: "Priority Delivery",
-    brandColor: "#003399",
-    brandBg: "bg-blue-50 text-blue-800 border-blue-200",
-    serviceCode: "jne-yes",
-    serviceName: "JNE YES (Yakin Esok Sampai)",
-    serviceDescription: "Guaranteed next-day delivery nationwide.",
-    vehicleType: "van",
-    etd: "Tomorrow by 18:00",
-    distanceKm: 12.5,
-    price: 24000,
-    priceFormatted: "Rp 24.000",
-    isAvailable: true,
-  },
-  {
-    courierId: "sicepat",
-    courierName: "SiCepat Ekspres",
-    courierBadge: "Next Day Express",
-    brandColor: "#D31515",
-    brandBg: "bg-rose-50 text-rose-800 border-rose-200",
-    serviceCode: "sicepat-best",
-    serviceName: "SiCepat BEST (Besok Sampai)",
-    serviceDescription: "Express delivery arriving tomorrow guaranteed.",
-    vehicleType: "van",
-    etd: "1 Day (Tomorrow)",
-    distanceKm: 12.5,
-    price: 22000,
-    priceFormatted: "Rp 22.000",
-    isAvailable: true,
-  },
-];
-
 function ProductDetailContent() {
+  const {t}=useTranslation();
   const params = useParams();
   const searchParams = useSearchParams();
   const id = params?.id as string;
@@ -268,16 +57,8 @@ function ProductDetailContent() {
   const [quantity, setQuantity] = useState(1);
   const [isBackInStockOpen, setIsBackInStockOpen] = useState(false);
 
-  const { addStandardItem, addCustomPC, setFulfillmentMethod, fulfillmentMethod, openCart } = useCartStore();
-  const { selectedRate, userLocation, setSelectedRate } = useLocationStore();
+  const { addStandardItem, addCustomPC, openCart } = useCartStore();
   const { isCategoryBarVisible } = useHeaderStore();
-
-  type FulfillmentOption = "click_and_collect" | "standard" | "express";
-  const [selectedFulfillment, setSelectedFulfillment] = useState<FulfillmentOption>("click_and_collect");
-  const [selectedStandardRate, setSelectedStandardRate] = useState<ShippingRateOption | null>(null);
-  const [selectedExpressRate, setSelectedExpressRate] = useState<ShippingRateOption | null>(null);
-  const [rates, setRates] = useState<ShippingRateOption[]>([]);
-  const [isRatesLoading, setIsRatesLoading] = useState(false);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -347,7 +128,11 @@ function ProductDetailContent() {
     return groups;
   }, [variations, hasVariations]);
 
-  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+  // Honor the deep-linked variant on the first render, including clicks replayed
+  // during hydration before the selection effect has run.
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>(() =>
+    (variations.find(v => v.id === initialVariationId) || variations.find(v => v.stockCount > 0) || variations[0])?.attributes || {}
+  );
 
   useEffect(() => {
     if (!hasVariations) return;
@@ -362,11 +147,13 @@ function ProductDetailContent() {
 
   const activeVariation: ProductVariation | null = useMemo(() => {
     if (!hasVariations) return null;
+    if (!Object.keys(selectedAttributes).length)
+      return variations.find(v => v.id === initialVariationId) || variations.find(v => v.stockCount > 0) || variations[0] || null;
     const match = variations.find((v) =>
       Object.entries(selectedAttributes).every(([k, val]) => v.attributes[k] === val)
     );
     return match || variations[0] || null;
-  }, [hasVariations, variations, selectedAttributes]);
+  }, [hasVariations, variations, selectedAttributes, initialVariationId]);
 
   const handleAttributeSelect = (groupKey: string, val: string) => {
     const nextAttrs = { ...selectedAttributes, [groupKey]: val };
@@ -405,7 +192,8 @@ function ProductDetailContent() {
     );
   }
 
-  const isComponent = "slot" in product || "pc_builder_slot" in product;
+  const isComponent = Boolean(product.slot || product.pc_builder_slot);
+  const customizeUrl = !isComponent ? prebuiltBuilderUrl({ id: product.id, name: product.name, builderParts: product.specs?.builderParts || product.builderParts }) : null;
   const componentItem = isComponent ? (product as ComponentItem) : null;
   const overviewData = getProductOverviewData(product);
 
@@ -430,95 +218,6 @@ function ProductDetailContent() {
 
   const currentStock = activeVariation ? activeVariation.stockCount : Number(product.stockCount || 0);
   const isOutOfStock = currentStock <= 0;
-
-  // Filtered Courier Provider Lists
-  const standardList = useMemo(() => {
-    const live = rates.filter((r) => !isExpressRate(r));
-    return live.length > 0 ? live : DEFAULT_STANDARD_PROVIDERS;
-  }, [rates]);
-
-  const expressList = useMemo(() => {
-    const live = rates.filter((r) => isExpressRate(r));
-    return live.length > 0 ? live : DEFAULT_EXPRESS_PROVIDERS;
-  }, [rates]);
-
-  // Computed Price Ranges for Delivery Fulfillment Options
-  const standardPriceRange = useMemo(() => {
-    if (standardList.length === 0) return "Rp 10.000 to Rp 12.000";
-    const prices = standardList.map((r) => r.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    if (min === max) return formatRupiah(min);
-    return `${formatRupiah(min)} - ${formatRupiah(max)}`;
-  }, [standardList]);
-
-  const expressPriceRange = useMemo(() => {
-    if (expressList.length === 0) return "Rp 20.000 to Rp 24.000";
-    const prices = expressList.map((r) => r.price);
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-    if (min === max) return formatRupiah(min);
-    return `${formatRupiah(min)} - ${formatRupiah(max)}`;
-  }, [expressList]);
-
-  // Fetch live rates when destination or product changes
-  useEffect(() => {
-    let isSubscribed = true;
-    if (!userLocation) return;
-    setIsRatesLoading(true);
-
-    const payload = {
-      destination: userLocation,
-      items: [
-        {
-          id: product.id,
-          name: product.name,
-          price: activePrice,
-          weightGrams: isComponent ? 1500 : 18000,
-          category: product.category,
-        },
-      ],
-      totalWeightGrams: isComponent ? 1500 : 18000,
-      totalPrice: activePrice,
-    };
-
-    fetch("/api/shipping/estimate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (isSubscribed && data.success && Array.isArray(data.rates)) {
-          setRates(data.rates);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (isSubscribed) setIsRatesLoading(false);
-      });
-
-    return () => {
-      isSubscribed = false;
-    };
-  }, [userLocation?.address, userLocation?.subdistrict, userLocation?.postalCode, id, activePrice, isComponent, product]);
-
-  const handleFulfillmentSelect = (option: FulfillmentOption) => {
-    setSelectedFulfillment(option);
-    if (option === "click_and_collect") {
-      setFulfillmentMethod("click_and_collect");
-    } else if (option === "standard") {
-      setFulfillmentMethod("delivery");
-      if (selectedStandardRate) {
-        setSelectedRate(selectedStandardRate);
-      }
-    } else if (option === "express") {
-      setFulfillmentMethod("delivery");
-      if (selectedExpressRate) {
-        setSelectedRate(selectedExpressRate);
-      }
-    }
-  };
 
   // Ensure every product has a complete 4-image hardware gallery queue (front, overview, connectors/ports, packaging)
   const galleryImages: string[] = useMemo(() => {
@@ -602,12 +301,6 @@ function ProductDetailContent() {
   const handleAddToCart = () => {
     if (isOutOfStock) return;
 
-    if (selectedFulfillment === "standard" && !selectedStandardRate) {
-      setSelectedRate(standardList[0]);
-    } else if (selectedFulfillment === "express" && !selectedExpressRate) {
-      setSelectedRate(expressList[0]);
-    }
-
     if (componentItem) {
       addStandardItem(
         {
@@ -652,6 +345,7 @@ function ProductDetailContent() {
           originalPrice: hasDiscount ? retailPrice : undefined,
           wattage: 750,
           isPrebuilt: true,
+      catalogProductId: pb.id,
           image: galleryImages[0] || pb.image,
         });
       }
@@ -686,7 +380,7 @@ function ProductDetailContent() {
     if (pb.gpu) list.push({ label: "Graphics", value: pb.gpu });
     if (pb.ram) list.push({ label: "Memory", value: pb.ram });
     if (pb.storage) list.push({ label: "Storage", value: pb.storage });
-    if (pb.cooling) list.push({ label: "Cooling", value: pb.cooling });
+    if (pb.cooling) list.push({ label: t("Cooling"), value: pb.cooling });
     if (pb.psu) list.push({ label: "Power Supply", value: pb.psu });
     return list.slice(0, 6);
   }, [isComponent, product]);
@@ -701,18 +395,16 @@ function ProductDetailContent() {
       {/* ========================================================================= */}
       {/* BREADCRUMB TRAIL */}
       {/* ========================================================================= */}
-      <nav className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-slate-400 font-medium">
         <Link href="/" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-          Home
-        </Link>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
+          {t("Home")}</Link>
+        <span className="text-slate-400 dark:text-zinc-600" aria-hidden="true">/</span>
         <Link href="/components" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-          Components
-        </Link>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
+          {t("Components")}</Link>
+        <span className="text-slate-400 dark:text-zinc-600" aria-hidden="true">/</span>
         <span className="text-slate-600 dark:text-zinc-400">{product.category}</span>
-        <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-zinc-600" />
-        <span className="text-zinc-900 dark:text-zinc-100 font-bold truncate max-w-xs">{product.name}</span>
+        <span className="text-slate-400 dark:text-zinc-600" aria-hidden="true">/</span>
+        <span aria-current="page" className="text-zinc-900 dark:text-zinc-100 font-bold truncate max-w-xs">{product.name}</span>
       </nav>
 
       {/* ========================================================================= */}
@@ -976,7 +668,7 @@ function ProductDetailContent() {
           {/* Authenticity Footnote */}
           <div className="p-3 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-xs flex items-center gap-2 text-emerald-800 dark:text-emerald-300">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>Official Indonesian Distributor Stock with 2-Year Warranty</span>
+            <span>{t("Warranty coverage depends on the selected product.")}</span>
           </div>
         </div>
 
@@ -1086,8 +778,7 @@ function ProductDetailContent() {
               <div className="flex items-center justify-between !mt-0 py-3.5 border-b border-zinc-100 dark:border-zinc-800/80">
                 <div className="flex items-center gap-2 min-w-0">
                   <label className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Quantity
-                  </label>
+                    {t("Quantity")}</label>
                   <span className="text-zinc-300 dark:text-zinc-700 text-xs">•</span>
                   <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
                     <span
@@ -1096,7 +787,7 @@ function ProductDetailContent() {
                       }`}
                     />
                     <span>
-                      {isOutOfStock ? "Out of Stock" : `In Stock (${currentStock} Available)`}
+                      {isOutOfStock ? t("Out of Stock") : `In Stock (${currentStock} Available)`}
                     </span>
                   </span>
                 </div>
@@ -1126,250 +817,11 @@ function ProductDetailContent() {
                 </div>
               </div>
 
-              {/* Delivery Method Selection (Accessible Radio Group: Click & Collect, then Standard, then Express) */}
-              <div
-                role="radiogroup"
-                aria-labelledby="delivery-group-label"
-                className="space-y-3"
-              >
-                <div>
-                  <span
-                    id="delivery-group-label"
-                    className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
-                    Delivery Option
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {[
-                    {
-                      id: "click_and_collect" as const,
-                      title: "Click and Collect",
-                      subtitle: "Mangga Dua Mall Store (Ready in 60 mins)",
-                      priceInfo: "Free",
-                      icon: Store,
-                    },
-                    {
-                      id: "standard" as const,
-                      title: "Standard Delivery",
-                      subtitle: "Regular courier (2 to 4 business days)",
-                      priceInfo: selectedStandardRate
-                        ? selectedStandardRate.priceFormatted
-                        : standardPriceRange,
-                      icon: Truck,
-                    },
-                    {
-                      id: "express" as const,
-                      title: "Express Delivery",
-                      subtitle: "Instant & Next-Day (GoSend, Grab, JNE YES)",
-                      priceInfo: selectedExpressRate
-                        ? selectedExpressRate.priceFormatted
-                        : expressPriceRange,
-                      icon: Zap,
-                    },
-                  ].map((option) => {
-                    const isSelected = selectedFulfillment === option.id;
-                    const IconComponent = option.icon;
-
-                    return (
-                      <div key={option.id} className="space-y-2">
-                        {/* Option Radio Card */}
-                        <label
-                          htmlFor={`fulfillment-${option.id}`}
-                          className={`group relative flex items-start justify-between gap-3 p-3.5 rounded-xl border min-h-[44px] cursor-pointer transition-all duration-150 ease-out select-none active:scale-[0.99] ${
-                            isSelected
-                              ? "bg-zinc-50/70 dark:bg-zinc-800/40 border-zinc-900 dark:border-zinc-100 ring-1 ring-zinc-900/90 dark:ring-zinc-100/90 shadow-2xs"
-                              : "bg-transparent hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700"
-                          } has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-zinc-900 dark:has-[:focus-visible]:ring-zinc-100 has-[:focus-visible]:ring-offset-2 dark:has-[:focus-visible]:ring-offset-zinc-900`}
-                        >
-                          <input
-                            type="radio"
-                            id={`fulfillment-${option.id}`}
-                            name="fulfillment-method"
-                            value={option.id}
-                            checked={isSelected}
-                            onChange={() => handleFulfillmentSelect(option.id)}
-                            className="sr-only"
-                          />
-
-                          <div className="flex items-start gap-3 min-w-0">
-                            {/* Semantic Radio Check Indicator */}
-                            <div
-                              className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors duration-150 ${
-                                isSelected
-                                  ? "border-zinc-900 dark:border-zinc-100 bg-transparent"
-                                  : "border-zinc-300 dark:border-zinc-600 bg-transparent group-hover:border-zinc-400 dark:group-hover:border-zinc-500"
-                              }`}
-                              aria-hidden="true"
-                            >
-                              <div
-                                className={`w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 transform transition-transform duration-150 ease-out ${
-                                  isSelected ? "scale-100 opacity-100" : "scale-0 opacity-0"
-                                }`}
-                              />
-                            </div>
-
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <IconComponent className="w-4 h-4 text-zinc-500 dark:text-zinc-400 shrink-0" />
-                                <span className="text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 tracking-tight">
-                                  {option.title}
-                                </span>
-                              </div>
-                              <p className="text-[11px] sm:text-xs font-normal text-zinc-500 dark:text-zinc-400 leading-normal mt-0.5">
-                                {option.subtitle}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="shrink-0 text-right pt-0.5 flex items-center gap-1.5">
-                            <span className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                              {option.priceInfo}
-                            </span>
-                            {option.id !== "click_and_collect" && (
-                              <ChevronDown
-                                className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-300 ease-out ${
-                                  isSelected ? "rotate-180 text-zinc-700 dark:text-zinc-200" : ""
-                                }`}
-                              />
-                            )}
-                          </div>
-                        </label>
-
-                        {/* Slide-Down Content Below Option: Standard Delivery Providers (Shifted forward with tree hierarchy) */}
-                        {option.id === "standard" && (
-                          <div className={`delivery-options-accordion ${isSelected ? "open" : ""}`}>
-                            <div>
-                              <div className="delivery-options-content ml-4 sm:ml-5 pl-3 sm:pl-3.5 border-l border-zinc-200/80 dark:border-zinc-800/80 space-y-1.5 pt-1.5 pb-0.5">
-                                {standardList.map((rate) => {
-                                  const isRateSelected =
-                                    selectedStandardRate?.courierId === rate.courierId &&
-                                    selectedStandardRate?.serviceCode === rate.serviceCode;
-
-                                  return (
-                                    <button
-                                      key={`${rate.courierId}-${rate.serviceCode}`}
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedStandardRate(rate);
-                                        setSelectedRate(rate);
-                                      }}
-                                      className={`w-full min-h-[44px] p-2.5 sm:p-3 rounded-xl border text-left transition-all duration-150 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] ${
-                                        isRateSelected
-                                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50/70 dark:bg-zinc-800/40 ring-1 ring-zinc-900/90 dark:ring-zinc-100/90 shadow-2xs"
-                                          : "border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/40 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 hover:border-zinc-300 dark:hover:border-zinc-700"
-                                      } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-100`}
-                                    >
-                                      <div className="flex items-center gap-3 min-w-0">
-                                        <CourierLogo courierId={rate.courierId} />
-                                        <div className="min-w-0">
-                                          <span className="text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 block truncate">
-                                            {rate.serviceName}
-                                          </span>
-                                          <span className="text-[11px] sm:text-xs font-normal text-zinc-500 dark:text-zinc-400 block truncate">
-                                            ETD: {rate.etd}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-2.5 shrink-0">
-                                        <span className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                          {rate.priceFormatted}
-                                        </span>
-                                        <div
-                                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors duration-150 ${
-                                            isRateSelected
-                                              ? "border-zinc-900 dark:border-zinc-100 bg-transparent"
-                                              : "border-zinc-300 dark:border-zinc-600 bg-transparent"
-                                          }`}
-                                          aria-hidden="true"
-                                        >
-                                          <div
-                                            className={`w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 transform transition-transform duration-150 ease-out ${
-                                              isRateSelected ? "scale-100 opacity-100" : "scale-0 opacity-0"
-                                            }`}
-                                          />
-                                        </div>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Slide-Down Content Below Option: Express Delivery Providers (Shifted forward with tree hierarchy) */}
-                        {option.id === "express" && (
-                          <div className={`delivery-options-accordion ${isSelected ? "open" : ""}`}>
-                            <div>
-                              <div className="delivery-options-content ml-4 sm:ml-5 pl-3 sm:pl-3.5 border-l border-zinc-200/80 dark:border-zinc-800/80 space-y-1.5 pt-1.5 pb-0.5">
-                                {expressList.map((rate) => {
-                                  const isRateSelected =
-                                    selectedExpressRate?.courierId === rate.courierId &&
-                                    selectedExpressRate?.serviceCode === rate.serviceCode;
-
-                                  return (
-                                    <button
-                                      key={`${rate.courierId}-${rate.serviceCode}`}
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedExpressRate(rate);
-                                        setSelectedRate(rate);
-                                      }}
-                                      className={`w-full min-h-[44px] p-2.5 sm:p-3 rounded-xl border text-left transition-all duration-150 flex items-center justify-between gap-3 cursor-pointer active:scale-[0.99] ${
-                                        isRateSelected
-                                          ? "border-zinc-900 dark:border-zinc-100 bg-zinc-50/70 dark:bg-zinc-800/40 ring-1 ring-zinc-900/90 dark:ring-zinc-100/90 shadow-2xs"
-                                          : "border-zinc-200/80 dark:border-zinc-800/80 bg-white/60 dark:bg-zinc-900/40 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20 hover:border-zinc-300 dark:hover:border-zinc-700"
-                                      } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-100`}
-                                    >
-                                      <div className="flex items-center gap-3 min-w-0">
-                                        <CourierLogo courierId={rate.courierId} />
-                                        <div className="min-w-0">
-                                          <span className="text-xs sm:text-sm font-medium text-zinc-800 dark:text-zinc-200 block truncate">
-                                            {rate.serviceName}
-                                          </span>
-                                          <span className="text-[11px] sm:text-xs font-normal text-zinc-500 dark:text-zinc-400 block truncate">
-                                            ETD: {rate.etd}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex items-center gap-2.5 shrink-0">
-                                        <span className="text-xs sm:text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                          {rate.priceFormatted}
-                                        </span>
-                                        <div
-                                          className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors duration-150 ${
-                                            isRateSelected
-                                              ? "border-zinc-900 dark:border-zinc-100 bg-transparent"
-                                              : "border-zinc-300 dark:border-zinc-600 bg-transparent"
-                                          }`}
-                                          aria-hidden="true"
-                                        >
-                                          <div
-                                            className={`w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 transform transition-transform duration-150 ease-out ${
-                                              isRateSelected ? "scale-100 opacity-100" : "scale-0 opacity-0"
-                                            }`}
-                                          />
-                                        </div>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <ProductDeliverySimulation productId={product.id} variantId={activeVariation?.id} quantity={quantity} disabled={isOutOfStock} />
 
               {/* Action Button & Wishlist */}
               <div className="pt-1 flex flex-col gap-2">
+                {customizeUrl && <Link href={customizeUrl} className="flex items-center justify-center gap-2 min-h-[44px] px-5 py-3 rounded-md border border-emerald-500/40 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-semibold hover:bg-emerald-500/10">Customize this PC<ArrowRight className="w-4 h-4" /></Link>}
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1382,7 +834,7 @@ function ProductDetailContent() {
                     } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#52E394]`}
                   >
                     <ShoppingCart className="w-4 h-4 text-[#0A0B0E]" />
-                    <span>{isOutOfStock ? "Out of Stock" : "Add to Shopping Cart"}</span>
+                    <span>{isOutOfStock ? t("Out of Stock") : t("Add to Shopping Cart")}</span>
                   </button>
                   <WishlistToggleButton productId={product.id} />
                 </div>
@@ -1394,7 +846,7 @@ function ProductDetailContent() {
                     className="w-full min-h-[44px] py-2.5 px-4 rounded-md border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500/50"
                   >
                     <Bell className="w-4 h-4" />
-                    <span>Notify Me When Back in Stock</span>
+                    <span>{t("Notify Me When Back in Stock")}</span>
                   </button>
                 )}
               </div>
@@ -1496,7 +948,7 @@ function ProductDetailContent() {
                   </div>
                   <div className="flex items-center gap-2 text-slate-300">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Available for 60-Minute Click &amp; Collect</span>
+                    <span>{t("Collection is available after order-readiness confirmation.")}</span>
                   </div>
                 </div>
               </div>
@@ -1636,8 +1088,7 @@ function ProductDetailContent() {
                     )}
                     {item.stockCount <= 0 && (
                       <span className="px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-normal tracking-wide bg-slate-900/90 text-slate-100 border border-slate-700/80 shadow-xs uppercase">
-                        Out of Stock
-                      </span>
+                        {t("Out of Stock")}</span>
                     )}
                   </div>
 
@@ -1656,14 +1107,13 @@ function ProductDetailContent() {
                     }}
                     disabled={item.stockCount <= 0}
                     className="group/cart absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 z-10 min-h-[44px] min-w-[44px] flex items-center justify-end p-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-                    title="Add to Cart"
+                    title={t("Add to Cart")}
                     aria-label={`Add ${item.name} to Cart`}
                   >
                     <div className="h-9 min-w-9 sm:h-10 sm:min-w-10 px-2 sm:px-2.5 flex items-center justify-center rounded-full bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] shadow-md hover:shadow-lg transition-all duration-300 ease-out group-hover/cart:px-3 sm:group-hover/cart:px-3.5">
                       <Plus className="w-4 h-4 sm:w-4.5 sm:h-4.5 shrink-0 transition-transform duration-300 group-hover/cart:rotate-90 text-[#0A0B0E]" />
                       <span className="max-w-0 opacity-0 overflow-hidden whitespace-nowrap text-xs font-bold transition-all duration-300 ease-out group-hover/cart:max-w-[85px] group-hover/cart:opacity-100 group-hover/cart:ml-1.5 text-[#0A0B0E]">
-                        Add to Cart
-                      </span>
+                        {t("Add to Cart")}</span>
                     </div>
                   </button>
                 </div>

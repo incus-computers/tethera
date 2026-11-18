@@ -47,6 +47,7 @@ export interface DeliveryLocation {
 }
 
 export interface ShippableItem {
+  handling?: "standard" | "fragile";
   id: string;
   name: string;
   category?: string;
@@ -68,6 +69,8 @@ export interface ShippingEstimateRequest {
 }
 
 export interface ShippingRateOption {
+  insuranceValue?: number;
+  insuranceFee?: number;
   courierId: CourierId;
   courierName: string;
   courierBadge: string;
@@ -79,7 +82,7 @@ export interface ShippingRateOption {
   vehicleType: VehicleType;
   etd: string;
   distanceKm: number;
-  price: number; // in USD
+  price: number; // integer IDR
   priceFormatted: string;
   isAvailable: boolean;
   ineligibilityReason?: string;

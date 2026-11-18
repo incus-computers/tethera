@@ -1,4 +1,10 @@
+import { DatabaseError } from "../errors";
+import { FLAGSHIP_STORE_ID } from "./stores.repository";
+import { ProductVariantRow } from "../types";
+import { connectedPage } from "../collectionPage";
+import { pageInput, queryText } from "../pagination";
 import "server-only";
+import { isDemoMode } from "@/lib/runtime/environment";
 import { BaseRepository, QueryOptions } from "./base.repository";
 import {
   Product,
@@ -8,13 +14,13 @@ import {
   FacetedCatalogResult,
   CatalogFacetAggregations,
 } from "../types";
-import { MOCK_COMPONENTS } from "../../data/mockHardware";
+import { MOCK_COMPONENTS, PREBUILT_SYSTEMS } from "../../data/mockHardware";
 import { inventoryRepository } from "./inventory.repository";
 
 // Normalizes a product record so variations, images, categories, and slots are consistently linked
 export function normalizeProduct(raw: any): Product {
   if (!raw) return raw;
-  const mockMatch = MOCK_COMPONENTS.find((m) => m.id === raw.id || m.sku === raw.sku);
+  const mockMatch = isDemoMode() ? MOCK_COMPONENTS.find((m) => m.id === raw.id || m.sku === raw.sku) : undefined;
 
   let variations: ProductVariation[] = [];
   if (Array.isArray(raw.variations) && raw.variations.length > 0) {
@@ -53,7 +59,7 @@ export function normalizeProduct(raw: any): Product {
 }
 
 // Seed data from mock hardware for instant local functionality
-const INITIAL_PRODUCTS: Product[] = MOCK_COMPONENTS.map((item) => ({
+const INITIAL_PRODUCTS: Product[] = MOCK_COMPONENTS.map<Product>((item) => ({
   id: item.id,
   sku: item.sku,
   name: item.name,
@@ -70,7 +76,7 @@ const INITIAL_PRODUCTS: Product[] = MOCK_COMPONENTS.map((item) => ({
   is_active: true,
   pc_builder_slot: item.slot as PcBuilderSlot,
   variations: item.variations ? [...item.variations] : [],
-}));
+})).concat(PREBUILT_SYSTEMS.map(p => ({ id:p.id,sku:p.sku,name:p.name,slug:p.id,brand:p.brand,category_slug:"pre-built-systems",retail_price:p.price,sale_price:p.sale_price ?? null,cost_price:null,images:p.images || [p.image],specs:{prebuilt:true},warranty_months:24,is_active:true,pc_builder_slot:null } as Product)));
 
 export class ProductsRepository extends BaseRepository<Product> {
   constructor() {
@@ -111,7 +117,7 @@ export class ProductsRepository extends BaseRepository<Product> {
 
     const created = await super.create(payloadToDb);
     const normalized = normalizeProduct({ ...created, variations });
-    this.localFallbackStore.set(normalized.id, normalized);
+    if (isDemoMode()) this.localFallbackStore.set(normalized.id, normalized);
     return normalized;
   }
 
@@ -138,7 +144,7 @@ export class ProductsRepository extends BaseRepository<Product> {
       ...updated,
       ...(variations !== undefined ? { variations } : {}),
     });
-    this.localFallbackStore.set(id, normalized);
+    if (isDemoMode()) this.localFallbackStore.set(id, normalized);
     return normalized;
   }
 
@@ -164,12 +170,12 @@ export class ProductsRepository extends BaseRepository<Product> {
       );
     }
 
-    const { data } = await client
+    const data = await this.execute<Product[]>("findByCategory", client
       .from(this.tableName)
       .select("*, categories!inner(slug)")
-      .eq("categories.slug", categorySlug);
+      .eq("categories.slug", categorySlug));
 
-    if (data && data.length > 0) return (data as Product[]).map(normalizeProduct);
+    if (data && data.length > 0) return (data || []).map(normalizeProduct);
     return this.findMany({ category_slug: categorySlug });
   }
 
@@ -192,31 +198,36 @@ export class ProductsRepository extends BaseRepository<Product> {
       );
     }
 
-    const { data, error } = await client
+    const data = await this.execute<Product[]>("search", client
       .from(this.tableName)
       .select("*")
       .or(`name.ilike.%${term}%,brand.ilike.%${term}%,sku.ilike.%${term}%`)
-      .limit(30);
+      .limit(30));
 
-    if (error || !data) {
-      return (await this.findMany()).filter(
-        (p) =>
-          p.name.toLowerCase().includes(term) ||
-          p.brand.toLowerCase().includes(term) ||
-          p.sku.toLowerCase().includes(term)
-      );
-    }
-
-    return (data as Product[]).map(normalizeProduct);
+    return (data || []).map(normalizeProduct);
   }
 
   /**
    * Faceted catalog query engine with multi-brand, price bounds, stock status, sorting and facet counts (CUST-01)
    */
   async getFacetedCatalog(params: FacetedCatalogParams = {}): Promise<FacetedCatalogResult> {
+    const {page,limit}=pageInput(params.page,params.limit);
+    params={...params,page,limit,search:queryText(params.search),categorySlug:queryText(params.categorySlug,80),pcBuilderSlot:queryText(params.pcBuilderSlot,40)};
+    if(params.brands && (!Array.isArray(params.brands)||params.brands.length>20||params.brands.some(b=>typeof b!=="string"||b.length>80))) throw new DatabaseError("filter","catalog","INVALID_ARGUMENT");
+    for(const price of [params.minPrice,params.maxPrice])if(price!==undefined&&(!Number.isSafeInteger(price)||price<0||price>1_000_000_000_000))throw new DatabaseError("price","catalog","INVALID_ARGUMENT");
+    if(params.minPrice!==undefined&&params.maxPrice!==undefined&&params.minPrice>params.maxPrice)throw new DatabaseError("price","catalog","INVALID_ARGUMENT");
+    if(params.sort && !["featured","price-asc","price-desc","newest","rating"].includes(params.sort))throw new DatabaseError("sort","catalog","INVALID_ARGUMENT");
+    if(params.brands)params.brands=params.brands.map(b=>b.trim()).filter(Boolean);
+    const connected=await connectedPage<Product>("catalog",params,page,limit);
+    if(connected)return {products:connected.rows.map(normalizeProduct),pagination:connected.pagination,facets:connected.facets};
     const all = await this.findMany();
-    const inventory = await inventoryRepository.findMany();
-    const invMap = new Map(inventory.map((inv) => [inv.product_id, inv]));
+    const inventory = await inventoryRepository.findMany({store_id:FLAGSHIP_STORE_ID});
+    const variants=await new BaseRepository<ProductVariantRow>("product_variants").findMany({is_active:true});
+    const availability=(id:string)=>{
+      const active=variants.filter(v=>v.product_id===id);
+      if(active.length)return active.reduce((n,v)=>n+Math.max(0,v.stock_quantity-v.reserved_quantity),0);
+      const inv=inventory.find(i=>i.product_id===id);return inv?Math.max(0,inv.stock_on_hand-inv.stock_reserved):0;
+    };
 
     const cleanSearch = params.search ? params.search.toLowerCase().trim() : "";
     const cleanCategory = params.categorySlug ? params.categorySlug.toLowerCase().trim() : "";
@@ -224,6 +235,7 @@ export class ProductsRepository extends BaseRepository<Product> {
 
     // Filter pipeline
     const filtered = all.filter((prod) => {
+      if (!prod.is_active) return false;
       // 1. Search term match
       if (cleanSearch) {
         const matchesName = prod.name.toLowerCase().includes(cleanSearch);
@@ -280,8 +292,7 @@ export class ProductsRepository extends BaseRepository<Product> {
 
       // 5. In-stock only
       if (params.inStockOnly) {
-        const inv = invMap.get(prod.id);
-        const inStock = inv ? inv.stock_on_hand - inv.stock_reserved > 0 : true;
+        const inStock = availability(prod.id)>0;
         if (!inStock) return false;
       }
 
@@ -316,8 +327,7 @@ export class ProductsRepository extends BaseRepository<Product> {
       if (pPrice > maxPriceFound) maxPriceFound = pPrice;
 
       // In stock
-      const inv = invMap.get(p.id);
-      const isAvailable = inv ? inv.stock_on_hand - inv.stock_reserved > 0 : true;
+      const isAvailable = availability(p.id)>0;
       if (isAvailable) inStockCount++;
     }
 
@@ -343,25 +353,23 @@ export class ProductsRepository extends BaseRepository<Product> {
 
       switch (params.sort) {
         case "price-asc":
-          return priceA - priceB;
+          return priceA - priceB || a.id.localeCompare(b.id);
         case "price-desc":
-          return priceB - priceA;
+          return priceB - priceA || a.id.localeCompare(b.id);
         case "newest":
-          return (b.id || "").localeCompare(a.id || "");
+          return (b.created_at || "").localeCompare(a.created_at || "") || a.id.localeCompare(b.id);
         default:
-          return 0; // maintain default featured order
+          return (b.created_at || "").localeCompare(a.created_at || "") || a.id.localeCompare(b.id);
       }
     });
 
     // Pagination
-    const page = Math.max(1, Number(params.page) || 1);
-    const limit = Math.max(1, Number(params.limit) || 50);
     const total = sorted.length;
     const totalPages = Math.ceil(total / limit) || 1;
     const paginatedProducts = sorted.slice((page - 1) * limit, page * limit);
 
     return {
-      products: paginatedProducts,
+      products: paginatedProducts.map(p=>({...p,stockCount:availability(p.id),inStock:availability(p.id)>0})),
       pagination: {
         page,
         limit,

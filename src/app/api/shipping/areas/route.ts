@@ -1,3 +1,6 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
 import { biteship } from "@/lib/shipping/biteship";
 
@@ -7,7 +10,7 @@ export const dynamic = "force-dynamic";
  * GET /api/shipping/areas?query={query}
  * Searches Indonesian sub-districts and postal codes via Biteship Maps API.
  */
-export async function GET(req: NextRequest) {
+ async function protectedGET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const query = searchParams.get("query") || searchParams.get("input") || "";
@@ -29,10 +32,13 @@ export async function GET(req: NextRequest) {
       areas,
     });
   } catch (error: any) {
-    console.error("[BITESHIP AREA SEARCH ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to search sub-districts" },
+      { success: false, error: "Failed to search sub-districts" },
       { status: 500 }
     );
   }
 }
+export const GET = withApiProtection(protectedGET);

@@ -1,52 +1,24 @@
 import crypto from "crypto";
-
-const TRACKING_SECRET =
-  process.env.TRACKING_TOKEN_SECRET || "tethera-order-tracking-secret-key-2026";
-
-/**
- * Generates high-entropy signed token for anonymous guest order tracking.
- * Format: `${orderNumber}.${hmacSignature}`
- */
-export function generateGuestTrackingToken(
-  orderNumber: string,
-  customerEmail: string,
-  secretKey?: string
-): string {
-  const secret = secretKey || TRACKING_SECRET;
-  const payload = `${orderNumber.trim().toUpperCase()}:${customerEmail.trim().toLowerCase()}`;
-  const hmac = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex")
-    .slice(0, 32);
-
-  return `${orderNumber.trim().toUpperCase()}.${hmac}`;
+import { isDemoMode } from "@/lib/runtime/environment";
+const state=globalThis as typeof globalThis & {__demoTrackingKey?:string};
+function signingKey(explicit?:string) {
+ if(explicit)return explicit;
+ if(isDemoMode())return state.__demoTrackingKey ||= crypto.randomBytes(32).toString("hex");
+ const key=process.env.TRACKING_TOKEN_SECRET;
+ if(!key || key.length<32)throw new Error("TRACKING_TOKEN_SECRET must contain at least 32 random characters.");
+ return key;
 }
-
-/**
- * Validates a guest order tracking token against expected order number and customer email.
- */
-export function verifyGuestTrackingToken(
-  token: string,
-  orderNumber: string,
-  customerEmail: string,
-  secretKey?: string
-): boolean {
-  if (!token || !orderNumber || !customerEmail) return false;
-
-  const parts = token.trim().split(".");
-  if (parts.length !== 2) return false;
-
-  const [tokenOrderNumber, tokenHmac] = parts;
-  if (tokenOrderNumber !== orderNumber.trim().toUpperCase()) return false;
-
-  const expectedToken = generateGuestTrackingToken(orderNumber, customerEmail, secretKey);
-  const [, expectedHmac] = expectedToken.split(".");
-
-  const bufA = Buffer.from(tokenHmac.toLowerCase());
-  const bufB = Buffer.from(expectedHmac.toLowerCase());
-
-  if (bufA.length !== bufB.length) return false;
-
-  return crypto.timingSafeEqual(bufA, bufB);
+export function generateGuestTrackingToken(orderNumber:string,customerEmail:string,secretKey?:string,expiresAt=Math.floor(Date.now()/1000)+2592000):string {
+ const number=orderNumber.trim().toUpperCase();
+ const signature=crypto.createHmac("sha256",signingKey(secretKey)).update(number+":"+customerEmail.trim().toLowerCase()+":"+expiresAt).digest("hex");
+ return number+"."+expiresAt+"."+signature;
+}
+export function verifyGuestTrackingToken(token:string,orderNumber:string,customerEmail:string,secretKey?:string):boolean {
+ try {
+  if(!token || token.length>512)return false;
+  const parts=token.split(".");
+  if(parts.length!==3 || parts[0]!==orderNumber.trim().toUpperCase() || !/^\d+$/.test(parts[1]) || Number(parts[1])<=Date.now()/1000 || !/^[a-f0-9]{64}$/.test(parts[2]))return false;
+  const expected=generateGuestTrackingToken(orderNumber,customerEmail,secretKey,Number(parts[1]));
+  return crypto.timingSafeEqual(Buffer.from(token),Buffer.from(expected));
+ }catch{return false;}
 }

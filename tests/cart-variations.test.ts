@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { useCartStore } from "../src/lib/store/useCartStore";
 
 test("useCartStore handles variations as distinct line items", () => {

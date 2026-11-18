@@ -1,3 +1,5 @@
+import { randomBytes } from "crypto";
+import { fixtureCookie, fixtureCustomer } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
@@ -36,6 +38,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
           order_number: `TET-VERIFIED-${Date.now()}`,
           customer_name: "Verified Buyer One",
           customer_email: email,
+          customer_id: fixtureCustomer(email).id,
           customer_phone: "+62 812-1111-2222",
           fulfillment_type: "delivery",
           payment_method: "QRIS",
@@ -58,12 +61,13 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
 
       expect(order).toBeDefined();
 
-      const eligibility = await db.reviews.canUserReview("mb-1", email);
+      const eligibility = await db.reviews.canUserReview("mb-1", email, fixtureCustomer(email).id);
       expect(eligibility.allowed).toBe(true);
 
       const review = await db.reviews.createVerifiedReview({
         productId: "mb-1",
         customerEmail: email,
+        userId: fixtureCustomer(email).id,
         customerName: "Verified Buyer One",
         rating: 5,
         title: "Phenomenal AM5 motherboard",
@@ -75,7 +79,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
       expect(review.rating).toBe(5);
 
       // Verify customer cannot submit duplicate review for same product
-      const secondCheck = await db.reviews.canUserReview("mb-1", email);
+      const secondCheck = await db.reviews.canUserReview("mb-1", email, fixtureCustomer(email).id);
       expect(secondCheck.allowed).toBe(false);
       expect(secondCheck.reason).toMatch(/already reviewed/i);
     });
@@ -165,7 +169,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
     it("blocks unverified customer with 403 Forbidden", async () => {
       const req = new NextRequest("http://localhost:3000/api/products/cpu-1/reviews", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", cookie: fixtureCookie("fraudulent-reviewer@example.com") },
         body: JSON.stringify({
           customerEmail: "fraudulent-reviewer@example.com",
           customerName: "Imposter",
@@ -175,7 +179,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
         }),
       });
 
-      const res = await postReviewRoute(req, { params: { id: "cpu-1" } });
+      const res = await postReviewRoute(req, { params: Promise.resolve({ id: "cpu-1" }) });
       expect(res.status).toBe(403);
       const data = await res.json();
       expect(data.success).toBe(false);
@@ -189,6 +193,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
           order_number: `TET-REV-API-${Date.now()}`,
           customer_name: "Delivered Customer",
           customer_email: email,
+          customer_id: fixtureCustomer(email).id,
           customer_phone: "+62 811-9999-8888",
           fulfillment_type: "delivery",
           payment_method: "BCA Virtual Account",
@@ -211,9 +216,10 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
 
       const postReq = new NextRequest("http://localhost:3000/api/products/psu-1/reviews", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", cookie: fixtureCookie(email) },
         body: JSON.stringify({
           customerEmail: email,
+        userId: fixtureCustomer(email).id,
           customerName: "Delivered Customer",
           rating: 5,
           title: "Dead silent ATX 3.0 PSU",
@@ -221,14 +227,14 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
         }),
       });
 
-      const postRes = await postReviewRoute(postReq, { params: { id: "psu-1" } });
+      const postRes = await postReviewRoute(postReq, { params: Promise.resolve({ id: "psu-1" }) });
       expect(postRes.status).toBe(201);
       const postData = await postRes.json();
       expect(postData.success).toBe(true);
       expect(postData.review.verified_purchase).toBe(true);
 
-      const getReq = new NextRequest(`http://localhost:3000/api/products/psu-1/reviews?checkEmail=${encodeURIComponent(email)}`);
-      const getRes = await getReviewsRoute(getReq, { params: { id: "psu-1" } });
+      const getReq = new NextRequest(`http://localhost:3000/api/products/psu-1/reviews?checkEmail=${encodeURIComponent(email)}`, {headers:{cookie:fixtureCookie(email)}});
+      const getRes = await getReviewsRoute(getReq, { params: Promise.resolve({ id: "psu-1" }) });
       expect(getRes.status).toBe(200);
       const getData = await getRes.json();
       expect(getData.success).toBe(true);
@@ -240,12 +246,13 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
 
   describe("API Route: /api/wishlist and /api/wishlist/merge", () => {
     it("handles adding, retrieving hydrated items, and deleting from wishlist", async () => {
-      const sessionToken = `test-sess-${Date.now()}`;
+      const sessionToken = "wsh_"+randomBytes(32).toString("base64url");
+      const guestCookie="tethera_wishlist_token="+sessionToken;
 
       // POST add item
       const addReq = new NextRequest("http://localhost:3000/api/wishlist", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json",cookie:guestCookie },
         body: JSON.stringify({
           productId: "gpu-1",
           sessionToken,
@@ -258,7 +265,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
       expect(addData.success).toBe(true);
 
       // GET wishlist hydrated
-      const getReq = new NextRequest(`http://localhost:3000/api/wishlist?sessionToken=${sessionToken}`);
+      const getReq = new NextRequest(`http://localhost:3000/api/wishlist?sessionToken=${sessionToken}`,{headers:{cookie:guestCookie}});
       const getRes = await getWishlistRoute(getReq);
       expect(getRes.status).toBe(200);
       const getData = await getRes.json();
@@ -270,7 +277,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
       // DELETE item
       const delReq = new NextRequest("http://localhost:3000/api/wishlist", {
         method: "DELETE",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json",cookie:guestCookie },
         body: JSON.stringify({
           productId: "gpu-1",
           sessionToken,
@@ -280,20 +287,21 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
       const delRes = await deleteWishlistRoute(delReq);
       expect(delRes.status).toBe(200);
 
-      const verifyReq = new NextRequest(`http://localhost:3000/api/wishlist?sessionToken=${sessionToken}`);
+      const verifyReq = new NextRequest(`http://localhost:3000/api/wishlist?sessionToken=${sessionToken}`,{headers:{cookie:guestCookie}});
       const verifyRes = await getWishlistRoute(verifyReq);
       const verifyData = await verifyRes.json();
       expect(verifyData.items.length).toBe(0);
     });
 
     it("merges guest session wishlist into customer account via /api/wishlist/merge", async () => {
-      const sessionToken = `merge-sess-${Date.now()}`;
+      const sessionToken = "wsh_"+randomBytes(32).toString("base64url");
+      const guestCookie="tethera_wishlist_token="+sessionToken;
       const userId = `merge-user-${Date.now()}`;
 
       // Add to session
       const addReq = new NextRequest("http://localhost:3000/api/wishlist", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json",cookie:guestCookie },
         body: JSON.stringify({
           productId: "cpu-1",
           sessionToken,
@@ -304,7 +312,7 @@ describe("P2.2 Customer Wishlist & Verified Buyer Reviews", () => {
       // Merge
       const mergeReq = new NextRequest("http://localhost:3000/api/wishlist/merge", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json",cookie:guestCookie+"; "+fixtureCookie("alex.gamer@example.com") },
         body: JSON.stringify({
           sessionToken,
           userId,

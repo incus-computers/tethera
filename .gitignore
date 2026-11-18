@@ -9,6 +9,8 @@
 
 # next.js
 /.next/
+/.next-security/
+/.next-security-demo/
 /out/
 
 # production
@@ -35,3 +37,9 @@ yarn-error.log*
 
 # superpowers
 .superpowers/
+
+# Isolated validation reports and browser artifacts
+/validation-results/
+/playwright-report/
+/test-results/
+/.next-validation*/

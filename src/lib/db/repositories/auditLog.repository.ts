@@ -60,10 +60,7 @@ export class AuditLogRepository extends BaseRepository<AdminAuditLogRow> {
     limit: number = 50,
     entityType?: string
   ): Promise<AdminAuditLogRow[]> {
-    const all = await this.findMany(entityType ? { entity_type: entityType } : {});
-    return all
-      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
-      .slice(0, limit);
+    return this.findMany(entityType ? { entity_type: entityType } : {}, {limit,orderBy:"created_at",orderDirection:"desc"});
   }
 }
 

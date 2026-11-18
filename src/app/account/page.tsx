@@ -1,5 +1,9 @@
 "use client";
+import { validCustomerLocation } from "@/lib/shipping/locationValidation";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
+import { usePagedCollection, CollectionControls } from "@/components/ui/CollectionPager";
 
+import { FinancialSummary } from "@/components/orders/FinancialSummary";
 import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -108,6 +112,7 @@ interface EnrichedOrder {
 }
 
 export default function AccountPage() {
+  const {t,formatDate}=useTranslation();
   const router = useRouter();
   const { user, isAuthenticated, logout, updateProfile, initSession } = useAuthStore();
   const { setLocation } = useLocationStore();
@@ -184,9 +189,8 @@ export default function AccountPage() {
   };
 
   // Orders State
-  const [orders, setOrders] = useState<EnrichedOrder[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const orderPage=usePagedCollection<EnrichedOrder>(`/api/account/orders?scope=${activeTab === "order_history" ? "past" : "current"}`,"orders",Boolean(user));
+  const {rows:orders,loading:isLoadingOrders,error:ordersError}=orderPage;
   const [selectedOrder, setSelectedOrder] = useState<EnrichedOrder | null>(null);
 
   // Personal Info Form State
@@ -208,7 +212,7 @@ export default function AccountPage() {
   const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   // Notification Preferences State
-  const [marketingOptIn, setMarketingOptIn] = useState(true);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [prefSaveNotice, setPrefSaveNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -235,45 +239,15 @@ export default function AccountPage() {
       setPostalCode(user.address?.postalCode || "");
       setAddressLabel((user.address?.label as any) || "Home");
       setDeliveryNotes(user.address?.deliveryNotes || "");
-      setMarketingOptIn(user.marketing?.marketingOptIn ?? true);
+      setMarketingOptIn(user.marketing?.marketingOptIn ?? false);
     }
   }, [user]);
 
-  // Fetch orders for customer
-  const fetchOrders = useCallback(async () => {
-    if (!user) return;
-    setIsLoadingOrders(true);
-    setOrdersError(null);
-
-    try {
-      const params = new URLSearchParams();
-      if (user.email) params.append("email", user.email);
-      if (user.id) params.append("customerId", user.id);
-
-      const res = await fetch(`/api/account/orders?${params.toString()}`);
-      const data = await res.json();
-
-      if (data.success && Array.isArray(data.orders)) {
-        setOrders(data.orders);
-      } else {
-        setOrdersError(data.error || "Could not load orders.");
-      }
-    } catch (err: any) {
-      setOrdersError(err.message || "Network error loading orders.");
-    } finally {
-      setIsLoadingOrders(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      fetchOrders();
-    }
-  }, [user, fetchOrders]);
+  const fetchOrders=orderPage.reload;
 
   // Separate active vs past orders
   const isPastStatus = (st: string) =>
-    ["delivery_arrived", "collected", "cancelled", "refunded"].includes(st);
+    ["completed", "delivered", "delivery_arrived", "collected", "finished", "cancelled", "rejected", "refunded"].includes(st);
 
   const currentOrders = orders.filter((o) => !isPastStatus(o.status));
   const pastOrders = orders.filter((o) => isPastStatus(o.status));
@@ -325,15 +299,9 @@ export default function AccountPage() {
 
     setIsSavingAddress(false);
     if (res.success) {
-      // Sync with location store for instant courier estimation
-      setLocation({
-        address: `${street}, ${subdistrict}`,
-        city: city || "Jakarta Pusat",
-        subdistrict: subdistrict || "Sawah Besar",
-        postalCode: postalCode || "10730",
-        latitude: -6.1352,
-        longitude: 106.8294,
-      });
+      const location={address:street,city,subdistrict,province,postalCode};
+      if(validCustomerLocation(location))setLocation(location);
+      else useLocationStore.getState().clearLocation();
 
       setAddressSaveNotice("Shipping address saved and synced for courier deliveries.");
       setTimeout(() => setAddressSaveNotice(null), 3500);
@@ -363,7 +331,7 @@ export default function AccountPage() {
 
   // Sync to courier selector
   const handlePushAddressToCourier = () => {
-    if (!user?.address?.street) {
+    if (!user?.address || !validCustomerLocation({address:user.address.street,city:user.address.city,subdistrict:user.address.subdistrict,province:user.address.province,postalCode:user.address.postalCode})) {
       alert("Please enter and save your street address first.");
       return;
     }
@@ -372,26 +340,9 @@ export default function AccountPage() {
       city: user.address.city,
       subdistrict: user.address.subdistrict,
       postalCode: user.address.postalCode,
-      latitude: -6.1352,
-      longitude: 106.8294,
+      province:user.address.province,
     });
     alert("Saved address loaded into courier delivery selector.");
-  };
-
-  // Format date helper
-  const formatDate = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString("en-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return dateStr;
-    }
   };
 
   // Status human label
@@ -418,11 +369,11 @@ export default function AccountPage() {
         return { label: "Out for Delivery", color: "text-cyan-400 bg-cyan-950/40 border-cyan-800/60" };
       case "delivery_arrived":
       case "collected":
-        return { label: "Completed", color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/60" };
+        return { label: t("Completed"), color: "text-emerald-400 bg-emerald-950/40 border-emerald-800/60" };
       case "cancelled":
-        return { label: "Cancelled", color: "text-red-400 bg-red-950/40 border-red-800/60" };
+        return { label: t("Cancelled"), color: "text-red-400 bg-red-950/40 border-red-800/60" };
       case "refunded":
-        return { label: "Refunded", color: "text-zinc-400 bg-zinc-900 border-zinc-800" };
+        return { label: t("Refunded"), color: "text-zinc-400 bg-zinc-900 border-zinc-800" };
       default:
         return { label: status.replace(/_/g, " "), color: "text-zinc-300 bg-zinc-900 border-zinc-800" };
     }
@@ -507,7 +458,7 @@ export default function AccountPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/80 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Sign out</span>
+              <span>{t("Sign out")}</span>
             </button>
           </div>
         </div>
@@ -516,7 +467,7 @@ export default function AccountPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
             type="button"
-            onClick={() => setActiveTab("current_orders")}
+            onClick={() => {orderPage.setQuery(q=>({...q,page:1}));setActiveTab("current_orders");}}
             className="p-4 rounded-xl bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
           >
             <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
@@ -524,7 +475,7 @@ export default function AccountPage() {
               <Package className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-2xl font-bold text-white mt-1">
-              {currentOrders.length}
+              {orderPage.stats?.current ?? currentOrders.length}
             </div>
             <div className="text-[11px] text-zinc-500 mt-0.5">
               {currentOrders.length > 0 ? "Tracking live in progress" : "No orders pending"}
@@ -533,15 +484,15 @@ export default function AccountPage() {
 
           <button
             type="button"
-            onClick={() => setActiveTab("order_history")}
+            onClick={() => {orderPage.setQuery(q=>({...q,page:1}));setActiveTab("order_history");}}
             className="p-4 rounded-xl bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
           >
             <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
-              <span>Past Orders</span>
+              <span>{t("Past Orders")}</span>
               <FileText className="w-4 h-4 text-zinc-400" />
             </div>
             <div className="text-2xl font-bold text-white mt-1">
-              {pastOrders.length}
+              {orderPage.stats?.past ?? pastOrders.length}
             </div>
             <div className="text-[11px] text-zinc-500 mt-0.5">
               Completed and fulfilled
@@ -554,7 +505,7 @@ export default function AccountPage() {
             className="p-4 rounded-xl bg-zinc-900/40 hover:bg-zinc-900/70 border border-zinc-800 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
           >
             <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
-              <span>Delivery Address</span>
+              <span>{t("Delivery Address")}</span>
               <MapPin className="w-4 h-4 text-cyan-400" />
             </div>
             <div className="text-sm font-semibold text-white mt-1 truncate">
@@ -569,7 +520,7 @@ export default function AccountPage() {
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 border-b border-zinc-800 overflow-x-auto scrollbar-none pb-1">
           <button
-            onClick={() => setActiveTab("current_orders")}
+            onClick={() => {orderPage.setQuery(q=>({...q,page:1}));setActiveTab("current_orders");}}
             className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 ${
               activeTab === "current_orders"
                 ? "bg-zinc-800 text-white font-semibold"
@@ -577,16 +528,16 @@ export default function AccountPage() {
             }`}
           >
             <Package className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Current orders</span>
+            <span>{t("Current orders")}</span>
             {currentOrders.length > 0 && (
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500 text-zinc-950 font-bold">
-                {currentOrders.length}
+                {orderPage.stats?.current ?? currentOrders.length}
               </span>
             )}
           </button>
 
           <button
-            onClick={() => setActiveTab("order_history")}
+            onClick={() => {orderPage.setQuery(q=>({...q,page:1}));setActiveTab("order_history");}}
             className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 ${
               activeTab === "order_history"
                 ? "bg-zinc-800 text-white font-semibold"
@@ -594,7 +545,7 @@ export default function AccountPage() {
             }`}
           >
             <Clock className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Order history</span>
+            <span>{t("Order history")}</span>
           </button>
 
           <button
@@ -635,7 +586,7 @@ export default function AccountPage() {
             }`}
           >
             <MapPin className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Shipping address</span>
+            <span>{t("Shipping address")}</span>
           </button>
 
           <button
@@ -647,7 +598,7 @@ export default function AccountPage() {
             }`}
           >
             <Sliders className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Preferences</span>
+            <span>{t("Preferences")}</span>
           </button>
 
           <button
@@ -663,6 +614,7 @@ export default function AccountPage() {
         {/* ========================================================================= */}
         {/* TAB 1: CURRENT ORDERS (LIVE TRACKING) */}
         {/* ========================================================================= */}
+        {(activeTab === "current_orders" || activeTab === "order_history") && <CollectionControls meta={orderPage.meta} query={orderPage.query} onQuery={orderPage.setQuery} loading={orderPage.loading} error={orderPage.error} />}
         {activeTab === "current_orders" && (
           <div className="space-y-4">
             {isLoadingOrders && orders.length === 0 && (
@@ -675,7 +627,7 @@ export default function AccountPage() {
             {ordersError && (
               <div className="p-3.5 rounded-lg bg-red-950/40 border border-red-800/60 text-red-200 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-                <span>{ordersError}</span>
+                <span>{t(ordersError)}</span>
               </div>
             )}
 
@@ -941,7 +893,7 @@ export default function AccountPage() {
                           </span>
                         </div>
                         <p className="text-[11px] text-zinc-400 mt-0.5">
-                          {formatDate(order.created_at)} • {order.items.length} item(s) • {order.fulfillment_type === "delivery" ? "Courier" : "Store Pickup"}
+                          {formatDate(order.created_at)} • {order.items.length} item(s) • {order.fulfillment_type === "delivery" ? t("Courier") : "Store Pickup"}
                         </p>
                       </div>
 
@@ -960,8 +912,7 @@ export default function AccountPage() {
                           onClick={() => setSelectedOrder(order)}
                           className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                         >
-                          Details
-                        </button>
+                          {t("Details")}</button>
                       </div>
                     </div>
                   );
@@ -991,7 +942,7 @@ export default function AccountPage() {
                   className="px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 font-medium flex items-center gap-1.5 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-zinc-400 cursor-pointer disabled:opacity-50"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isLoadingWishlist ? "animate-spin" : ""}`} />
-                  <span>Refresh</span>
+                  <span>{t("Refresh")}</span>
                 </button>
               </div>
 
@@ -1013,7 +964,7 @@ export default function AccountPage() {
                   <div className="w-12 h-12 mx-auto rounded-full bg-zinc-800/80 flex items-center justify-center text-zinc-500">
                     <Heart className="w-6 h-6" />
                   </div>
-                  <h3 className="text-sm font-semibold text-white">Your wishlist is empty</h3>
+                  <h3 className="text-sm font-semibold text-white">{t("Your wishlist is empty")}</h3>
                   <p className="text-xs text-zinc-400 max-w-sm mx-auto">
                     Browse components, GPUs, and prebuilt PCs, and click the heart icon to save items here.
                   </p>
@@ -1074,7 +1025,7 @@ export default function AccountPage() {
                                     : "bg-rose-950/60 text-rose-400 border border-rose-900/60"
                                 }`}
                               >
-                                {inStock ? "In Stock" : "Out of Stock"}
+                                {inStock ? t("In Stock") : t("Out of Stock")}
                               </span>
                             </div>
                           </div>
@@ -1096,7 +1047,7 @@ export default function AccountPage() {
                             onClick={() => handleRemoveWishlist(item.product_id)}
                             className="min-h-[44px] min-w-[44px] p-2.5 rounded-lg border border-zinc-700/80 hover:border-rose-900/60 text-zinc-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors cursor-pointer flex items-center justify-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
                             aria-label={`Remove ${prod.name} from wishlist`}
-                            title="Remove from wishlist"
+                            title={t("Remove from wishlist")}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -1116,7 +1067,7 @@ export default function AccountPage() {
         {activeTab === "personal_data" && (
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-6 sm:p-8 space-y-6">
             <div>
-              <h2 className="text-base font-semibold text-white">Personal Information</h2>
+              <h2 className="text-base font-semibold text-white">{t("Personal Information")}</h2>
               <p className="text-xs text-zinc-400 mt-0.5">
                 Update your contact details for order notifications and receipts.
               </p>
@@ -1135,8 +1086,7 @@ export default function AccountPage() {
             <form onSubmit={handleSavePersonal} className="space-y-4 max-w-lg">
               <div>
                 <label htmlFor="account-name" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Full name
-                </label>
+                  {t("Full name")}</label>
                 <div className="relative">
                   <User className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
@@ -1152,8 +1102,7 @@ export default function AccountPage() {
 
               <div>
                 <label htmlFor="account-email" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Email address
-                </label>
+                  {t("Email address")}</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
@@ -1171,8 +1120,7 @@ export default function AccountPage() {
 
               <div>
                 <label htmlFor="account-phone" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Phone number
-                </label>
+                  {t("Phone number")}</label>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
@@ -1238,8 +1186,7 @@ export default function AccountPage() {
             <form onSubmit={handleSaveAddress} className="space-y-4 max-w-xl">
               <div>
                 <label className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Address label
-                </label>
+                  {t("Address label")}</label>
                 <div className="flex gap-2">
                   {(["Home", "Office", "Workshop", "Other"] as const).map((lbl) => (
                     <button
@@ -1260,8 +1207,7 @@ export default function AccountPage() {
 
               <div>
                 <label htmlFor="address-street" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Street address
-                </label>
+                  {t("Street address")}</label>
                 <input
                   id="address-street"
                   type="text"
@@ -1307,8 +1253,7 @@ export default function AccountPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label htmlFor="address-city" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    City
-                  </label>
+                    {t("City")}</label>
                   <input
                     id="address-city"
                     type="text"
@@ -1322,8 +1267,7 @@ export default function AccountPage() {
 
                 <div>
                   <label htmlFor="address-province" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Province
-                  </label>
+                    {t("Province")}</label>
                   <input
                     id="address-province"
                     type="text"
@@ -1337,8 +1281,7 @@ export default function AccountPage() {
 
                 <div>
                   <label htmlFor="address-postal" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                    Postal code
-                  </label>
+                    {t("Postal code")}</label>
                   <input
                     id="address-postal"
                     type="text"
@@ -1457,7 +1400,7 @@ export default function AccountPage() {
               {/* Status and Fulfillment Banner */}
               <div className="bg-zinc-950 p-3.5 rounded-lg border border-zinc-800 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-zinc-500 block text-[10px] uppercase tracking-wider">Status</span>
+                  <span className="text-zinc-500 block text-[10px] uppercase tracking-wider">{t("Status")}</span>
                   <span className="font-semibold text-white">
                     {getStatusLabel(selectedOrder.status).label}
                   </span>
@@ -1533,29 +1476,7 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              {/* Price Breakdown */}
-              <div className="border-t border-zinc-800 pt-3 space-y-1.5 text-xs">
-                <div className="flex justify-between text-zinc-400">
-                  <span>Subtotal</span>
-                  <span>{formatRupiah(selectedOrder.subtotal)}</span>
-                </div>
-                {selectedOrder.shipping_fee > 0 && (
-                  <div className="flex justify-between text-zinc-400">
-                    <span>Shipping Fee</span>
-                    <span>{formatRupiah(selectedOrder.shipping_fee)}</span>
-                  </div>
-                )}
-                {selectedOrder.assembly_fee > 0 && (
-                  <div className="flex justify-between text-zinc-400">
-                    <span>Assembly & Stress Testing Fee</span>
-                    <span>{formatRupiah(selectedOrder.assembly_fee)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm font-bold text-white pt-2 border-t border-zinc-800">
-                  <span>Total</span>
-                  <span className="text-emerald-400">{formatRupiah(selectedOrder.total)}</span>
-                </div>
-              </div>
+              <FinancialSummary order={selectedOrder}/>
 
               {/* Footer */}
               <div className="pt-2 flex justify-end">
@@ -1564,8 +1485,7 @@ export default function AccountPage() {
                   onClick={() => setSelectedOrder(null)}
                   className="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
                 >
-                  Close
-                </button>
+                  {t("Close")}</button>
               </div>
             </div>
           </div>

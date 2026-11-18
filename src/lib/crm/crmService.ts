@@ -1,3 +1,4 @@
+import { isDemoMode } from "@/lib/runtime/environment";
 /**
  * CRM & Customer Account Service
  * Provides registration, authentication, address profile management,
@@ -19,13 +20,11 @@ import { sendWelcomeEmail, sendMarketingCampaignEmail } from "../notifications/e
 // In-memory mock database store (persists across API calls in same Node runtime)
 class CrmDatabase {
   private customers: Map<string, CustomerProfile> = new Map();
-  private credentials: Map<string, string> = new Map(); // email -> password
   private campaignLogs: CrmCampaignLog[] = [];
 
   constructor() {
-    INITIAL_CUSTOMERS.forEach((c) => {
+    (isDemoMode() ? INITIAL_CUSTOMERS : []).forEach((c) => {
       this.customers.set(c.id, c);
-      this.credentials.set(c.email.toLowerCase(), "Password123!");
     });
 
     this.campaignLogs.push({
@@ -40,156 +39,7 @@ class CrmDatabase {
   }
 
   private getSupabaseClient() {
-    return getServerSupabase();
-  }
-
-  async register(input: RegistrationInput): Promise<{ user: CustomerProfile; error?: string }> {
-    const cleanPhone = (input.phone || "").replace(/[^0-9]/g, "");
-    const normalizedEmail = (input.email ? input.email.trim().toLowerCase() : (cleanPhone ? `${cleanPhone}@tethera.id` : ""));
-
-    // Check duplicate by email
-    if (normalizedEmail) {
-      const existingEmail = Array.from(this.customers.values()).find(
-        (c) => c.email.toLowerCase() === normalizedEmail
-      );
-      if (existingEmail) {
-        return { user: existingEmail, error: "An account with this email address already exists. Please sign in instead." };
-      }
-    }
-
-    // Check duplicate by phone
-    if (cleanPhone.length > 5) {
-      const existingPhone = Array.from(this.customers.values()).find((c) => {
-        const cPhone = c.phone.replace(/[^0-9]/g, "");
-        return cPhone.length > 5 && cPhone === cleanPhone;
-      });
-      if (existingPhone) {
-        return { user: existingPhone, error: "An account with this phone number already exists. Please sign in instead." };
-      }
-    }
-
-    const newId = `cust-${Date.now()}`;
-    const newCustomer: CustomerProfile = {
-      id: newId,
-      email: normalizedEmail,
-      fullName: input.fullName.trim(),
-      phone: input.phone?.trim() || "",
-      address: {
-        street: input.street?.trim() || "",
-        unit: input.unit?.trim() || "",
-        subdistrict: input.subdistrict?.trim() || "",
-        city: input.city?.trim() || "",
-        province: input.province?.trim() || "",
-        postalCode: input.postalCode?.trim() || "",
-        country: input.country || "Indonesia",
-        label: input.addressLabel || "Home",
-        deliveryNotes: input.deliveryNotes?.trim() || "",
-      },
-      marketing: {
-        marketingOptIn: !!input.marketingOptIn,
-        newsletterFrequency: input.newsletterFrequency || "weekly",
-        customerSegment: input.customerSegment || "gamer",
-        hardwarePreference: input.hardwarePreference || "all",
-        whatsappUpdates: input.whatsappUpdates ?? true,
-      },
-      crm: {
-        status: "lead",
-        leadSource: input.leadSource || "ecommerce_registration",
-        tags: ["registered_user", input.customerSegment || "gamer"],
-        registeredAt: new Date().toISOString(),
-        totalOrders: 0,
-        totalSpent: 0,
-      },
-    };
-
-    // Store in memory
-    this.customers.set(newId, newCustomer);
-    if (input.password) {
-      this.credentials.set(normalizedEmail, input.password);
-      if (input.phone) {
-        const cleanPhone = input.phone.replace(/[^0-9]/g, "");
-        if (cleanPhone) this.credentials.set(cleanPhone, input.password);
-      }
-    }
-
-    // Try Supabase sync if configured
-    const supabase = this.getSupabaseClient();
-    if (supabase) {
-      try {
-        await supabase.from("customer_profiles").insert({
-          id: newId,
-          email: newCustomer.email,
-          full_name: newCustomer.fullName,
-          phone: newCustomer.phone,
-          address_line1: newCustomer.address.street,
-          address_line2: newCustomer.address.unit,
-          subdistrict: newCustomer.address.subdistrict,
-          city: newCustomer.address.city,
-          province: newCustomer.address.province,
-          postal_code: newCustomer.address.postalCode,
-          country: newCustomer.address.country,
-          address_label: newCustomer.address.label,
-          delivery_notes: newCustomer.address.deliveryNotes,
-          marketing_opt_in: newCustomer.marketing.marketingOptIn,
-          newsletter_frequency: newCustomer.marketing.newsletterFrequency,
-          customer_segment: newCustomer.marketing.customerSegment,
-          hardware_preference: newCustomer.marketing.hardwarePreference,
-          crm_status: newCustomer.crm.status,
-          lead_source: newCustomer.crm.leadSource,
-          tags: newCustomer.crm.tags,
-        });
-      } catch (err) {
-        console.warn("[CRM] Supabase insert skipped/failed, using fallback store:", err);
-      }
-    }
-
-    // Dispatch welcome email asynchronously
-    sendWelcomeEmail(newCustomer).catch((err) => {
-      console.error("[CRM] Error sending welcome onboarding email:", err);
-    });
-
-    return { user: newCustomer };
-  }
-
-  async authenticate(identifier: string, password?: string): Promise<{ user?: CustomerProfile; error?: string }> {
-    const raw = identifier.trim();
-    const isEmail = raw.includes("@");
-    const normalizedEmail = raw.toLowerCase();
-    const cleanPhone = raw.replace(/[^0-9]/g, "");
-
-    let foundCustomer: CustomerProfile | undefined;
-
-    if (isEmail) {
-      foundCustomer = Array.from(this.customers.values()).find(
-        (c) => c.email.toLowerCase() === normalizedEmail
-      );
-    } else {
-      foundCustomer = Array.from(this.customers.values()).find((c) => {
-        const cPhone = c.phone.replace(/[^0-9]/g, "");
-        return cPhone.length > 5 && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone));
-      });
-    }
-
-    if (!foundCustomer) {
-      return {
-        error: isEmail
-          ? "No account found with this email address. Please check your spelling or create an account."
-          : "No account found with this phone number. Please check your digits or create an account.",
-      };
-    }
-
-    // Verify password if supplied
-    if (password) {
-      const storedByEmail = this.credentials.get(foundCustomer.email.toLowerCase());
-      const storedByPhone = foundCustomer.phone ? this.credentials.get(foundCustomer.phone.replace(/[^0-9]/g, "")) : undefined;
-      const validPass = storedByEmail || storedByPhone || "Password123!";
-
-      if (password !== validPass && password !== storedByEmail && password !== storedByPhone) {
-        return { error: "Incorrect password. Please verify and try again." };
-      }
-    }
-
-    return { user: foundCustomer };
+    return isDemoMode() ? null : getServerSupabase();
   }
 
   getCustomerById(id: string): CustomerProfile | undefined {
@@ -201,62 +51,6 @@ class CrmDatabase {
     return Array.from(this.customers.values()).find(
       (c) => c.email.toLowerCase() === norm
     );
-  }
-
-  async updateProfile(id: string, updates: Partial<CustomerProfile>): Promise<CustomerProfile | null> {
-    const customer = this.customers.get(id);
-    if (!customer) return null;
-
-    const updated: CustomerProfile = {
-      ...customer,
-      ...updates,
-      address: {
-        ...customer.address,
-        ...(updates.address || {}),
-      },
-      marketing: {
-        ...customer.marketing,
-        ...(updates.marketing || {}),
-      },
-      crm: {
-        ...customer.crm,
-        ...(updates.crm || {}),
-      },
-    };
-
-    this.customers.set(id, updated);
-
-    // Sync to remote Supabase if connected
-    const supabase = this.getSupabaseClient();
-    if (supabase) {
-      try {
-        const patch: Record<string, any> = {
-          updated_at: new Date().toISOString(),
-        };
-        if (updates.fullName) patch.full_name = updates.fullName;
-        if (updates.phone !== undefined) patch.phone = updates.phone;
-        if (updates.email) patch.email = updates.email;
-        if (updates.address) {
-          if (updates.address.street !== undefined) patch.address_line1 = updates.address.street;
-          if (updates.address.unit !== undefined) patch.address_line2 = updates.address.unit;
-          if (updates.address.subdistrict !== undefined) patch.subdistrict = updates.address.subdistrict;
-          if (updates.address.city !== undefined) patch.city = updates.address.city;
-          if (updates.address.province !== undefined) patch.province = updates.address.province;
-          if (updates.address.postalCode !== undefined) patch.postal_code = updates.address.postalCode;
-          if (updates.address.label !== undefined) patch.address_label = updates.address.label;
-          if (updates.address.deliveryNotes !== undefined) patch.delivery_notes = updates.address.deliveryNotes;
-        }
-        if (updates.marketing?.marketingOptIn !== undefined) {
-          patch.marketing_opt_in = updates.marketing.marketingOptIn;
-        }
-
-        await supabase.from("customer_profiles").update(patch).eq("id", id);
-      } catch (err) {
-        console.warn("[CRM] Supabase profile sync skipped/failed:", err);
-      }
-    }
-
-    return updated;
   }
 
   listCustomers(filter?: {

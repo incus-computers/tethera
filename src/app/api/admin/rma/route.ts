@@ -1,177 +1,64 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { requireAdminPermission } from "@/lib/auth/rbac";
-
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { db } from "@/lib/db";
+import { GatewayError } from "@/lib/payment/gateway";
+import { RefundError } from "@/lib/refunds/contracts";
+import { createReturn, issueRefund, receiveReturn, reconcileRefund, refundOperations, returnReceipts, returnReceiptItems, transitionReturn } from "@/lib/refunds/service";
 export const dynamic = "force-dynamic";
-
-/**
- * GET /api/admin/rma
- * Retrieves customer RMA return requests for staff review (ADMIN-02)
- */
-export async function GET(req: NextRequest) {
-  try {
-    const perm = requireAdminPermission(req, "refunds:read");
-    if (!perm.authorized) {
-      return NextResponse.json(
-        { success: false, error: perm.error },
-        { status: perm.status || 401 }
-      );
-    }
-
-    const { searchParams } = new URL(req.url);
-    const orderId = searchParams.get("orderId") || undefined;
-    const status = searchParams.get("status") as any || undefined;
-
-    const returnRequests = await db.rma.getReturnRequests({ orderId, status });
-
-    return NextResponse.json({
-      success: true,
-      count: returnRequests.length,
-      returnRequests,
-    });
-  } catch (error: any) {
-    console.error("[ADMIN RMA GET ERROR]:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to retrieve RMA requests." },
-      { status: 500 }
-    );
-  }
+function failure(error: unknown) {
+  return databaseFailureResponse(error) || NextResponse.json({success: false, error: error instanceof RefundError || error instanceof GatewayError ? error.message : "Return/refund processing is unavailable. Keep the same request key when retrying."},
+    {status: error instanceof RefundError || error instanceof GatewayError ? error.status : 503});
 }
-
-/**
- * PUT /api/admin/rma
- * Updates RMA status (approved, item_received, inspected, rejected, completed) (ADMIN-02)
- */
-export async function PUT(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "refunds:write");
-    if (!perm.authorized) {
-      return NextResponse.json(
-        { success: false, error: perm.error },
-        { status: perm.status || 403 }
-      );
-    }
-
+    const access = await requireAdminPermission(req, "refunds:read");
+    if (!access.authorized) return NextResponse.json({success: false, error: access.error}, {status: access.status || 403});
+    const orderId = req.nextUrl.searchParams.get("orderId") || undefined;
+    const returnRequests = await db.rma.getReturnRequests({orderId, status: req.nextUrl.searchParams.get("status") as any || undefined});
+    const operations = await refundOperations.findMany(orderId ? {order_id: orderId} : undefined, {limit: 100, orderBy: "updated_at", orderDirection: "desc"});
+    const receipts = await returnReceipts.findMany(orderId ? {order_id: orderId} : undefined, {limit: 100});
+    const receiptItems = (await Promise.all(receipts.map(receipt => returnReceiptItems.findMany({receipt_id: receipt.id})))).flat();
+    return NextResponse.json({success: true, count: returnRequests.length, returnRequests, operations, receipts, receiptItems});
+  } catch (error) { return failure(error); }
+}
+async function handlePUT(req: NextRequest) {
+  try {
+    const access = await requireAdminPermission(req, "refunds:write");
+    if (!access.authorized) return NextResponse.json({success: false, error: access.error}, {status: access.status || 403});
     const body = await req.json();
-    const { rmaId, status, adminNotes } = body;
-
-    if (!rmaId || !status) {
-      return NextResponse.json(
-        { success: false, error: "rmaId and status are required." },
-        { status: 400 }
-      );
-    }
-
-    const updated = await db.rma.updateRmaStatus(rmaId, {
-      status,
-      adminNotes,
-      handledBy: perm.user?.name || "Staff Admin",
-    });
-
-    if (!updated) {
-      return NextResponse.json(
-        { success: false, error: "RMA record not found." },
-        { status: 404 }
-      );
-    }
-
-    // Record immutable audit log
-    await db.auditLogs.log({
-      actor_id: perm.user?.id || "unknown",
-      actor_name: perm.user?.name || "Staff Admin",
-      role: perm.user?.role || "ADMIN",
-      action: "RMA_STATUS_UPDATED",
-      entity_type: "rma",
-      entity_id: rmaId,
-      before_state: null,
-      after_state: { status, adminNotes },
-      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
-      user_agent: req.headers.get("user-agent") || undefined,
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: `RMA request '${updated.rma_number}' transitioned to '${status}'.`,
-      returnRequest: updated,
-    });
-  } catch (error: any) {
-    console.error("[ADMIN RMA PUT ERROR]:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to update RMA record." },
-      { status: 500 }
-    );
-  }
+    if (typeof body.rmaId !== "string" || typeof body.status !== "string") throw new RefundError("Return ID and status are required.", 400);
+    const updated = await transitionReturn(body.rmaId, body.status as any, body.adminNotes, access.user!.id);
+    return NextResponse.json({success: true, returnRequest: updated, message: "Return case updated. This does not move money or restock inventory."});
+  } catch (error) { return failure(error); }
 }
-
-/**
- * POST /api/admin/rma
- * Issues financial refund with optional hardware inventory restocking (ADMIN-02)
- */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "refunds:write");
-    if (!perm.authorized) {
-      return NextResponse.json(
-        { success: false, error: perm.error },
-        { status: perm.status || 403 }
-      );
+    const access = await requireAdminPermission(req, "refunds:write");
+    if (!access.authorized) return NextResponse.json({success: false, error: access.error}, {status: access.status || 403});
+    const body = await req.json(), actor = access.user!.id;
+    if (body.action === "receive_items") {
+      const result = await receiveReturn({...body, requestKey: req.headers.get("Idempotency-Key")}, actor);
+      return NextResponse.json({success: true, ...result, message: "Inspected return quantities recorded. No refund was issued."});
     }
-
-    const body = await req.json();
-    const {
-      orderId,
-      returnRequestId,
-      amount,
-      reason,
-      restockInventory = true,
-    } = body;
-
-    if (!orderId || !reason) {
-      return NextResponse.json(
-        { success: false, error: "orderId and reason are required for refund processing." },
-        { status: 400 }
-      );
+    if (body.action === "create_return") {
+      const result = await createReturn(body.orderId, body.reason, body.customerNotes);
+      return NextResponse.json({success: true, returnRequest: result});
     }
-
-    const result = await db.rma.processRefund({
-      orderId,
-      returnRequestId,
-      amount,
-      reason,
-      restockInventory: Boolean(restockInventory),
-      processedBy: perm.user?.name || "Staff Admin",
-    });
-
-    // Record immutable audit log
-    await db.auditLogs.log({
-      actor_id: perm.user?.id || "unknown",
-      actor_name: perm.user?.name || "Staff Admin",
-      role: perm.user?.role || "ADMIN",
-      action: "REFUND_PROCESSED",
-      entity_type: "refund",
-      entity_id: result.refund.id,
-      before_state: { orderId },
-      after_state: {
-        refundNumber: result.refund.refund_number,
-        amount: result.refund.amount,
-        restockInventory: result.refund.restock_inventory,
-        newOrderStatus: result.orderStatus,
-      },
-      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
-      user_agent: req.headers.get("user-agent") || undefined,
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: `Refund #${result.refund.refund_number} of Rp ${result.refund.amount.toLocaleString("id-ID")} processed successfully.`,
-      refund: result.refund,
-      orderStatus: result.orderStatus,
-    });
-  } catch (error: any) {
-    console.error("[ADMIN REFUND POST ERROR]:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to process refund." },
-      { status: 500 }
-    );
-  }
+    let result;
+    if (body.action === "reconcile") {
+      const operation = typeof body.operationId === "string" ? await refundOperations.findById(body.operationId) : null;
+      if (!operation || (body.orderId && operation.order_id !== body.orderId)) throw new RefundError("Refund operation not found.", 404);
+      result = await reconcileRefund(operation);
+    } else {
+      if (body.action && body.action !== "refund") throw new RefundError("Unsupported refund action.", 400);
+      result = await issueRefund({...body, requestKey: req.headers.get("Idempotency-Key")}, actor);
+    }
+    return NextResponse.json({success: true, ...result, message: result.pending ? "Refund is awaiting provider confirmation or review. Keep this operation; do not issue another." : "Refund confirmed. Inventory is unchanged."});
+  } catch (error) { return failure(error); }
 }
+export const GET = withApiProtection(withAccess(handleGET));
+export const PUT = withApiProtection(withAccess(handlePUT));
+export const POST = withApiProtection(withAccess(handlePOST));

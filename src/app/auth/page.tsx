@@ -1,8 +1,9 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { Suspense, useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
   Lock,
@@ -46,7 +47,14 @@ const ADDRESS_LABELS: CustomerAddress["label"][] = [
 ];
 
 export default function AuthPage() {
+  return <Suspense fallback={<p role="status">Loading sign-in…</p>}><AuthForm /></Suspense>;
+}
+
+function AuthForm() {
+  const {t,locale,profile}=useTranslation();
   const router = useRouter();
+  const fromCheckout = useSearchParams().get("from") === "checkout";
+  const destination = fromCheckout ? "/checkout" : "/account";
   const {
     isAuthenticated,
     login,
@@ -57,7 +65,9 @@ export default function AuthPage() {
     initSession,
   } = useAuthStore();
 
-  const [mode, setMode] = useState<AuthMode>("signup");
+  const [demoAccess, setDemoAccess] = useState<{password:string;customers:{email:string;name:string}[]}|null>(null);
+  useEffect(()=>{fetch("/api/auth/environment").then(r=>r.json()).then(d=>setDemoAccess(d.demo?d:null)).catch(()=>{});},[]);
+  const [mode, setMode] = useState<AuthMode>(fromCheckout ? "signin" : "signup");
   const [step, setStep] = useState<SignupStep>("credentials");
   const [localError, setLocalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -108,9 +118,9 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/account");
+      router.replace(destination);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, destination]);
 
   // Handle countdown for OTP resend
   useEffect(() => {
@@ -140,8 +150,8 @@ export default function AuthPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setLocalError("Password must be at least 6 characters long.");
+    if (password.length < 12) {
+      setLocalError("Password must be at least 12 characters long.");
       return;
     }
 
@@ -352,7 +362,7 @@ export default function AuthPage() {
       unit: unit.trim() || undefined,
       subdistrict: subdistrict.trim() || undefined,
       city: city.trim(),
-      province: province.trim() || "DKI Jakarta",
+      province: province.trim(),
       postalCode: postalCode.trim(),
       country: "Indonesia",
       addressLabel,
@@ -365,10 +375,7 @@ export default function AuthPage() {
     setIsSubmitting(false);
 
     if (res.success) {
-      setSuccessMessage("Account created successfully. Redirecting to your dashboard...");
-      setTimeout(() => {
-        router.push("/account");
-      }, 1000);
+      setSuccessMessage("Account created successfully.");
     } else {
       setLocalError(res.error || "Failed to create account. Please review details.");
     }
@@ -390,12 +397,8 @@ export default function AuthPage() {
     }
 
     setIsSubmitting(true);
-    const res = await login(identifier, signInPassword);
+    await login(identifier, signInPassword);
     setIsSubmitting(false);
-
-    if (res.success) {
-      router.push("/account");
-    }
   };
 
   // Sample testing accounts
@@ -418,7 +421,7 @@ export default function AuthPage() {
             <IncusLogo className="h-8 w-auto mx-auto" />
           </Link>
           <h1 className="mt-3 text-2xl font-semibold tracking-tight text-white">
-            {mode === "signup" ? "Create your customer account" : "Sign in to your account"}
+            {mode === "signup" ? "Create your customer account" : t("Sign in to your account")}
           </h1>
           <p className="mt-1.5 text-sm text-zinc-400">
             {mode === "signup"
@@ -441,8 +444,7 @@ export default function AuthPage() {
                 : "border-transparent text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Create account
-          </button>
+            {t("Create account")}</button>
           <button
             type="button"
             onClick={() => {
@@ -455,8 +457,7 @@ export default function AuthPage() {
                 : "border-transparent text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Sign in
-          </button>
+            {t("Sign in")}</button>
         </div>
       </div>
 
@@ -495,8 +496,7 @@ export default function AuthPage() {
                       htmlFor="signup-identifier"
                       className="block text-xs font-medium text-zinc-300 mb-1.5"
                     >
-                      Email address or phone number
-                    </label>
+                      {t("Email address or phone number")}</label>
                     <div className="relative">
                       <div className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
                         {initialIdentifier.includes("@") ? (
@@ -518,8 +518,7 @@ export default function AuthPage() {
                       />
                     </div>
                     <p className="mt-1 text-[11px] text-zinc-500">
-                      We will dispatch a 6-digit verification code to this contact.
-                    </p>
+                      {t("We will dispatch a 6-digit verification code to this contact.")}</p>
                   </div>
 
                   <div>
@@ -527,8 +526,7 @@ export default function AuthPage() {
                       htmlFor="signup-password"
                       className="block text-xs font-medium text-zinc-300 mb-1.5"
                     >
-                      Create password
-                    </label>
+                      {t("Create password")}</label>
                     <div className="relative">
                       <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
@@ -557,14 +555,14 @@ export default function AuthPage() {
                   <div className="pt-3">
                     <button
                       type="submit"
-                      disabled={isSubmitting || !initialIdentifier.trim() || password.length < 6}
+                      disabled={isSubmitting || !initialIdentifier.trim() || password.length < 12}
                       className="w-full py-2.5 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900 flex items-center justify-center gap-2"
                     >
                       {isSubmitting ? (
                         "Sending code..."
                       ) : (
                         <>
-                          <span>Continue</span>
+                          <span>{t("Continue")}</span>
                           <ArrowRight className="w-4 h-4" />
                         </>
                       )}
@@ -580,9 +578,9 @@ export default function AuthPage() {
                     <div className="mx-auto w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mb-3">
                       <KeyRound className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <h2 className="text-base font-semibold text-white">Enter verification code</h2>
+                    <h2 className="text-base font-semibold text-white">{t("Enter verification code")}</h2>
                     <p className="mt-1 text-xs text-zinc-400">
-                      Dispatched to{" "}
+                      {t("Dispatched to")}{" "}
                       <span className="font-mono text-zinc-200">{maskedDestination}</span>
                     </p>
                   </div>
@@ -591,7 +589,7 @@ export default function AuthPage() {
                   {demoCode && (
                     <div className="p-3 bg-zinc-950 border border-dashed border-emerald-500/40 rounded-lg flex items-center justify-between text-xs">
                       <div>
-                        <span className="text-zinc-400">Dev simulation code:</span>{" "}
+                        <span className="text-zinc-400">{t("Dev simulation code:")}</span>{" "}
                         <span className="font-mono font-bold text-emerald-400 tracking-wider">
                           {demoCode}
                         </span>
@@ -604,8 +602,7 @@ export default function AuthPage() {
                         }}
                         className="text-[11px] px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-medium transition-colors"
                       >
-                        Auto-fill
-                      </button>
+                        {t("Auto-fill")}</button>
                     </div>
                   )}
 
@@ -635,7 +632,7 @@ export default function AuthPage() {
                       className="text-zinc-400 hover:text-zinc-200 flex items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
-                      <span>Change contact</span>
+                      <span>{t("Change contact")}</span>
                     </button>
 
                     <button
@@ -654,7 +651,7 @@ export default function AuthPage() {
                       disabled={isSubmitting || otpCode.some((d) => !d)}
                       className="w-full py-2.5 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
                     >
-                      {isSubmitting ? "Verifying..." : "Verify code"}
+                      {isSubmitting ? "Verifying..." : t("Verify code")}
                     </button>
                   </div>
                 </form>
@@ -666,7 +663,7 @@ export default function AuthPage() {
                   {/* Section 1: Personal Details */}
                   <div className="space-y-3">
                     <div className="pb-1 border-b border-zinc-800">
-                      <h2 className="text-sm font-semibold text-white">Personal Information</h2>
+                      <h2 className="text-sm font-semibold text-white">{t("Personal Information")}</h2>
                     </div>
 
                     <div>
@@ -674,7 +671,7 @@ export default function AuthPage() {
                         htmlFor="profile-name"
                         className="block text-xs font-medium text-zinc-300 mb-1"
                       >
-                        Full name <span className="text-emerald-400">*</span>
+                        {t("Full name")}<span className="text-emerald-400">*</span>
                       </label>
                       <div className="relative">
                         <User className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -696,7 +693,7 @@ export default function AuthPage() {
                         htmlFor="profile-secondary"
                         className="block text-xs font-medium text-zinc-300 mb-1"
                       >
-                        {channel === "email" ? "Phone number" : "Email address"}{" "}
+                        {channel === "email" ? t("Phone number") : t("Email address")}{" "}
                         <span className="text-emerald-400">*</span>
                       </label>
                       <div className="relative">
@@ -731,7 +728,7 @@ export default function AuthPage() {
                   {/* Section 2: Delivery Address */}
                   <div className="space-y-3 pt-2">
                     <div className="pb-1 border-b border-zinc-800">
-                      <h2 className="text-sm font-semibold text-white">Delivery Address</h2>
+                      <h2 className="text-sm font-semibold text-white">{t("Delivery Address")}</h2>
                     </div>
 
                     <div>
@@ -739,7 +736,7 @@ export default function AuthPage() {
                         htmlFor="profile-street"
                         className="block text-xs font-medium text-zinc-300 mb-1"
                       >
-                        Street address <span className="text-emerald-400">*</span>
+                        {t("Street address")}<span className="text-emerald-400">*</span>
                       </label>
                       <div className="relative">
                         <MapPin className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -762,8 +759,7 @@ export default function AuthPage() {
                           htmlFor="profile-unit"
                           className="block text-xs font-medium text-zinc-300 mb-1"
                         >
-                          Unit or Apartment (optional)
-                        </label>
+                          {t("Unit or Apartment (optional)")}</label>
                         <div className="relative">
                           <Building className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                           <input
@@ -782,8 +778,7 @@ export default function AuthPage() {
                           htmlFor="profile-subdistrict"
                           className="block text-xs font-medium text-zinc-300 mb-1"
                         >
-                          Subdistrict / Kelurahan
-                        </label>
+                          {t("Subdistrict / Kelurahan")}</label>
                         <input
                           id="profile-subdistrict"
                           type="text"
@@ -801,7 +796,7 @@ export default function AuthPage() {
                           htmlFor="profile-city"
                           className="block text-xs font-medium text-zinc-300 mb-1"
                         >
-                          City <span className="text-emerald-400">*</span>
+                          {t("City")}<span className="text-emerald-400">*</span>
                         </label>
                         <input
                           id="profile-city"
@@ -819,8 +814,7 @@ export default function AuthPage() {
                           htmlFor="profile-province"
                           className="block text-xs font-medium text-zinc-300 mb-1"
                         >
-                          Province
-                        </label>
+                          {t("Province")}</label>
                         <input
                           id="profile-province"
                           type="text"
@@ -836,7 +830,7 @@ export default function AuthPage() {
                           htmlFor="profile-postal"
                           className="block text-xs font-medium text-zinc-300 mb-1"
                         >
-                          Postal code <span className="text-emerald-400">*</span>
+                          {t("Postal code")}<span className="text-emerald-400">*</span>
                         </label>
                         <input
                           id="profile-postal"
@@ -852,8 +846,7 @@ export default function AuthPage() {
 
                     <div>
                       <span className="block text-xs font-medium text-zinc-300 mb-1.5">
-                        Address label
-                      </span>
+                        {t("Address label")}</span>
                       <div className="flex flex-wrap gap-2">
                         {ADDRESS_LABELS.map((lbl) => (
                           <button
@@ -877,11 +870,9 @@ export default function AuthPage() {
                   <div className="space-y-3 pt-2">
                     <div className="pb-1 border-b border-zinc-800">
                       <h2 className="text-sm font-semibold text-white">
-                        How did you get to know us?
-                      </h2>
+                        {t("How did you get to know us?")}</h2>
                       <p className="text-xs text-zinc-400 mt-0.5">
-                        Help us understand where you discovered Incus Computers.
-                      </p>
+                        {t("Help us understand where you discovered Incus Computers.")}</p>
                     </div>
 
                     <div className="space-y-2">
@@ -931,8 +922,7 @@ export default function AuthPage() {
                         className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500"
                       />
                       <span>
-                        Send me updates on hardware drops, restock alerts, and custom build showcases. (Optional)
-                      </span>
+                        {t("Send me updates on hardware drops, restock alerts, and custom build showcases. (Optional)")}</span>
                     </label>
 
                     {/* Terms & Privacy (Required) */}
@@ -946,22 +936,20 @@ export default function AuthPage() {
                         className="mt-0.5 h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500"
                       />
                       <label htmlFor="terms-checkbox" className="cursor-pointer">
-                        <span>I agree to the </span>
+                        <span>{t("I agree to the")}</span>
                         <button
                           type="button"
                           onClick={() => setShowTermsModal(true)}
                           className="text-emerald-400 hover:text-emerald-300 underline font-medium"
                         >
-                          Terms &amp; Conditions
-                        </button>
-                        <span> and </span>
+                          {t("Terms & Conditions")}</button>
+                        <span> {t("and")}</span>
                         <button
                           type="button"
                           onClick={() => setShowPrivacyModal(true)}
                           className="text-emerald-400 hover:text-emerald-300 underline font-medium"
                         >
-                          Privacy Policy
-                        </button>
+                          {t("Privacy Policy")}</button>
                         <span className="text-emerald-400 font-semibold"> *</span>
                       </label>
                     </div>
@@ -989,8 +977,7 @@ export default function AuthPage() {
                   htmlFor="signin-identifier"
                   className="block text-xs font-medium text-zinc-300 mb-1.5"
                 >
-                  Email address or phone number
-                </label>
+                  {t("Email address or phone number")}</label>
                 <div className="relative">
                   <div className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center">
                     {signInIdentifier.includes("@") ? (
@@ -1018,8 +1005,7 @@ export default function AuthPage() {
                   htmlFor="signin-password"
                   className="block text-xs font-medium text-zinc-300 mb-1.5"
                 >
-                  Password
-                </label>
+                  {t("Password")}</label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
@@ -1050,34 +1036,16 @@ export default function AuthPage() {
                   disabled={isSubmitting || isLoading || !signInIdentifier.trim() || !signInPassword}
                   className="w-full py-2.5 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-900"
                 >
-                  {isSubmitting || isLoading ? "Signing in..." : "Sign in"}
+                  {isSubmitting || isLoading ? "Signing in..." : t("Sign in")}
                 </button>
               </div>
 
-              {/* Demo Sign-in quick access */}
-              <div className="pt-5 border-t border-zinc-800">
-                <div className="text-[11px] font-medium text-zinc-400 mb-2">
-                  Sample customer accounts for testing:
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fillDemoAccount("alex.gamer@example.com", "Password123!")}
-                    className="p-2 rounded-lg bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-                  >
-                    <div className="font-medium text-zinc-200">Alex Rivera</div>
-                    <div className="text-[10px] text-zinc-500">Email sign-in</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillDemoAccount("+6281298765432", "Password123!")}
-                    className="p-2 rounded-lg bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-left text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
-                  >
-                    <div className="font-medium text-zinc-200">Budi Santoso</div>
-                    <div className="text-[10px] text-zinc-500">Phone sign-in</div>
-                  </button>
-                </div>
-              </div>
+              <Link href="/auth/recover" className="block text-sm text-emerald-400">{t("Forgot your password?")}</Link>
+              {demoAccess && <div className="border-t border-zinc-800 pt-4">
+                <p className="text-xs text-amber-200">{t("Demo customer accounts")}</p>
+                {demoAccess.customers.slice(0,4).map(account=><button type="button" key={account.email} onClick={()=>fillDemoAccount(account.email,demoAccess.password)} className="m-1 rounded border border-zinc-700 px-3 py-2 text-xs text-white">{account.name || account.email}</button>)}
+              </div>}
+
             </form>
           )}
         </div>
@@ -1088,8 +1056,7 @@ export default function AuthPage() {
             href="/"
             className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 rounded-sm"
           >
-            Return to store catalog
-          </Link>
+            {t("Return to store catalog")}</Link>
         </div>
       </div>
 
@@ -1100,7 +1067,7 @@ export default function AuthPage() {
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
               <div className="flex items-center gap-2 text-white font-semibold text-sm">
                 <FileText className="w-4 h-4 text-emerald-400" />
-                <span>Terms &amp; Conditions</span>
+                <span>{t("Terms & Conditions")}</span>
               </div>
               <button
                 type="button"
@@ -1111,18 +1078,9 @@ export default function AuthPage() {
               </button>
             </div>
             <div className="p-4 overflow-y-auto text-xs text-zinc-300 space-y-3 leading-relaxed">
-              <p className="font-medium text-zinc-100">1. Order Placement and Rig Assembly</p>
-              <p>
-                All custom PC assemblies undergo 24-hour thermal stress testing and component validation prior to courier dispatch. Estimated delivery dates depend on destination and selected courier tier.
-              </p>
-              <p className="font-medium text-zinc-100">2. Three-Year Hardware Warranty</p>
-              <p>
-                Custom workstation rigs and gaming systems include standard parts replacement and on-site diagnosis according to manufacturer warranties. Accidental liquid damage and unauthorized overclocking modifications are excluded.
-              </p>
-              <p className="font-medium text-zinc-100">3. Cancellation and Returns</p>
-              <p>
-                Custom component orders can be modified within 6 hours of initial order placement before assembly queue begins. Defective components will be exchanged immediately upon verification.
-              </p>
+              {profile?.status!=="published"&&<p role="status">{locale==="id"?"Draf kebijakan awal; ketentuan akhir masih perlu dikonfirmasi.":"Starter policy draft; final terms still require confirmation."}</p>}
+              {profile?.documents.terms[locale].sections.map((section,i)=><section key={i} className="space-y-2"><h3 className="font-semibold">{section.heading}</h3><p>{section.text}</p></section>)}
+              <Link className="underline" target="_blank" href="/terms">{locale==="id"?"Buka halaman lengkap":"Open full page"}</Link>
             </div>
             <div className="p-3 border-t border-zinc-800 flex justify-end">
               <button
@@ -1130,8 +1088,7 @@ export default function AuthPage() {
                 onClick={() => setShowTermsModal(false)}
                 className="px-4 py-1.5 rounded-lg bg-emerald-500 text-zinc-950 font-semibold text-xs hover:bg-emerald-400"
               >
-                Close
-              </button>
+                {t("Close")}</button>
             </div>
           </div>
         </div>
@@ -1144,7 +1101,7 @@ export default function AuthPage() {
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
               <div className="flex items-center gap-2 text-white font-semibold text-sm">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Privacy Policy</span>
+                <span>{t("Privacy Policy")}</span>
               </div>
               <button
                 type="button"
@@ -1155,18 +1112,9 @@ export default function AuthPage() {
               </button>
             </div>
             <div className="p-4 overflow-y-auto text-xs text-zinc-300 space-y-3 leading-relaxed">
-              <p className="font-medium text-zinc-100">1. Personal Information Collection</p>
-              <p>
-                We collect your contact information (email address and phone number) and delivery address solely to process purchases, fulfill deliveries, and coordinate technical warranty assistance.
-              </p>
-              <p className="font-medium text-zinc-100">2. Data Security &amp; Encryption</p>
-              <p>
-                Your account credentials and shipping coordinates are protected using industry-standard encryption protocols. We do not sell or lease your personal information to third-party marketing brokers.
-              </p>
-              <p className="font-medium text-zinc-100">3. Marketing Communication Rights</p>
-              <p>
-                You may opt out of promotional newsletters and restock alerts at any time through your account preferences dashboard or by clicking the unsubscribe link in our email communications.
-              </p>
+              {profile?.status!=="published"&&<p role="status">{locale==="id"?"Draf kebijakan awal; ketentuan akhir masih perlu dikonfirmasi.":"Starter policy draft; final terms still require confirmation."}</p>}
+              {profile?.documents.privacy[locale].sections.map((section,i)=><section key={i} className="space-y-2"><h3 className="font-semibold">{section.heading}</h3><p>{section.text}</p></section>)}
+              <Link className="underline" target="_blank" href="/privacy">{locale==="id"?"Buka halaman lengkap":"Open full page"}</Link>
             </div>
             <div className="p-3 border-t border-zinc-800 flex justify-end">
               <button
@@ -1174,8 +1122,7 @@ export default function AuthPage() {
                 onClick={() => setShowPrivacyModal(false)}
                 className="px-4 py-1.5 rounded-lg bg-emerald-500 text-zinc-950 font-semibold text-xs hover:bg-emerald-400"
               >
-                Close
-              </button>
+                {t("Close")}</button>
             </div>
           </div>
         </div>

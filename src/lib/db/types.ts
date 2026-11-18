@@ -201,6 +201,7 @@ export interface CustomBuild {
 
 // 6. Orders Table
 export interface Order {
+  financial_snapshot?: import("@/lib/checkout/financials").FinancialSnapshot | null;
   id: string;
   order_number: string;
   customer_id?: string | null;
@@ -239,10 +240,14 @@ export interface Order {
   created_at?: string;
   updated_at?: string;
   paid_at?: string | null;
+  shipping_tax_amount?: number;
 }
 
 // 7. Order Items Table
 export interface OrderItem {
+  checkout_metadata?: Record<string, any> | null;
+  discount_snapshot?: number;
+  gross_total_snapshot?: number;
   id: string;
   order_id: string;
   product_id?: string | null;
@@ -261,6 +266,7 @@ export interface OrderItem {
 
 // 7b. Product Variants Table
 export interface ProductVariantRow {
+  shipping?: {weight_grams:number;dimensions_cm:{length:number;width:number;height:number};handling:"standard"|"fragile"}|null;
   id: string;
   product_id: string;
   sku: string;
@@ -316,6 +322,7 @@ export interface InventoryReservationRow {
 
 // 7e. Multi-Carrier Fulfillment Table
 export interface FulfillmentRow {
+  package_snapshot?: Record<string,any>|null;
   id: string;
   order_id: string;
   fulfillment_number: string;
@@ -359,6 +366,7 @@ export interface ReturnRequestRow {
 
 export interface RefundRow {
   id: string;
+  operation_id?: string | null;
   refund_number: string;
   order_id: string;
   return_request_id?: string | null;
@@ -421,6 +429,8 @@ export interface AdminAuditLogRow {
 // 8. Customer Profiles Table
 export interface CustomerProfileRow {
   id: string;
+  user_id?: string | null;
+  whatsapp_updates?: boolean;
   email: string;
   full_name: string;
   phone: string;
@@ -537,6 +547,7 @@ export interface PromotionValidationParams {
   subtotal: number;
   shippingFee?: number;
   items?: Array<{
+    sku?: string;
     id?: string;
     product_id?: string;
     category?: string;
@@ -550,6 +561,7 @@ export interface PromotionValidationParams {
 }
 
 export interface PromotionValidationResult {
+  eligibleLineAmounts?: number[];
   valid: boolean;
   discountAmount: number;
   discountType?: PromotionDiscountType;
@@ -607,6 +619,8 @@ export interface WishlistItemRow {
 
 // 17. Back-in-Stock Notifications Table (CUST-01)
 export interface StockNotificationRow {
+  owner_id?: string|null;
+  verified_contact?: boolean;
   id: string;
   product_id: string;
   variant_id?: string | null;

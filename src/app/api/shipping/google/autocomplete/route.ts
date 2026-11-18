@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { isDemoMode } from "@/lib/runtime/environment";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
 import { biteship, SEED_AREAS } from "@/lib/shipping/biteship";
 import { BiteshipArea } from "@/lib/shipping/types";
@@ -7,7 +11,7 @@ export const dynamic = "force-dynamic";
 const GOOGLE_API_KEY =
   process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-export async function GET(req: NextRequest) {
+ async function protectedGET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const input = (searchParams.get("input") || searchParams.get("query") || "").trim();
@@ -16,6 +20,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, predictions: [] });
     }
 
+    if(input.length>120)return NextResponse.json({success:false,error:"Search is too long."},{status:400});
     const predictions: Array<{
       place_id: string;
       description: string;
@@ -27,6 +32,7 @@ export async function GET(req: NextRequest) {
       lng?: number;
       subdistrict?: string;
       city?: string;
+      province?: string;
       postalCode?: string;
       areaId?: string;
     }> = [];
@@ -61,7 +67,7 @@ export async function GET(req: NextRequest) {
           }
         }
       } catch (googleErr) {
-        console.warn("[GOOGLE PLACES AUTOCOMPLETE ERROR] Falling back to live geocoders:", googleErr);
+        safeFailure();
       }
     }
 
@@ -108,7 +114,7 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch (osmErr) {
-      console.warn("Photon geocoder search error:", osmErr);
+      safeFailure();
     }
 
     // 3. Query Biteship Maps API for subdistricts
@@ -126,12 +132,13 @@ export async function GET(req: NextRequest) {
             areaId: a.id,
             subdistrict: a.administrative_division_level_3_name,
             city: a.administrative_division_level_2_name,
+            province:a.administrative_division_level_1_name,
             postalCode: String(a.postal_code),
           });
         }
       });
     } catch (bErr) {
-      console.warn("Biteship areas query error:", bErr);
+      safeFailure();
     }
 
     // 4. Also check local seed database
@@ -166,10 +173,13 @@ export async function GET(req: NextRequest) {
       predictions: predictions.slice(0, 10),
     });
   } catch (err: any) {
-    console.error("Autocomplete API handler error:", err);
+    const databaseFailure = databaseFailureResponse(err);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: err.message || "Failed to process autocomplete" },
+      { success: false, error: "Failed to process autocomplete" },
       { status: 500 }
     );
   }
 }
+export const GET = withApiProtection(protectedGET);

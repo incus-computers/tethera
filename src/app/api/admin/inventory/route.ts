@@ -1,3 +1,9 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { connectedPage } from "@/lib/db/collectionPage";
+import { pageInput, pagination, queryText } from "@/lib/db/pagination";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
@@ -26,9 +32,9 @@ const VALID_REASON_CODES = [
 type ReasonCode = (typeof VALID_REASON_CODES)[number];
 
 // GET: Retrieve warehouse inventory with low stock alerts and ledger trail
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "inventory:read");
+    const perm = await requireAdminPermission(req, "inventory:read");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -42,13 +48,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const lowStockOnly = searchParams.get("lowStockOnly") === "true";
     const productId = searchParams.get("productId");
-    const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") || 50)));
+    const {page,limit}=pageInput(searchParams.get("page"),searchParams.get("limit"));
+    queryText(productId,100);
+    const connected=await connectedPage("inventory",{productId:productId||"",lowStockOnly},page,limit);
+    if(connected){
+      const movements=productId?await db.inventoryLedger.getMovementsByProduct(productId,limit):await db.inventoryLedger.getRecentMovements(limit);
+      return NextResponse.json({success:true,items:connected.rows,movements,summary:connected.stats,pagination:connected.pagination});
+    }
 
     const [allProducts, allInventory, recentMovements] = await Promise.all([
       db.products.findMany({}),
       db.inventory.findMany({ store_id: FLAGSHIP_STORE_ID }),
       productId
-        ? db.inventoryLedger.getMovementsByProduct(productId)
+        ? db.inventoryLedger.getMovementsByProduct(productId,limit)
         : db.inventoryLedger.getRecentMovements(limit),
     ]);
 
@@ -106,23 +118,26 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      items: enrichedItems,
+      items: enrichedItems.slice((page-1)*limit,page*limit),
+      pagination:pagination(enrichedItems.length,page,limit),
       movements: recentMovements,
       summary,
     });
   } catch (error: any) {
-    console.error("[ADMIN INVENTORY GET ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to load inventory." },
+      { success: false, error: "Failed to load inventory." },
       { status: 500 }
     );
   }
 }
 
 // POST: Adjust stock on hand or low stock threshold with immutable ledger recording
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "inventory:adjust");
+    const perm = await requireAdminPermission(req, "inventory:adjust");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -247,9 +262,14 @@ export async function POST(req: NextRequest) {
       ledgerEntry: latestMovement,
     });
   } catch (error: any) {
-    console.error("[ADMIN INVENTORY POST ERROR]:", error);
-    return internalServerErrorProblem(error.message || "Failed to update inventory.", {
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Failed to update inventory.", {
       instance: req.nextUrl.pathname,
     });
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));

@@ -573,7 +573,7 @@ export function FluxPromotionsTab({
                 Discount Promotions &amp; Coupons
               </h2>
               <p className="text-xs text-slate-400">
-                Manage tiered promotional coupon codes, date schedules, usage limits, and redemption metrics
+                Manage tiered promotional coupon codes, date schedules, usage limits, and reserved/paid usage metrics
               </p>
             </div>
 
@@ -614,7 +614,7 @@ export function FluxPromotionsTab({
                 } else if (endsAt && new Date(endsAt) < now) {
                   statusLabel = "Expired";
                   statusColor = "bg-amber-500/10 text-amber-400 border-amber-500/20";
-                } else if (maxUses !== undefined && usageCount >= maxUses) {
+                } else if (maxUses != null && usageCount >= maxUses) {
                   statusLabel = "Depleted";
                   statusColor = "bg-rose-500/10 text-rose-400 border-rose-500/20";
                 }
@@ -623,7 +623,7 @@ export function FluxPromotionsTab({
                 let discountText = "";
                 if (p.discount_type === "percentage") {
                   discountText = `${p.discount_value}% Off`;
-                  if (p.max_discount) {
+                  if (p.max_discount != null) {
                     discountText += ` (Cap: ${formatRupiah(p.max_discount)})`;
                   }
                 } else if (p.discount_type === "fixed_amount") {

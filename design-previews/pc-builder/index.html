@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Incus PC Builder — Design concepts</title>
+  <link rel="stylesheet" href="preview.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <div class="concept-bar">
+    <a class="concept-brand" href="?view=guided">INCUS <span>DESIGN LAB / 01</span></a>
+    <nav aria-label="Choose a design concept">
+      <button data-view="guided">A <span>Guided</span></button>
+      <button data-view="studio">B <span>Studio</span></button>
+      <button data-view="workbench">C <span>Workbench</span></button>
+    </nav>
+    <a class="concept-note" href="refinements.html">Explore 3 more builder ideas →</a>
+  </div>
+  <div id="app"></div>
+  <div class="toast" role="status" aria-live="polite"></div>
+  <dialog id="review"><div id="review-content"></div><button class="button primary" id="close-review">Back to designing</button></dialog>
+</body>
+</html>

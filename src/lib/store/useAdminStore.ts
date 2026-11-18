@@ -1,112 +1,33 @@
+"use client";
 import { create } from "zustand";
-
-export type AdminRole = "admin" | "superadmin";
-
-export interface AdminUser {
-  id: string;
-  username: string;
-  email: string;
-  name: string;
-  role: AdminRole;
-  clearanceLevel: number;
-}
-
+export type AdminRole="SUPER_ADMIN"|"CATALOG_MANAGER"|"FULFILLMENT_OPERATOR"|"SUPPORT_AGENT";
+export interface AdminUser {id:string;username:string;email:string;name:string;role:AdminRole;clearanceLevel:number;}
 interface AdminState {
-  user: AdminUser | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  isSuperAdmin: boolean;
-  isLoading: boolean;
-  error: string | null;
-
-  login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  initSession: () => void;
-  clearError: () => void;
+ user:AdminUser|null;token:null;isAuthenticated:boolean;isSuperAdmin:boolean;isLoading:boolean;error:string|null;
+ login:(identifier:string,password:string,totpCode?:string)=>Promise<{success:boolean;error?:string}>;
+ logout:()=>Promise<void>;initSession:()=>Promise<void>;clearError:()=>void;
 }
-
-const STORAGE_KEY = "tethera_admin_clearance_session";
-
-export const useAdminStore = create<AdminState>((set, get) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  isSuperAdmin: false,
-  isLoading: false,
-  error: null,
-
-  initSession: () => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const data = JSON.parse(stored);
-        if (data?.user && data?.token) {
-          set({
-            user: data.user,
-            token: data.token,
-            isAuthenticated: true,
-            isSuperAdmin: data.user.role === "superadmin",
-          });
-        }
-      }
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  },
-
-  login: async (identifier: string, password: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const res = await fetch("/api/admin/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        const err = data.error || "Administrative authentication failed.";
-        set({ isLoading: false, error: err });
-        return { success: false, error: err };
-      }
-
-      const user: AdminUser = data.user;
-      const token: string = data.token;
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ user, token }));
-      }
-
-      set({
-        user,
-        token,
-        isAuthenticated: true,
-        isSuperAdmin: user.role === "superadmin",
-        isLoading: false,
-        error: null,
-      });
-
-      return { success: true };
-    } catch (err: any) {
-      const errorMsg = err.message || "Network error while connecting to admin gateway.";
-      set({ isLoading: false, error: errorMsg });
-      return { success: false, error: errorMsg };
-    }
-  },
-
-  logout: () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    set({
-      user: null,
-      token: null,
-      isAuthenticated: false,
-      isSuperAdmin: false,
-      error: null,
-    });
-  },
-
-  clearError: () => set({ error: null }),
+let epoch=0;
+export const useAdminStore=create<AdminState>(set=>({
+ user:null,token:null,isAuthenticated:false,isSuperAdmin:false,isLoading:false,error:null,
+ initSession:async()=>{
+  const current=epoch;localStorage.removeItem("tethera_admin_clearance_session");
+  try{const response=await fetch("/api/admin/auth",{cache:"no-store"});const data=await response.json();
+   if(current===epoch)set({user:response.ok?data.user:null,isAuthenticated:response.ok,isSuperAdmin:response.ok&&data.user.role==="SUPER_ADMIN"});
+  }catch{if(current===epoch)set({user:null,isAuthenticated:false,isSuperAdmin:false});}
+ },
+ login:async(identifier,password,totpCode)=>{
+  ++epoch;set({isLoading:true,error:null});
+  try{const response=await fetch("/api/admin/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({identifier,password,totpCode})});const data=await response.json();if(!response.ok)throw new Error(data.error);
+   set({user:data.user,isAuthenticated:true,isSuperAdmin:data.user.role==="SUPER_ADMIN",isLoading:false});return {success:true};
+  }catch(error){const message=error instanceof Error?error.message:"Sign-in failed.";set({user:null,isAuthenticated:false,isSuperAdmin:false,isLoading:false,error:message});return {success:false,error:message};}
+ },
+ logout:async()=>{
+  ++epoch;
+  const response=await fetch("/api/admin/auth",{method:"DELETE"});
+  if(!response.ok){set({error:"Could not sign out. Please retry."});return;}
+  localStorage.removeItem("tethera_admin_clearance_session");
+  set({user:null,isAuthenticated:false,isSuperAdmin:false,error:null});
+ },
+ clearError:()=>set({error:null})
 }));

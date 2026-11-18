@@ -1,3 +1,5 @@
+import { randomBytes } from "crypto";
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 
@@ -22,8 +24,8 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       const token = generateGuestTrackingToken(orderNumber, customerEmail);
       expect(typeof token).toBe("string");
       expect(token.startsWith(orderNumber)).toBe(true);
-      expect(token.split(".").length).toBe(2);
-      expect(token.split(".")[1].length).toBe(32);
+      expect(token.split(".").length).toBe(3);
+      expect(token.split(".")[2].length).toBe(64);
     });
 
     it("validates authentic token successfully", () => {
@@ -65,7 +67,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       const targetOrder = await db.orders.findById("ord-1001");
       expect(targetOrder).toBeDefined();
 
-      const invalidToken = `${targetOrder!.order_number}.00000000000000000000000000000000`;
+      const invalidToken = `${targetOrder!.order_number}.${Math.floor(Date.now()/1000)+300}.`+"0".repeat(64);
       const req = new NextRequest(
         `http://localhost:3000/api/orders/track?token=${encodeURIComponent(invalidToken)}`,
         { method: "GET" }
@@ -107,6 +109,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
 
       const req = new NextRequest("http://localhost:3000/api/orders/track", {
         method: "POST",
+        headers:{cookie:fixtureCookie("alex.gamer@example.com")},
         body: JSON.stringify({
           orderNumber: targetOrder!.order_number,
           email: targetOrder!.customer_email,
@@ -133,19 +136,19 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       });
 
       const res = await trackPOST(req);
-      expect(res.status).toBe(401);
+      expect(res.status).toBe(404);
       const json = await res.json();
-      expect(json.error).toMatch(/does not match/i);
+      expect(json.error).toMatch(/not found/i);
     });
   });
 
   describe("Persistent Hybrid Cart Repository & API (/api/cart)", () => {
-    const testGuestToken = "gst_test_session_123456";
+    const testGuestToken = "gst_"+randomBytes(32).toString("base64url");
 
     it("initializes an active cart and returns hydrated item schema via GET /api/cart", async () => {
       const req = new NextRequest("http://localhost:3000/api/cart", {
         method: "GET",
-        headers: { "x-cart-token": testGuestToken },
+        headers: { cookie: "tethera_cart_token="+testGuestToken },
       });
 
       const res = await cartGET(req);
@@ -160,7 +163,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
     it("adds item and hydrates with real-time catalog price and stock via POST /api/cart", async () => {
       const req = new NextRequest("http://localhost:3000/api/cart", {
         method: "POST",
-        headers: { "x-cart-token": testGuestToken },
+        headers: { cookie: "tethera_cart_token="+testGuestToken },
         body: JSON.stringify({
           productId: "cpu-1",
           quantity: 2,
@@ -185,7 +188,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       // First fetch to get cart item id
       const getReq = new NextRequest("http://localhost:3000/api/cart", {
         method: "GET",
-        headers: { "x-cart-token": testGuestToken },
+        headers: { cookie: "tethera_cart_token="+testGuestToken },
       });
       const getRes = await cartGET(getReq);
       const getJson = await getRes.json();
@@ -194,7 +197,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       // Update quantity to 3
       const updateReq = new NextRequest("http://localhost:3000/api/cart", {
         method: "POST",
-        headers: { "x-cart-token": testGuestToken },
+        headers: { cookie: "tethera_cart_token="+testGuestToken },
         body: JSON.stringify({
           cartItemId,
           quantity: 3,
@@ -210,7 +213,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
     it("removes an item via DELETE /api/cart", async () => {
       const getReq = new NextRequest("http://localhost:3000/api/cart", {
         method: "GET",
-        headers: { "x-cart-token": testGuestToken },
+        headers: { cookie: "tethera_cart_token="+testGuestToken },
       });
       const getRes = await cartGET(getReq);
       const getJson = await getRes.json();
@@ -218,7 +221,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
 
       const deleteReq = new NextRequest("http://localhost:3000/api/cart", {
         method: "DELETE",
-        headers: { "x-cart-token": testGuestToken },
+        headers: { cookie: "tethera_cart_token="+testGuestToken },
         body: JSON.stringify({ cartItemId }),
       });
 
@@ -232,13 +235,13 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
 
   describe("Cart Merging on Customer Login (/api/cart/merge)", () => {
     it("merges anonymous guest items into user account cart", async () => {
-      const guestToken = "gst_merge_source_999999";
+      const guestToken = "gst_"+randomBytes(32).toString("base64url");
       const testUserId = "usr_authenticated_customer_777";
 
       // 1. Add item to guest cart
       const guestAddReq = new NextRequest("http://localhost:3000/api/cart", {
         method: "POST",
-        headers: { "x-cart-token": guestToken },
+        headers: { cookie:"tethera_cart_token="+guestToken },
         body: JSON.stringify({
           productId: "cpu-2",
           quantity: 1,
@@ -249,7 +252,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       // 2. Add different item to user cart
       const userAddReq = new NextRequest("http://localhost:3000/api/cart", {
         method: "POST",
-        headers: { authorization: `Bearer ${testUserId}` },
+        headers: { cookie:fixtureCookie("alex.gamer@example.com") },
         body: JSON.stringify({
           productId: "gpu-1",
           quantity: 1,
@@ -260,6 +263,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       // 3. Trigger cart merge
       const mergeReq = new NextRequest("http://localhost:3000/api/cart/merge", {
         method: "POST",
+        headers:{cookie:"tethera_cart_token="+guestToken+"; "+fixtureCookie("alex.gamer@example.com")},
         body: JSON.stringify({
           anonymousToken: guestToken,
           userId: testUserId,
@@ -280,7 +284,7 @@ describe("Phase 3 Milestone 1: Hybrid Cart & Guest Order Tracking", () => {
       // Guest cart should now be empty and merged
       const guestCheckReq = new NextRequest("http://localhost:3000/api/cart", {
         method: "GET",
-        headers: { "x-cart-token": guestToken },
+        headers: { cookie:"tethera_cart_token="+guestToken },
       });
       const guestCheckRes = await cartGET(guestCheckReq);
       const guestCheckJson = await guestCheckRes.json();

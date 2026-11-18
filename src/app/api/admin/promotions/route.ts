@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { promotionClaims } from "@/lib/checkout/promotionClaims";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
@@ -11,9 +15,9 @@ import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "promotions:read");
+    const perm = await requireAdminPermission(req, "promotions:read");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -27,14 +31,16 @@ export async function GET(req: NextRequest) {
     const promotions = await db.promotions.findMany();
     return NextResponse.json({ success: true, count: promotions.length, promotions });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // POST: Create promotion (requires promotions:write permission)
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "promotions:write");
+    const perm = await requireAdminPermission(req, "promotions:write");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -93,9 +99,9 @@ export async function POST(req: NextRequest) {
 
     const resolvedStartsAt = starts_at || start_date || new Date().toISOString();
     const resolvedEndsAt = ends_at || end_date || new Date(Date.now() + 86400000 * 30).toISOString();
-    const resolvedMaxUses = max_global_uses !== undefined
+    const resolvedMaxUses = max_global_uses != null
       ? Number(max_global_uses)
-      : usage_limit !== undefined
+      : usage_limit != null
       ? Number(usage_limit)
       : undefined;
 
@@ -106,8 +112,8 @@ export async function POST(req: NextRequest) {
       description: description || "",
       discount_type: normType,
       discount_value: numDiscountValue,
-      min_spend: min_spend ? Number(min_spend) : undefined,
-      max_discount: max_discount ? Number(max_discount) : undefined,
+      min_spend: min_spend != null ? Number(min_spend) : undefined,
+      max_discount: max_discount != null ? Number(max_discount) : undefined,
       is_active: true,
       start_date: resolvedStartsAt,
       starts_at: resolvedStartsAt,
@@ -116,7 +122,7 @@ export async function POST(req: NextRequest) {
       usage_count: 0,
       usage_limit: resolvedMaxUses,
       max_global_uses: resolvedMaxUses,
-      max_uses_per_user: max_uses_per_user ? Number(max_uses_per_user) : undefined,
+      max_uses_per_user: max_uses_per_user != null ? Number(max_uses_per_user) : undefined,
       total_discount_given: 0,
       eligible_categories: Array.isArray(eligible_categories) ? eligible_categories : undefined,
       eligible_product_ids: Array.isArray(eligible_product_ids) ? eligible_product_ids : undefined,
@@ -147,14 +153,16 @@ export async function POST(req: NextRequest) {
       promotion: newPromo,
     });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // PUT: Update promotion (requires promotions:write permission)
-export async function PUT(req: NextRequest) {
+async function handlePUT(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "promotions:write");
+    const perm = await requireAdminPermission(req, "promotions:write");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -167,6 +175,7 @@ export async function PUT(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const { id, ...updates } = body;
+    if(["usage_count","total_discount_given"].some(key=>Object.prototype.hasOwnProperty.call(updates,key)))return badRequestProblem("Promotion usage is maintained by checkout and payment transitions.",{instance:req.nextUrl.pathname});
 
     if (!id) {
       return badRequestProblem("Promotion ID is required.", {
@@ -188,6 +197,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const existing = await db.promotions.findById(id);
+    if(existing && updates.code!==undefined && updates.code!==existing.code && (existing.usage_count>0 || await promotionClaims.findOne({promotion_id:id}) || await db.orders.findOne({promo_code:existing.code})))return NextResponse.json({success:false,error:"A promotion with order history cannot be renamed. Create a new campaign instead."},{status:409});
     const updated = await db.promotions.update(id, updates);
 
     // Record immutable audit log
@@ -213,14 +223,16 @@ export async function PUT(req: NextRequest) {
       promotion: updated,
     });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // DELETE: Delete promotion (requires promotions:write permission)
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "promotions:write");
+    const perm = await requireAdminPermission(req, "promotions:write");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -241,6 +253,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const existing = await db.promotions.findById(id);
+    if(existing && (existing.usage_count>0 || await promotionClaims.findOne({promotion_id:id}) || await db.orders.findOne({promo_code:existing.code})))return NextResponse.json({success:false,error:"This promotion has order history. Deactivate it to preserve existing claims."},{status:409});
     const success = await db.promotions.delete(id);
 
     // Record immutable audit log
@@ -265,6 +278,13 @@ export async function DELETE(req: NextRequest) {
       message: "Promotion deleted successfully.",
     });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));
+export const PUT = withApiProtection(withAccess(handlePUT));
+export const DELETE = withApiProtection(withAccess(handleDELETE));

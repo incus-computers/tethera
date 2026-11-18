@@ -1,3 +1,9 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { readAdminProductPage } from "@/lib/db/collectionQueries";
+import { normalizeProduct } from "@/lib/db/repositories/products.repository";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
@@ -14,9 +20,9 @@ import { safeRevalidate } from "@/lib/cache/revalidate";
 export const dynamic = "force-dynamic";
 
 // GET: Fetch all products with inventory levels for admin
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "products:read");
+    const perm = await requireAdminPermission(req, "products:read");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -27,32 +33,21 @@ export async function GET(req: NextRequest) {
           });
     }
 
-    const products = await db.products.findMany();
-    const inventory = await db.inventory.findMany();
-
-    const invMap = new Map(inventory.map((inv) => [inv.product_id, inv]));
-
-    const enriched = products.map((prod) => {
-      const inv = invMap.get(prod.id);
-      return {
-        ...prod,
-        stock_on_hand: inv ? inv.stock_on_hand : 10,
-        stock_reserved: inv ? inv.stock_reserved : 0,
-        stock_available: inv ? inv.stock_on_hand - inv.stock_reserved : 10,
-      };
-    });
-
-    return NextResponse.json({ success: true, count: enriched.length, products: enriched });
+    const q=req.nextUrl.searchParams;
+    const result=await readAdminProductPage({search:q.get("search")||undefined,sort:q.get("sort")||undefined},q.get("page"),q.get("limit"));
+    return NextResponse.json({success:true,count:result.pagination.total,products:result.rows.map(normalizeProduct),pagination:result.pagination});
   } catch (error: any) {
-    console.error("[ADMIN PRODUCTS GET ERROR]:", error);
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // POST: Add new product (requires products:write permission)
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "products:write");
+    const perm = await requireAdminPermission(req, "products:write");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -144,15 +139,17 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("[ADMIN PRODUCTS POST ERROR]:", error);
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // PUT: Update any element of a product (requires products:write permission)
-export async function PUT(req: NextRequest) {
+async function handlePUT(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "products:write");
+    const perm = await requireAdminPermission(req, "products:write");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -197,6 +194,11 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    if(updates.specs && typeof updates.specs==="object") {
+      for(const key of ["shipping","assembled_shipping"]){
+        if(existingProduct.specs?.[key]!==undefined)updates.specs[key]=existingProduct.specs[key];else delete updates.specs[key];
+      }
+    }
     const updatedProduct = await db.products.update(id, updates);
 
     // Update stock if explicitly passed
@@ -238,15 +240,17 @@ export async function PUT(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("[ADMIN PRODUCTS PUT ERROR]:", error);
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // DELETE: Delete product (requires products:delete permission)
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "products:delete");
+    const perm = await requireAdminPermission(req, "products:delete");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -301,7 +305,14 @@ export async function DELETE(req: NextRequest) {
       message: `Product '${id}' successfully removed.`,
     });
   } catch (error: any) {
-    console.error("[ADMIN PRODUCTS DELETE ERROR]:", error);
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));
+export const PUT = withApiProtection(withAccess(handlePUT));
+export const DELETE = withApiProtection(withAccess(handleDELETE));

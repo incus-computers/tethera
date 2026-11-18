@@ -1,3 +1,8 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { publicCatalogProduct } from "@/lib/api/publicCatalog";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
@@ -35,7 +40,7 @@ function resolveWishlistSession(req: NextRequest, explicitToken?: string, explic
  * GET /api/wishlist
  * Returns customer or session wishlist hydrated with live product pricing, specs, and stock
  */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
     const { sessionToken, isNewToken, userId } = resolveWishlistSession(req);
 
@@ -49,14 +54,14 @@ export async function GET(req: NextRequest) {
 
         const stockCount = inventory
           ? Math.max(0, inventory.stock_on_hand - inventory.stock_reserved)
-          : 10;
-        const inStock = inventory ? stockCount > 0 : true;
+          : 0;
+        const inStock = inventory ? stockCount > 0 : false;
 
         return {
           ...item,
-          product: product
+          product: product?.is_active
             ? {
-                ...product,
+                ...publicCatalogProduct(product),
                 stockCount,
                 inStock,
               }
@@ -85,9 +90,11 @@ export async function GET(req: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error("[WISHLIST GET ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to load wishlist." },
+      { success: false, error: "Failed to load wishlist." },
       { status: 500 }
     );
   }
@@ -97,7 +104,7 @@ export async function GET(req: NextRequest) {
  * POST /api/wishlist
  * Adds an item to the user or anonymous session wishlist
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const { productId, sessionToken: explicitToken, userId: explicitUser } = body;
@@ -135,9 +142,11 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error("[WISHLIST POST ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to add item to wishlist." },
+      { success: false, error: "Failed to add item to wishlist." },
       { status: 500 }
     );
   }
@@ -147,7 +156,7 @@ export async function POST(req: NextRequest) {
  * DELETE /api/wishlist
  * Removes an item from the user or session wishlist
  */
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const productId = body.productId || req.nextUrl.searchParams.get("productId");
@@ -174,10 +183,16 @@ export async function DELETE(req: NextRequest) {
       removed,
     });
   } catch (error: any) {
-    console.error("[WISHLIST DELETE ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to remove item from wishlist." },
+      { success: false, error: "Failed to remove item from wishlist." },
       { status: 500 }
     );
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));
+export const DELETE = withApiProtection(withAccess(handleDELETE));

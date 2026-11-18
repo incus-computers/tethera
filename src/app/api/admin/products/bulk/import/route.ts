@@ -1,3 +1,7 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdminPermission } from "@/lib/auth/rbac";
@@ -27,9 +31,9 @@ const SLOT_MAP: Record<string, PcBuilderSlot> = {
   "operating-systems": "os",
 };
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
-    const perm = requireAdminPermission(req, "products:write");
+    const perm = await requireAdminPermission(req, "products:write");
     if (!perm.authorized) {
       return perm.status === 401
         ? unauthorizedProblem(perm.error || "Administrative authentication required.", {
@@ -255,9 +259,13 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error("[ADMIN BULK CSV IMPORT ERROR]:", error);
-    return internalServerErrorProblem(error.message || "Failed to process bulk CSV import.", {
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
+    return internalServerErrorProblem("Failed to process bulk CSV import.", {
       instance: req.nextUrl.pathname,
     });
   }
 }
+
+export const POST = withApiProtection(withAccess(handlePOST));

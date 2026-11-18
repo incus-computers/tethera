@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,6 @@ import {
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useLocationStore } from "@/lib/store/useLocationStore";
 import { useAuthStore } from "@/lib/store/useAuthStore";
-import { useHeaderStore } from "@/lib/store/useHeaderStore";
 import { formatRupiah } from "@/lib/utils/currency";
 import {
   MIDTRANS_PAYMENT_METHODS,
@@ -48,14 +47,18 @@ import {
 } from "@/components/shipping/CourierLogo";
 import { ShippingRateOption } from "@/lib/shipping/types";
 import { IncusLogo } from "@/components/navigation/IncusLogo";
-import { calculateInclusiveTax, DEFAULT_PPN_RATE } from "@/lib/tax/taxCalculation";
+import { FinancialSummary } from "@/components/orders/FinancialSummary";
+import type { FinancialSnapshot } from "@/lib/checkout/financials";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 type FulfillmentTier = "click_and_collect" | "standard" | "express";
 
 export default function CheckoutPage() {
+  const {t,locale,profile,refreshProfile}=useTranslation();
+  const [policyAcknowledgement,setPolicyAcknowledgement]=useState<{accepted:true;version:string;hash:string;locale:"id"|"en"}|null>(null);
+  const acceptedPolicies=Boolean(profile&&policyAcknowledgement&&policyAcknowledgement.version===profile.policyVersion&&policyAcknowledgement.hash===profile.policyHash&&policyAcknowledgement.locale===locale);
   const router = useRouter();
-  const { user, isAuthenticated, login, logout } = useAuthStore();
-  const { isCategoryBarVisible } = useHeaderStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const {
     items,
     customPCs,
@@ -71,11 +74,6 @@ export default function CheckoutPage() {
 
   // Contact State
   const [contactEmailOrPhone, setContactEmailOrPhone] = useState("");
-  const [newsOptIn, setNewsOptIn] = useState(true);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Delivery & Address State
   const [isEditingSavedAddress, setIsEditingSavedAddress] = useState(false);
@@ -84,9 +82,9 @@ export default function CheckoutPage() {
   const [streetAddress, setStreetAddress] = useState("");
   const [apartmentUnit, setApartmentUnit] = useState("");
   const [subdistrict, setSubdistrict] = useState("");
-  const [city, setCity] = useState("Jakarta Pusat");
-  const [province, setProvince] = useState("DKI Jakarta");
-  const [postalCode, setPostalCode] = useState("10730");
+  const [city, setCity] = useState("");
+  const [province, setProvince] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [saveInfoForNextTime, setSaveInfoForNextTime] = useState(true);
   const [deliveryNotes, setDeliveryNotes] = useState("");
@@ -116,6 +114,28 @@ export default function CheckoutPage() {
   } | null>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const [discountError, setDiscountError] = useState<string | null>(null);
+
+  const [paymentDemo,setPaymentDemo]=useState(false);
+  const [serverRates,setServerRates]=useState<ShippingRateOption[]|null>(null),[loadingRates,setLoadingRates]=useState(false),[rateError,setRateError]=useState("");
+  const shippingContext=JSON.stringify({items,customPCs,streetAddress,apartmentUnit,subdistrict,city,province,postalCode,deliveryNotes,firstName,lastName,recipientPhone,contactEmailOrPhone});
+  const shippingContextRef=useRef(shippingContext);shippingContextRef.current=shippingContext;
+  useEffect(()=>{setServerRates(null);},[shippingContext]);
+  const fetchShippingOptions=async()=>{
+    const signature=shippingContext;setLoadingRates(true);setRateError("");
+    try{
+      const session=await fetch("/api/checkout/session");if(!session.ok)throw new Error("Could not initialize checkout.");
+      const response=await fetch("/api/checkout/shipping-rates",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customer:{name:`${firstName} ${lastName}`.trim()||user?.fullName,email:contactEmailOrPhone.includes("@")?contactEmailOrPhone:user?.email||"",phone:recipientPhone||(!contactEmailOrPhone.includes("@")?contactEmailOrPhone:"")},fulfillmentType:"delivery",shippingAddress:{street:streetAddress,unit:apartmentUnit,subdistrict,city,province,postalCode,deliveryNotes},items,customPCs})});
+      const result=await response.json();if(!response.ok||!result.success)throw new Error(result.error||"Could not retrieve insured rates.");
+      if(shippingContextRef.current!==signature)throw new Error("Address or basket changed. Load rates again.");
+      if(!result.rates.length)throw new Error("No insured pickup service is available for these packages and destination.");
+      setServerRates(result.rates);
+      const standard=result.rates.find((r:ShippingRateOption)=>!isExpressRate(r)),express=result.rates.find((r:ShippingRateOption)=>isExpressRate(r));
+      setSelectedStandardRate(standard||result.rates[0]);setSelectedExpressRate(express||result.rates[0]);
+      setSelectedFulfillment(standard?"standard":"express");
+    }catch(e:any){setServerRates(null);setRateError(e.message);}finally{setLoadingRates(false);}
+  };
+
+  useEffect(()=>{fetch("/api/auth/environment").then(r=>r.json()).then(d=>setPaymentDemo(d.demo===true)).catch(()=>{});},[]);
 
   // Payment State
   const [selectedChannel, setSelectedChannel] = useState<MidtransPaymentChannel>("qris");
@@ -147,13 +167,14 @@ export default function CheckoutPage() {
         if (!streetAddress) setStreetAddress(user.address.street || "");
         if (!apartmentUnit) setApartmentUnit(user.address.unit || "");
         if (!subdistrict) setSubdistrict(user.address.subdistrict || "");
-        if (!city) setCity(user.address.city || "Jakarta Pusat");
-        if (!province) setProvince(user.address.province || "DKI Jakarta");
-        if (!postalCode) setPostalCode(user.address.postalCode || "10730");
+        if (!city) setCity(user.address.city || "");
+        if (!province) setProvince(user.address.province || "");
+        if (!postalCode) setPostalCode(user.address.postalCode || "");
       }
     } else if (userLocation) {
       if (userLocation.subdistrict && !subdistrict) setSubdistrict(userLocation.subdistrict);
       if (userLocation.city && !city) setCity(userLocation.city);
+      if (userLocation.province && !province) setProvince(userLocation.province);
       if (userLocation.postalCode && !postalCode) setPostalCode(userLocation.postalCode);
       if (userLocation.address && !streetAddress) setStreetAddress(userLocation.address.split(",")[0]);
     }
@@ -179,18 +200,37 @@ export default function CheckoutPage() {
     selectedFulfillment === "click_and_collect"
       ? 0
       : selectedFulfillment === "standard"
-      ? selectedStandardRate.price
-      : selectedExpressRate.price;
+      ? (!paymentDemo&&!serverRates?0:selectedStandardRate.price)
+      : (!paymentDemo&&!serverRates?0:selectedExpressRate.price);
 
   const discountAmount = useMemo(() => {
     if (!appliedDiscount) return 0;
     if (appliedDiscount.discountType === "free_shipping") {
-      return Math.min(shippingFee, appliedDiscount.amount || shippingFee);
+      return Math.min(shippingFee, appliedDiscount.amount);
     }
     return appliedDiscount.amount;
   }, [appliedDiscount, shippingFee]);
-  const grandTotal = Math.max(0, rawSubtotal + shippingFee - discountAmount);
-  const checkoutTax = useMemo(() => calculateInclusiveTax(rawSubtotal, DEFAULT_PPN_RATE), [rawSubtotal]);
+  const quoteSignature=JSON.stringify({shippingContext,selectedFulfillment,selectedStandardRate,selectedExpressRate,promoCode:appliedDiscount?.code||null,owner:user?.id||"guest"});
+  const quoteSignatureRef=useRef(quoteSignature);quoteSignatureRef.current=quoteSignature;
+  const [verifiedQuote,setVerifiedQuote]=useState<{signature:string;financial:FinancialSnapshot}|null>(null);
+  const [reviewingTotal,setReviewingTotal]=useState(false),[quoteError,setQuoteError]=useState("");
+  const currentQuote=verifiedQuote?.signature===quoteSignature?verifiedQuote.financial:null;
+  const grandTotal = currentQuote?.total??Math.max(0, rawSubtotal + shippingFee - discountAmount);
+  async function requestQuote(code:string|null){
+    const session=await fetch("/api/checkout/session");if(!session.ok)throw new Error("Could not initialize checkout.");
+    const response=await fetch("/api/checkout/quote",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customer:{name:`${firstName} ${lastName}`.trim()||user?.fullName,email:contactEmailOrPhone.includes("@")?contactEmailOrPhone:user?.email||"",phone:recipientPhone||(!contactEmailOrPhone.includes("@")?contactEmailOrPhone:"")},fulfillmentType:selectedFulfillment==="click_and_collect"?"click_and_collect":"delivery",shippingAddress:{street:streetAddress,unit:apartmentUnit,subdistrict,city,province,postalCode,deliveryNotes},items,customPCs,selectedRate:selectedFulfillment==="standard"?selectedStandardRate:selectedFulfillment==="express"?selectedExpressRate:null,promoCode:code})});
+    const data=await response.json();if(!response.ok||!data.success)throw new Error(data.error||data.detail||"Could not verify checkout.");return data;
+  }
+  async function reviewTotal(){
+    const signature=quoteSignature;setReviewingTotal(true);setQuoteError("");
+    try{const data=await requestQuote(appliedDiscount?.code||null);if(quoteSignatureRef.current!==signature)throw new Error("Checkout changed. Review the total again.");setVerifiedQuote({signature,financial:data.financialSnapshot});}catch(err){setQuoteError(err instanceof Error?err.message:"Could not verify total.");}finally{setReviewingTotal(false);}
+  }
+  const quoteSummary=()=><div className="space-y-3 pt-4 border-t border-slate-200 dark:border-zinc-800">
+    {currentQuote?<FinancialSummary order={{financialSnapshot:currentQuote}}/>:<><div className="flex justify-between text-sm"><span>{t("Estimated total")}</span><span>{formatRupiah(grandTotal)}</span></div><p className="text-xs text-slate-500">{t("Complete your contact and fulfillment details to review merchandise, assembly, shipping, discounts and included tax.")}</p></>}
+    <button type="button" onClick={reviewTotal} disabled={reviewingTotal} className="text-xs underline disabled:opacity-50">{reviewingTotal?t("Checking total..."):t("Review current total")}</button>
+    {quoteError&&<p role="alert" className="text-xs text-red-600">{t(quoteError)}</p>}
+  </div>;
+
 
   // Generated Midtrans Payment Details
   const activePaymentDetails: MidtransGeneratedPayment = useMemo(() => {
@@ -231,33 +271,18 @@ export default function CheckoutPage() {
 
     setIsApplyingDiscount(true);
     try {
-      const promoItems = items.map((it) => ({
-        id: it.item.id,
-        quantity: it.quantity,
-        price: it.item.price ?? it.item.retail_price ?? 0,
-        category: it.item.category,
-      }));
+      const signature=quoteSignature;
+      const data=await requestQuote(code);
+      if(quoteSignatureRef.current!==signature)throw new Error("Checkout changed. Apply the code again.");
+      const nextSignature=JSON.stringify({...JSON.parse(signature),promoCode:code});
+      setVerifiedQuote({signature:nextSignature,financial:data.financialSnapshot});
 
-      const res = await fetch("/api/promotions/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code,
-          subtotal: rawSubtotal,
-          shippingFee: selectedFulfillment === "click_and_collect" ? 0 : shippingFee,
-          items: promoItems,
-          customerEmail: contactEmailOrPhone.includes("@") ? contactEmailOrPhone : (user?.email || undefined),
-          customerId: user?.id || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.valid) {
+      if (!data.success) {
         setDiscountError(data.detail || data.message || "Invalid or ineligible discount code.");
       } else {
         setAppliedDiscount({
           code: data.code || code,
-          amount: Number(data.discountAmount || 0),
+          amount: data.discountAmount,
           description: data.message || `Discount code ${data.code || code} applied`,
           discountType: data.discountType,
         });
@@ -282,50 +307,44 @@ export default function CheckoutPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Handle Inline Modal Sign In
-  const handleInlineLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    const res = await login(loginEmail, loginPassword);
-    if (res.success) {
-      setIsLoginModalOpen(false);
-      setLoginEmail("");
-      setLoginPassword("");
-    } else {
-      setLoginError(res.error || "Invalid email or password.");
-    }
-  };
+  const submittingCheckout = useRef(false);
+  const pendingCheckout = useRef<any>(null);
 
   // Final Payment Submission & Order Creation
   const handleCompleteOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingCheckout.current) return;
     setPaymentError(null);
+    if(!profile||!["published","demo"].includes(profile.status)){setPaymentError(t("Store contact details and policies are not yet published. Real ordering is unavailable."));return;}
+    if(!acceptedPolicies){setPaymentError(t("Please read and accept the purchase terms and warranty policy."));return;}
 
     // Validation
     const fullCustomerName = `${firstName} ${lastName}`.trim() || (user ? user.fullName : "");
     if (!fullCustomerName) {
-      setPaymentError("Please provide your recipient name under delivery details.");
+      setPaymentError(t("Please provide your recipient name under delivery details."));
       window.scrollTo({ top: 200, behavior: "smooth" });
       return;
     }
-    if (!contactEmailOrPhone.trim()) {
-      setPaymentError("Please provide an email address or mobile phone number.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmailOrPhone.trim())) {
+      setPaymentError(t("Please provide a valid contact email address."));
       window.scrollTo({ top: 120, behavior: "smooth" });
       return;
     }
     if (selectedFulfillment !== "click_and_collect") {
+      if(!paymentDemo&&!serverRates){setPaymentError("Load current insured shipping rates before paying.");return;}
       if (!streetAddress.trim()) {
-        setPaymentError("Please provide a street address for courier dispatch.");
+        setPaymentError(t("Please provide a street address for courier dispatch."));
         window.scrollTo({ top: 350, behavior: "smooth" });
         return;
       }
       if (!city.trim() || !subdistrict.trim()) {
-        setPaymentError("Please fill in your City and Sub-district (Kecamatan).");
+        setPaymentError(t("Please fill in your City and Sub-district (Kecamatan)."));
         window.scrollTo({ top: 400, behavior: "smooth" });
         return;
       }
     }
 
+    submittingCheckout.current = true;
     setIsProcessingPayment(true);
 
     const activeRate =
@@ -336,15 +355,14 @@ export default function CheckoutPage() {
         : null;
 
     try {
-      // 1. Create order in database
-      const createOrderRes = await fetch("/api/checkout/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const sessionResponse = await fetch("/api/checkout/session");
+      if (!sessionResponse.ok) throw new Error("Could not initialize checkout. Please retry.");
+      const draft = {
+          policyAcceptance:policyAcknowledgement,
           customer: {
             name: fullCustomerName,
-            email: contactEmailOrPhone.includes("@") ? contactEmailOrPhone : `${recipientPhone || "customer"}@tethera.customer`,
-            phone: recipientPhone || (contactEmailOrPhone.includes("@") ? "081288990011" : contactEmailOrPhone),
+            email: contactEmailOrPhone.includes("@") ? contactEmailOrPhone : user?.email || "",
+            phone: recipientPhone || (!contactEmailOrPhone.includes("@") ? contactEmailOrPhone : ""),
             isGuest: !isAuthenticated,
             customerId: isAuthenticated && user ? user.id : null,
           },
@@ -367,15 +385,41 @@ export default function CheckoutPage() {
           promoCode: appliedDiscount ? appliedDiscount.code : undefined,
           total: grandTotal,
           notes: deliveryNotes,
-        }),
+        };
+      const signature = JSON.stringify({ owner: user?.id || "guest", draft });
+      let attempt = pendingCheckout.current;
+      if (!attempt) {
+        try { attempt = JSON.parse(sessionStorage.getItem("tethera_pending_checkout") || "null"); } catch { /* start a new attempt */ }
+      }
+      if (!attempt || attempt.signature !== signature) {
+        const quoteResponse = await fetch("/api/checkout/quote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) });
+        const quote = await quoteResponse.json();
+        if (!quoteResponse.ok || !quote.success) throw new Error(quote.error || quote.detail || "Could not verify checkout.");
+        if (quote.total !== grandTotal && !window.confirm(`The current verified total is ${formatRupiah(quote.total)} (items ${formatRupiah(quote.subtotal)}, assembly ${formatRupiah(quote.assemblyFee)}, shipping ${formatRupiah(quote.shippingFee)}, discount ${formatRupiah(quote.discountAmount)}). Continue with this total?`)) return;
+        attempt = { signature, key: crypto.randomUUID(), payload: { ...draft, expectedTotal: quote.total } };
+        // Persist before the first create request so a lost response can be retried safely.
+        try { sessionStorage.setItem("tethera_pending_checkout", JSON.stringify(attempt)); }
+        catch { throw new Error("Enable session storage so checkout can be retried safely."); }
+        pendingCheckout.current = attempt;
+      }
+      const createOrderRes = await fetch("/api/checkout/create-order", {
+        method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": attempt.key },
+        body: JSON.stringify(attempt.payload),
       });
 
       const orderData = await createOrderRes.json();
       if (!createOrderRes.ok || !orderData.success) {
-        throw new Error(orderData.error || "Failed to create order record.");
+        if (createOrderRes.status === 409) {
+          pendingCheckout.current = null;
+          sessionStorage.removeItem("tethera_pending_checkout");
+        }
+        throw new Error(orderData.error || orderData.detail || "Failed to create order record.");
       }
 
-      // 2. Charge via Midtrans Payment Gateway
+      attempt.orderId = orderData.orderId;
+      sessionStorage.setItem("tethera_pending_checkout",JSON.stringify(attempt));
+
+      // 2. Initiate a hosted payment; demo keeps its local simulation.
       const chargeRes = await fetch("/api/checkout/midtrans/charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -383,7 +427,7 @@ export default function CheckoutPage() {
           orderId: orderData.orderId,
           orderNumber: orderData.orderNumber,
           paymentChannel: selectedChannel,
-          amount: grandTotal,
+          amount: orderData.total,
         }),
       });
 
@@ -392,10 +436,20 @@ export default function CheckoutPage() {
         throw new Error(chargeData.error || "Midtrans payment verification failed.");
       }
 
+      if (chargeData.redirectUrl) {
+        window.location.assign(chargeData.redirectUrl);
+        return;
+      }
+      if (chargeData.verified) {
+        router.push(`/checkout/payment?orderId=${encodeURIComponent(orderData.orderId)}`);
+        return;
+      }
+
       // 3. Save order snapshot in sessionStorage for itemized tax invoice on success page
       if (typeof window !== "undefined") {
         try {
           const snapshot = {
+            trackingToken: orderData.trackingToken,
             orderNumber: chargeData.orderNumber,
             paymentId: chargeData.paymentId,
             orderId: orderData.orderId,
@@ -416,28 +470,15 @@ export default function CheckoutPage() {
               deliveryNotes,
             },
             courier: activeRate,
-            items: items.map((it) => ({
-              id: it.item.id,
-              name: it.item.name,
-              sku: it.item.sku,
-              brand: it.item.brand,
-              price: it.item.price,
-              quantity: it.quantity,
-              image: it.item.image,
-            })),
-            customPCs: customPCs.map((pc) => ({
-              id: pc.id,
-              name: pc.name,
-              totalPrice: pc.totalPrice,
-              serviceTier: pc.serviceTier,
-              parts: pc.parts,
-              isPrebuilt: pc.isPrebuilt,
-              image: pc.image,
-            })),
-            subtotal: rawSubtotal,
-            shippingFee,
-            discountAmount,
-            grandTotal,
+            items: orderData.items,
+            customPCs: [],
+            subtotal: orderData.subtotal,
+            assemblyFee: orderData.assemblyFee,
+            shippingFee: orderData.shippingFee,
+            discountAmount: orderData.discountAmount,
+            grandTotal: orderData.total,
+            tax: orderData.tax,
+            financialSnapshot: orderData.financialSnapshot,
             createdAt: new Date().toISOString(),
           };
           sessionStorage.setItem("tethera_last_order", JSON.stringify(snapshot));
@@ -447,6 +488,8 @@ export default function CheckoutPage() {
       }
 
       // 4. Clear cart and redirect to Order Success confirmation
+      sessionStorage.removeItem("tethera_pending_checkout");
+      pendingCheckout.current = null;
       clearCart();
       router.push(
         `/checkout/success?orderNumber=${encodeURIComponent(chargeData.orderNumber)}&paymentId=${encodeURIComponent(chargeData.paymentId)}`
@@ -455,6 +498,9 @@ export default function CheckoutPage() {
       setPaymentError(err.message || "Midtrans payment verification failed. Please try another channel or review your details.");
       setIsProcessingPayment(false);
       window.scrollTo({ top: 120, behavior: "smooth" });
+    } finally {
+      submittingCheckout.current = false;
+      setIsProcessingPayment(false);
     }
   };
 
@@ -465,16 +511,15 @@ export default function CheckoutPage() {
         <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-slate-400 dark:text-zinc-500">
           <ShoppingBag className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Your cart is empty</h2>
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">{t("Your cart is empty")}</h2>
         <p className="text-sm text-slate-500 dark:text-zinc-400 max-w-sm">
-          Looks like you haven't added any PC components or custom builds yet.
-        </p>
+          {t("Looks like you haven't added any PC components or custom builds yet.")}</p>
         <Link
           href="/components"
           className="mt-2 inline-flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm min-h-[44px]"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Continue Shopping</span>
+          <span>{t("Continue Shopping")}</span>
         </Link>
       </div>
     );
@@ -496,7 +541,7 @@ export default function CheckoutPage() {
             aria-expanded={isMobileSummaryOpen}
           >
             <ShoppingBag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>{isMobileSummaryOpen ? "Hide order summary" : "Show order summary"}</span>
+            <span>{isMobileSummaryOpen ? t("Hide order summary") : t("Show order summary")}</span>
             {isMobileSummaryOpen ? (
               <ChevronUp className="w-4 h-4 text-slate-500" />
             ) : (
@@ -604,7 +649,7 @@ export default function CheckoutPage() {
                   disabled={isApplyingDiscount}
                   className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[44px] cursor-pointer disabled:opacity-50"
                 >
-                  {isApplyingDiscount ? "..." : "Apply"}
+                  {isApplyingDiscount ? "..." : t("Apply")}
                 </button>
               </div>
 
@@ -635,39 +680,7 @@ export default function CheckoutPage() {
               )}
             </form>
 
-            {/* Mobile Breakdown */}
-            <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-zinc-800 text-xs">
-              <div className="flex justify-between text-slate-600 dark:text-zinc-400">
-                <span>Subtotal</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatRupiah(rawSubtotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600 dark:text-zinc-400">
-                <span>Shipping</span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {shippingFee === 0 ? "FREE" : formatRupiah(shippingFee)}
-                </span>
-              </div>
-              {appliedDiscount && (
-                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                  <span>Discount ({appliedDiscount.code})</span>
-                  <span className="font-bold">-{formatRupiah(appliedDiscount.amount)}</span>
-                </div>
-              )}
-              <div className="pt-2 pb-1 border-t border-dashed border-slate-200 dark:border-zinc-800/80 space-y-1 text-[11px]">
-                <div className="flex justify-between text-slate-400 dark:text-zinc-500">
-                  <span>Dasar Pengenaan Pajak (DPP)</span>
-                  <span>{formatRupiah(checkoutTax.dpp)}</span>
-                </div>
-                <div className="flex justify-between text-slate-400 dark:text-zinc-500">
-                  <span>PPN 11% (Included)</span>
-                  <span>{formatRupiah(checkoutTax.taxAmount)}</span>
-                </div>
-              </div>
-              <div className="flex justify-between text-base font-bold text-zinc-900 dark:text-white pt-2 border-t border-slate-200 dark:border-zinc-800">
-                <span>Total</span>
-                <span className="text-xl font-black">{formatRupiah(grandTotal)}</span>
-              </div>
-            </div>
+            {quoteSummary()}
           </div>
         )}
       </div>
@@ -684,14 +697,14 @@ export default function CheckoutPage() {
             {/* Brand Logo & Header */}
             <div className="flex items-center justify-between">
               <Link href="/" className="inline-block" title="Return to store homepage">
-                <IncusLogo className="h-7 w-auto" />
+                <IncusLogo className="h-10 w-auto sm:h-12" />
               </Link>
               <Link
                 href="/components"
                 className="text-xs text-slate-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1 font-medium min-h-[44px]"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Return to cart</span>
+                <span>{t("Return to cart")}</span>
               </Link>
             </div>
 
@@ -704,8 +717,8 @@ export default function CheckoutPage() {
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold text-red-900 dark:text-red-200 block">Please check your details</span>
-                    <p className="text-red-800 dark:text-red-300 leading-relaxed mt-0.5">{paymentError}</p>
+                    <span className="font-bold text-red-900 dark:text-red-200 block">{t("Please check your details")}</span>
+                    <p className="text-red-800 dark:text-red-300 leading-relaxed mt-0.5">{t(paymentError)}</p>
                   </div>
                 </div>
                 <button
@@ -726,54 +739,43 @@ export default function CheckoutPage() {
               <section aria-labelledby="contact-heading" className="space-y-3.5">
                 <div className="flex items-center justify-between">
                   <h2 id="contact-heading" className="text-lg font-bold text-zinc-900 dark:text-white">
-                    Contact
-                  </h2>
+                    {t("Contact")}</h2>
                   {!isAuthenticated ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsLoginModalOpen(true)}
+                    <Link
+                      href="/auth?from=checkout"
                       className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline min-h-[44px] flex items-center cursor-pointer"
                     >
-                      Log in for saved addresses
-                    </button>
+                      {t("Log in for saved addresses")}</Link>
                   ) : (
                     <div className="flex items-center gap-2 text-xs">
-                      <span className="text-slate-500 dark:text-zinc-400">Logged in as {user?.email}</span>
+                      <span className="text-slate-500 dark:text-zinc-400">{t("Logged in as")}{user?.email}</span>
                       <button
                         type="button"
                         onClick={logout}
                         className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold min-h-[44px] flex items-center cursor-pointer"
                       >
-                        Log out
-                      </button>
+                        {t("Log out")}</button>
                     </div>
                   )}
                 </div>
 
                 <div>
                   <label htmlFor="contact-email-phone" className="sr-only">
-                    Email or mobile phone number
-                  </label>
+                    {t("Email address")}</label>
                   <input
                     id="contact-email-phone"
-                    type="text"
+                    type="email"
                     required
-                    placeholder="Email or mobile phone number"
+                    placeholder={t("Email address")}
                     value={contactEmailOrPhone}
                     onChange={(e) => setContactEmailOrPhone(e.target.value)}
                     className="w-full px-3.5 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-300 min-h-[44px]"
                   />
                 </div>
 
-                <label className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-zinc-300 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={newsOptIn}
-                    onChange={(e) => setNewsOptIn(e.target.checked)}
-                    className="w-4 h-4 rounded text-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-zinc-900"
-                  />
-                  <span>Email me with news, hardware drops, and exclusive offers</span>
-                </label>
+                <label className="block space-y-1 text-xs">{t("Contact phone")}<input id="checkout-contact-phone" type="tel" value={recipientPhone} onChange={e=>setRecipientPhone(e.target.value)} placeholder="Indonesian recipient phone number" className="w-full min-h-[44px] rounded-lg border border-slate-300 dark:border-zinc-700 bg-transparent p-3" /></label>
+                {selectedFulfillment==="click_and_collect" && <label className="block space-y-1 text-xs">{t("Pickup name")}<input type="text" value={`${firstName} ${lastName}`.trim()} onChange={e=>{setFirstName(e.target.value);setLastName("");}} className="w-full min-h-[44px] rounded-lg border border-slate-300 dark:border-zinc-700 bg-transparent p-3" /></label>}
+                <p className="text-xs text-slate-500"><Link className="underline" href="/account">{locale==="id"?"Kelola pilihan menerima promosi melalui preferensi akun. Email pesanan tidak mendaftarkan Anda ke promosi.":"Manage promotional choices in your account preferences. Order emails do not subscribe you to promotions."}</Link></p>
               </section>
 
               {/* --------------------------------------------------------------- */}
@@ -781,11 +783,29 @@ export default function CheckoutPage() {
               {/* --------------------------------------------------------------- */}
               <section aria-labelledby="delivery-heading" className="space-y-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
                 <h2 id="delivery-heading" className="text-lg font-bold text-zinc-900 dark:text-white">
-                  Delivery
-                </h2>
+                  {t("Delivery")}</h2>
 
-                {/* Fulfillment Method Selector: Delivery Courier vs Click and Collect */}
+                {/* Fulfillment Method Selector */}
                 <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Delivery Method Choice">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedFulfillment === "click_and_collect"}
+                    onClick={() => handleFulfillmentTierSelect("click_and_collect")}
+                    className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all min-h-[48px] cursor-pointer ${
+                      selectedFulfillment === "click_and_collect"
+                        ? "border-zinc-900 dark:border-zinc-100 bg-slate-50/80 dark:bg-zinc-900 ring-2 ring-zinc-900 dark:ring-zinc-100 shadow-2xs"
+                        : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                        {t("Click and Collect")}</span>
+                    </div>
+                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{t("FREE")}</span>
+                  </button>
+
                   <button
                     type="button"
                     role="radio"
@@ -804,30 +824,9 @@ export default function CheckoutPage() {
                     <div className="flex items-center gap-2.5">
                       <Truck className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
                       <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                        Delivery Courier
-                      </span>
+                        {t("Delivery Courier")}</span>
                     </div>
-                    <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">Courier</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={selectedFulfillment === "click_and_collect"}
-                    onClick={() => handleFulfillmentTierSelect("click_and_collect")}
-                    className={`p-3.5 rounded-xl border text-left flex items-center justify-between transition-all min-h-[48px] cursor-pointer ${
-                      selectedFulfillment === "click_and_collect"
-                        ? "border-zinc-900 dark:border-zinc-100 bg-slate-50/80 dark:bg-zinc-900 ring-2 ring-zinc-900 dark:ring-zinc-100 shadow-2xs"
-                        : "border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-slate-600 dark:text-zinc-400 hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                        Click and Collect
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">FREE</span>
+                    <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">{t("Courier")}</span>
                   </button>
                 </div>
 
@@ -851,11 +850,10 @@ export default function CheckoutPage() {
                             <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                               <span>{user.fullName || `${firstName} ${lastName}`}</span>
                               <span className="text-[10px] bg-slate-200 dark:bg-zinc-800 px-2 py-0.5 rounded-full font-normal text-zinc-700 dark:text-zinc-300">
-                                Saved Destination
-                              </span>
+                                {t("Saved Destination")}</span>
                             </div>
                             <p className="text-slate-600 dark:text-zinc-300 text-[11px] leading-relaxed">
-                              {streetAddress || user.address?.street || "Mangga Dua Mall Lt. 3 No. 36"}
+                              {streetAddress || user.address?.street || "Delivery address required"}
                               {apartmentUnit ? `, Unit ${apartmentUnit}` : ""}
                               {subdistrict ? `, ${subdistrict}` : ""}
                               {city ? `, ${city}` : ""}
@@ -863,7 +861,7 @@ export default function CheckoutPage() {
                               {postalCode ? ` ${postalCode}` : ""}
                             </p>
                             <p className="text-slate-500 dark:text-zinc-400 text-[11px]">
-                              Recipient Phone: {recipientPhone || user.phone || "Not set"}
+                              {t("Recipient Phone:")}{recipientPhone || user.phone || "Not set"}
                             </p>
                           </div>
                         </div>
@@ -873,7 +871,7 @@ export default function CheckoutPage() {
                           className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline shrink-0 min-h-[44px] flex items-center gap-1 cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
-                          <span>Change</span>
+                          <span>{t("Change")}</span>
                         </button>
                       </div>
                     ) : (
@@ -882,23 +880,20 @@ export default function CheckoutPage() {
                         {isAuthenticated && user && (
                           <div className="flex items-center justify-between pb-1">
                             <span className="text-xs font-bold text-zinc-900 dark:text-white">
-                              Edit Delivery Address
-                            </span>
+                              {t("Edit Delivery Address")}</span>
                             <button
                               type="button"
                               onClick={() => setIsEditingSavedAddress(false)}
                               className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-semibold min-h-[44px] flex items-center cursor-pointer"
                             >
-                              Cancel edit
-                            </button>
+                              {t("Cancel edit")}</button>
                           </div>
                         )}
 
                         {/* Country/Region (Indonesia) */}
                         <div>
                           <label htmlFor="country-region" className="block text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mb-1">
-                            Country / Region
-                          </label>
+                            {t("Country / Region")}</label>
                           <input
                             id="country-region"
                             type="text"
@@ -911,24 +906,24 @@ export default function CheckoutPage() {
                         {/* First & Last Name */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
-                            <label htmlFor="first-name" className="sr-only">First Name</label>
+                            <label htmlFor="first-name" className="sr-only">{t("First Name")}</label>
                             <input
                               id="first-name"
                               type="text"
-                              required
-                              placeholder="First name"
+                              required={selectedFulfillment !== "click_and_collect"}
+                              placeholder={t("First name")}
                               value={firstName}
                               onChange={(e) => setFirstName(e.target.value)}
                               className="w-full px-3.5 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
                             />
                           </div>
                           <div>
-                            <label htmlFor="last-name" className="sr-only">Last Name</label>
+                            <label htmlFor="last-name" className="sr-only">{t("Last Name")}</label>
                             <input
                               id="last-name"
                               type="text"
-                              required
-                              placeholder="Last name"
+                              required={selectedFulfillment !== "click_and_collect"}
+                              placeholder={t("Last name")}
                               value={lastName}
                               onChange={(e) => setLastName(e.target.value)}
                               className="w-full px-3.5 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
@@ -938,11 +933,11 @@ export default function CheckoutPage() {
 
                         {/* Street Address */}
                         <div>
-                          <label htmlFor="street-address" className="sr-only">Address</label>
+                          <label htmlFor="street-address" className="sr-only">{t("Address")}</label>
                           <input
                             id="street-address"
                             type="text"
-                            required
+                            required={selectedFulfillment !== "click_and_collect"}
                             placeholder="Street address (Jl. Sudirman No. 1)"
                             value={streetAddress}
                             onChange={(e) => setStreetAddress(e.target.value)}
@@ -952,7 +947,7 @@ export default function CheckoutPage() {
 
                         {/* Apartment, suite, unit */}
                         <div>
-                          <label htmlFor="apartment-unit" className="sr-only">Apartment, suite, etc. (optional)</label>
+                          <label htmlFor="apartment-unit" className="sr-only">{t("Apartment, suite, etc. (optional)")}</label>
                           <input
                             id="apartment-unit"
                             type="text"
@@ -966,35 +961,35 @@ export default function CheckoutPage() {
                         {/* City, Sub-district (Kecamatan), Postal Code */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
-                            <label htmlFor="city" className="sr-only">City</label>
+                            <label htmlFor="city" className="sr-only">{t("City")}</label>
                             <input
                               id="city"
                               type="text"
-                              required
-                              placeholder="City"
+                              required={selectedFulfillment !== "click_and_collect"}
+                              placeholder={t("City")}
                               value={city}
                               onChange={(e) => setCity(e.target.value)}
                               className="w-full px-3.5 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
                             />
                           </div>
                           <div>
-                            <label htmlFor="subdistrict" className="sr-only">Sub-district (Kecamatan)</label>
+                            <label htmlFor="subdistrict" className="sr-only">{t("Sub-district (Kecamatan)")}</label>
                             <input
                               id="subdistrict"
                               type="text"
-                              required
-                              placeholder="Sub-district (Kecamatan)"
+                              required={selectedFulfillment !== "click_and_collect"}
+                              placeholder={t("Sub-district (Kecamatan)")}
                               value={subdistrict}
                               onChange={(e) => setSubdistrict(e.target.value)}
                               className="w-full px-3.5 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
                             />
                           </div>
                           <div>
-                            <label htmlFor="postal-code" className="sr-only">Postal code</label>
+                            <label htmlFor="postal-code" className="sr-only">{t("Postal code")}</label>
                             <input
                               id="postal-code"
                               type="text"
-                              placeholder="Postal code"
+                              placeholder={t("Postal code")}
                               value={postalCode}
                               onChange={(e) => setPostalCode(e.target.value)}
                               className="w-full px-3.5 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
@@ -1004,11 +999,11 @@ export default function CheckoutPage() {
 
                         {/* Phone Number */}
                         <div>
-                          <label htmlFor="recipient-phone" className="sr-only">Phone number</label>
+                          <label htmlFor="recipient-phone" className="sr-only">{t("Phone number")}</label>
                           <input
                             id="recipient-phone"
                             type="tel"
-                            required
+                            required={selectedFulfillment !== "click_and_collect"}
                             placeholder="Phone number for courier updates"
                             value={recipientPhone}
                             onChange={(e) => setRecipientPhone(e.target.value)}
@@ -1024,7 +1019,7 @@ export default function CheckoutPage() {
                             onChange={(e) => setSaveInfoForNextTime(e.target.checked)}
                             className="w-4 h-4 rounded text-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-zinc-900"
                           />
-                          <span>Save this information for next time</span>
+                          <span>{t("Save this information for next time")}</span>
                         </label>
                       </div>
                     )}
@@ -1032,13 +1027,13 @@ export default function CheckoutPage() {
                     <div className="space-y-3 pt-5 border-t border-slate-200 dark:border-zinc-800">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-                          Shipping method
-                        </h3>
+                          {t("Shipping method")}</h3>
                         <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
                           {selectedFulfillment === "express" ? "Express Courier" : "Standard Courier"}
                         </span>
                       </div>
 
+                      <div className="space-y-2 text-xs"><button type="button" disabled={loadingRates} onClick={fetchShippingOptions} className="min-h-[44px] rounded-lg border border-slate-400 px-4 py-2">{loadingRates?"Checking packages and coverage...":"Load current insured shipping rates"}</button><p>{t("Rates use the catalog packed measurements and full declared goods value. Availability and final pricing are checked again before payment.")}</p>{rateError&&<p role="alert" className="text-red-600">{t(rateError)}</p>}</div>
                       <div className="space-y-3" role="radiogroup" aria-label="Courier Shipping Options">
                         {/* ========================================================= */}
                         {/* 1. STANDARD DELIVERY TIER */}
@@ -1054,6 +1049,7 @@ export default function CheckoutPage() {
                           <button
                             type="button"
                             role="radio"
+                            disabled={!paymentDemo&&!serverRates?.some(rate=>!isExpressRate(rate))}
                             aria-checked={selectedFulfillment === "standard"}
                             onClick={() => {
                               if (selectedFulfillment !== "standard") {
@@ -1080,23 +1076,21 @@ export default function CheckoutPage() {
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                    Standard Delivery
-                                  </span>
+                                    {t("Standard Delivery")}</span>
                                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400">
-                                    1 to 3 Days
-                                  </span>
+                                    {t("1 to 3 Days")}</span>
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-zinc-400 truncate mt-0.5">
                                   {expandedTier === "standard"
                                     ? "Select courier option below"
-                                    : `${selectedStandardRate.courierName} (${selectedStandardRate.serviceName})`}
+                                    : (!paymentDemo&&!serverRates?"Awaiting verified options":`${selectedStandardRate.courierName} (${selectedStandardRate.serviceName})`)}
                                 </p>
                               </div>
                             </div>
 
                             <div className="shrink-0 text-right flex items-center gap-3">
                               <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 block">
-                                {selectedStandardRate.priceFormatted}
+                                {!paymentDemo&&!serverRates?"Quote required":selectedStandardRate.priceFormatted}
                               </span>
                               <div className="flex items-center gap-1.5">
                                 <div
@@ -1129,7 +1123,7 @@ export default function CheckoutPage() {
                           >
                             <div className="overflow-hidden border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 px-3 pt-2 pb-2.5">
                               <div className="ml-3 pl-3.5 border-l-2 border-slate-200 dark:border-zinc-700/60 space-y-1">
-                                {DEFAULT_STANDARD_PROVIDERS.map((rate) => {
+                                {(serverRates?.filter(rate=>!isExpressRate(rate)) || (paymentDemo?DEFAULT_STANDARD_PROVIDERS:[])).map((rate) => {
                                   const isSelected =
                                     selectedStandardRate.courierId === rate.courierId &&
                                     selectedStandardRate.serviceCode === rate.serviceCode;
@@ -1195,6 +1189,7 @@ export default function CheckoutPage() {
                           <button
                             type="button"
                             role="radio"
+                            disabled={!paymentDemo&&!serverRates?.some(isExpressRate)}
                             aria-checked={selectedFulfillment === "express"}
                             onClick={() => {
                               if (selectedFulfillment !== "express") {
@@ -1221,8 +1216,7 @@ export default function CheckoutPage() {
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                                    Express Delivery
-                                  </span>
+                                    {t("Express Delivery")}</span>
                                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
                                     Instant · 1 to 2 Hours
                                   </span>
@@ -1230,14 +1224,14 @@ export default function CheckoutPage() {
                                 <p className="text-xs text-slate-500 dark:text-zinc-400 truncate mt-0.5">
                                   {expandedTier === "express"
                                     ? "Select an express courier option below"
-                                    : `${selectedExpressRate.courierName} (${selectedExpressRate.serviceName})`}
+                                    : (!paymentDemo&&!serverRates?"Awaiting verified options":`${selectedExpressRate.courierName} (${selectedExpressRate.serviceName})`)}
                                 </p>
                               </div>
                             </div>
 
                             <div className="shrink-0 text-right flex items-center gap-3">
                               <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 block">
-                                {selectedExpressRate.priceFormatted}
+                                {!paymentDemo&&!serverRates?"Quote required":selectedExpressRate.priceFormatted}
                               </span>
                               <div className="flex items-center gap-1.5">
                                 <div
@@ -1270,7 +1264,7 @@ export default function CheckoutPage() {
                           >
                             <div className="overflow-hidden border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/40 px-3 pt-2 pb-2.5">
                               <div className="ml-3 pl-3.5 border-l-2 border-slate-200 dark:border-zinc-700/60 space-y-1">
-                                {DEFAULT_EXPRESS_PROVIDERS.map((rate) => {
+                                {(serverRates?.filter(isExpressRate) || (paymentDemo?DEFAULT_EXPRESS_PROVIDERS:[])).map((rate) => {
                                   const isSelected =
                                     selectedExpressRate.courierId === rate.courierId &&
                                     selectedExpressRate.serviceCode === rate.serviceCode;
@@ -1338,15 +1332,14 @@ export default function CheckoutPage() {
                   <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/20 space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                        Incus Flagship Experience Store
-                      </span>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-400">Ready in 60 Mins</span>
+                        {t("Incus Store")}</span>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-400">{locale==="id"?"Tunggu hingga semua komponen tersedia":"Wait until all parts have been sourced"}</span>
                     </div>
                     <p className="text-slate-600 dark:text-zinc-300 text-[11px] leading-relaxed">
-                      Mangga Dua Mall Lt. 3 No. 36, Jl. Mangga Dua Raya, Sawah Besar, Jakarta Pusat 10730.
+                      {profile?.pickupAddress || (locale==="id"?"Alamat pengambilan belum dikonfirmasi.":"Collection address has not been confirmed.")}
                     </p>
                     <p className="text-slate-500 dark:text-zinc-400 text-[11px]">
-                      Pickup PIN and QR verification will be sent via WhatsApp and Email upon payment settlement.
+                      {locale==="id"?"Lihat kode pengambilan setelah pembayaran terverifikasi dan tunggu konfirmasi kesiapan pesanan.":"View your pickup code after verified payment and wait for order-readiness confirmation."}
                     </p>
                   </div>
                 </div>
@@ -1359,15 +1352,14 @@ export default function CheckoutPage() {
             <section aria-labelledby="payment-heading" className="space-y-3.5 pt-4 border-t border-slate-200 dark:border-zinc-800">
                 <div>
                   <h2 id="payment-heading" className="text-lg font-bold text-zinc-900 dark:text-white">
-                    Payment
-                  </h2>
+                    {t("Payment")}</h2>
                   <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                    All transactions are secure and encrypted via licensed Midtrans gateway.
+                    {paymentDemo ? "Demo payments use simulated transactions." : "Choose your payment method and enter payment details securely on Midtrans."}
                   </p>
                 </div>
 
                 {/* Midtrans Channel Options */}
-                <div className="rounded-xl border border-slate-200 dark:border-zinc-800 overflow-hidden divide-y divide-slate-200 dark:divide-zinc-800">
+                <div hidden={!paymentDemo} className="rounded-xl border border-slate-200 dark:border-zinc-800 overflow-hidden divide-y divide-slate-200 dark:divide-zinc-800">
                   {/* OPTION 1: QRIS */}
                   <div className="bg-white dark:bg-zinc-950">
                     <label
@@ -1385,8 +1377,7 @@ export default function CheckoutPage() {
                           className="w-4 h-4 text-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-zinc-900 cursor-pointer"
                         />
                         <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                          QRIS (Instant Pay)
-                        </span>
+                          {t("QRIS (Instant Pay)")}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold">
@@ -1409,11 +1400,9 @@ export default function CheckoutPage() {
                               Merchant: INCUS COMPUTERS
                             </span>
                             <div className="text-sm font-bold text-zinc-900 dark:text-white">
-                              Scan with any Indonesian Banking or E-Wallet App
-                            </div>
+                              {t("Scan with any Indonesian Banking or E-Wallet App")}</div>
                             <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
-                              Open BCA Mobile, Livin' by Mandiri, GoPay, OVO, ShopeePay, or DANA. Point your camera to complete payment instantly.
-                            </p>
+                              {t("Open BCA Mobile, Livin' by Mandiri, GoPay, OVO, ShopeePay, or DANA. Point your camera to complete payment instantly.")}</p>
                           </div>
                         </div>
                       </div>
@@ -1439,8 +1428,7 @@ export default function CheckoutPage() {
                           className="w-4 h-4 text-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-zinc-900 cursor-pointer"
                         />
                         <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                          Bank Virtual Account
-                        </span>
+                          {t("Bank Virtual Account")}</span>
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium">
                         BCA • Mandiri • BNI • BRI • Permata
@@ -1477,8 +1465,7 @@ export default function CheckoutPage() {
                         <div className="p-3.5 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 flex items-center justify-between">
                           <div>
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                              Virtual Account Number
-                            </span>
+                              {t("Virtual Account Number")}</span>
                             <span className="text-base font-mono font-bold text-zinc-900 dark:text-white tracking-wider">
                               {activePaymentDetails.vaNumber || "88081294102941"}
                             </span>
@@ -1491,10 +1478,10 @@ export default function CheckoutPage() {
                             {copiedField === "va" ? (
                               <>
                                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Copied</span>
+                                <span>{t("Copied")}</span>
                               </>
                             ) : (
-                              <span>Copy</span>
+                              <span>{t("Copy")}</span>
                             )}
                           </button>
                         </div>
@@ -1519,18 +1506,17 @@ export default function CheckoutPage() {
                           className="w-4 h-4 text-zinc-900 border-slate-300 dark:border-zinc-700 focus:ring-zinc-900 cursor-pointer"
                         />
                         <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                          Credit / Debit Card
-                        </span>
+                          {t("Credit / Debit Card")}</span>
                       </div>
                       <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium">
                         Visa • Mastercard • JCB • Amex
                       </span>
                     </label>
 
-                    {selectedChannel === "credit_card" && (
+                    {paymentDemo && selectedChannel === "credit_card" && (
                       <div className="p-4 bg-slate-50/50 dark:bg-zinc-900/50 border-t border-slate-200 dark:border-zinc-800 text-xs space-y-3 animate-in fade-in">
                         <div>
-                          <label htmlFor="card-number" className="sr-only">Card Number</label>
+                          <label htmlFor="card-number" className="sr-only">{t("Card Number")}</label>
                           <input
                             id="card-number"
                             type="text"
@@ -1543,11 +1529,11 @@ export default function CheckoutPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label htmlFor="card-expiry" className="sr-only">Expiration date (MM / YY)</label>
+                            <label htmlFor="card-expiry" className="sr-only">{t("Expiration date (MM / YY)")}</label>
                             <input
                               id="card-expiry"
                               type="text"
-                              placeholder="Expiration date (MM / YY)"
+                              placeholder={t("Expiration date (MM / YY)")}
                               maxLength={5}
                               value={cardExpiry}
                               onChange={(e) => setCardExpiry(e.target.value)}
@@ -1555,11 +1541,11 @@ export default function CheckoutPage() {
                             />
                           </div>
                           <div>
-                            <label htmlFor="card-cvv" className="sr-only">Security code (CVV)</label>
+                            <label htmlFor="card-cvv" className="sr-only">{t("Security code (CVV)")}</label>
                             <input
                               id="card-cvv"
                               type="password"
-                              placeholder="Security code (CVV)"
+                              placeholder={t("Security code (CVV)")}
                               maxLength={4}
                               value={cardCvv}
                               onChange={(e) => setCardCvv(e.target.value)}
@@ -1568,11 +1554,11 @@ export default function CheckoutPage() {
                           </div>
                         </div>
                         <div>
-                          <label htmlFor="card-holder" className="sr-only">Name on card</label>
+                          <label htmlFor="card-holder" className="sr-only">{t("Name on card")}</label>
                           <input
                             id="card-holder"
                             type="text"
-                            placeholder="Name on card"
+                            placeholder={t("Name on card")}
                             value={cardHolder}
                             onChange={(e) => setCardHolder(e.target.value)}
                             className="w-full px-3.5 py-3 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-xs text-zinc-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 min-h-[44px]"
@@ -1584,21 +1570,30 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Primary Complete Payment Button */}
+                <div className="space-y-3 pt-4">
+                  {profile && !["published","demo"].includes(profile.status)&&<p role="status" className="text-sm text-amber-600">{locale==="id"?"Kebijakan toko masih berupa draf. Pesanan nyata belum dibuka; gunakan demo untuk pengujian.":"Store policies are still drafts. Real ordering is not open; use the demo for testing."}</p>}
+                  {profile?.status==="demo"&&<p className="text-xs text-amber-600">{locale==="id"?"Demo: persetujuan ini hanya untuk simulasi.":"Demo: this acknowledgement is for simulation only."}</p>}
+                  <label className="flex items-start gap-3 text-sm">
+                    <input type="checkbox" required checked={acceptedPolicies} onChange={e=>setPolicyAcknowledgement(e.target.checked&&profile?{accepted:true,version:profile.policyVersion,hash:profile.policyHash,locale}:null)} aria-label={locale==="id"?"Saya menyetujui syarat pembelian dan kebijakan garansi":"I accept the purchase terms and warranty policy"} className="mt-1"/>
+                    <span>{locale==="id"?"Saya telah membaca dan menyetujui ":"I have read and accept the "}<Link className="underline" href="/terms" target="_blank">{locale==="id"?"syarat pembelian":"purchase terms"}</Link>{locale==="id"?" serta ":" and "}<Link className="underline" href="/warranty" target="_blank">{locale==="id"?"kebijakan garansi dan pengembalian":"warranty and returns policy"}</Link>. <Link className="underline" href="/privacy" target="_blank">{locale==="id"?"Pemberitahuan privasi":"Privacy notice"}</Link></span>
+                  </label>
+                  <button type="button" onClick={()=>void refreshProfile()} className="text-xs underline">{locale==="id"?"Muat ulang kebijakan terbaru":"Reload current policies"}</button>
+                </div>
                 <div className="pt-4">
                   <button
                     type="submit"
-                    disabled={isProcessingPayment}
+                    disabled={isProcessingPayment || !profile || !["published","demo"].includes(profile.status)}
                     className="w-full min-h-[48px] py-4 px-6 bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] font-semibold text-sm sm:text-base rounded-md transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     {isProcessingPayment ? (
                       <>
                         <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        <span>Verifying Midtrans Settlement...</span>
+                        <span>{t("Preparing payment...")}</span>
                       </>
                     ) : (
                       <>
                         <ShieldCheck className="w-5 h-5 text-[#0A0B0E]" />
-                        <span>Pay now - {formatRupiah(grandTotal)}</span>
+                        <span>{t("Pay now -")} {formatRupiah(grandTotal)}</span>
                       </>
                     )}
                   </button>
@@ -1608,38 +1603,30 @@ export default function CheckoutPage() {
 
             {/* Policies Footer */}
             <footer className="pt-8 border-t border-slate-200 dark:border-zinc-800 text-xs text-slate-500 dark:text-zinc-400 flex flex-wrap gap-x-6 gap-y-2">
-              <Link href="/privacy" className="hover:underline min-h-[44px] flex items-center">
-                Refund policy
-              </Link>
+              <Link href="/warranty" className="hover:underline min-h-[44px] flex items-center">
+                {t("Refund policy")}</Link>
               <Link href="/shipping" className="hover:underline min-h-[44px] flex items-center">
-                Shipping policy
-              </Link>
+                {t("Shipping policy")}</Link>
               <Link href="/privacy" className="hover:underline min-h-[44px] flex items-center">
-                Privacy policy
-              </Link>
+                {t("Privacy policy")}</Link>
               <Link href="/terms" className="hover:underline min-h-[44px] flex items-center">
-                Terms of service
-              </Link>
+                {t("Terms of service")}</Link>
             </footer>
           </div>
 
           {/* =================================================================== */}
           {/* RIGHT COLUMN: STICKY ORDER SUMMARY (42% width, lg:col-span-5) */}
-          {/* Dynamically adjusts top offset based on PersistentHeader category bar */}
+          {/* Checkout has no storefront header; keep the order summary near the top. */}
           {/* =================================================================== */}
           <aside
-            aria-label="Order summary"
+            aria-label={t("Order summary")}
             className="hidden lg:block lg:col-span-5 bg-slate-50/80 dark:bg-zinc-900/40 border-l border-slate-200 dark:border-zinc-800 px-6 sm:px-8 lg:px-10 py-8 lg:py-10"
           >
             <div
-              className={`sticky transition-[top,max-height] duration-300 ease-in-out space-y-6 overflow-y-auto overscroll-contain pr-1 scrollbar-thin ${
-                isCategoryBarVisible
-                  ? "lg:top-[190px] lg:max-h-[calc(100vh-210px)]"
-                  : "lg:top-[140px] lg:max-h-[calc(100vh-160px)]"
-              }`}
+              className="sticky lg:top-6 lg:max-h-[calc(100dvh-48px)] space-y-6 overflow-y-auto overscroll-contain pr-1 scrollbar-thin"
             >
               <h3 className="text-base font-bold text-zinc-900 dark:text-white flex items-center justify-between pb-2 border-b border-slate-200 dark:border-zinc-800">
-                <span>Order summary</span>
+                <span>{t("Order summary")}</span>
                 <span className="text-xs text-slate-500 dark:text-zinc-400 font-normal">
                   {items.length + customPCs.length} {items.length + customPCs.length === 1 ? "item" : "items"}
                 </span>
@@ -1686,8 +1673,7 @@ export default function CheckoutPage() {
                       </span>
                       {it.quantity > 1 && (
                         <span className="text-[10px] text-slate-400 dark:text-zinc-500 block">
-                          {formatRupiah(it.item.price)} each
-                        </span>
+                          {formatRupiah(it.item.price)} {t("each")}</span>
                       )}
                     </div>
                   </div>
@@ -1713,7 +1699,7 @@ export default function CheckoutPage() {
                         {pc.name}
                       </h4>
                       <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
-                        {pc.serviceTier?.name || "Custom Built Rig"} (~{pc.wattage}W)
+                        {pc.serviceTier?.name || "Custom Built Rig"}
                       </p>
                     </div>
 
@@ -1748,7 +1734,7 @@ export default function CheckoutPage() {
                     disabled={isApplyingDiscount}
                     className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-900 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-white text-xs font-bold rounded-lg transition-colors min-h-[44px] cursor-pointer disabled:opacity-50"
                   >
-                    {isApplyingDiscount ? "..." : "Apply"}
+                    {isApplyingDiscount ? "..." : t("Apply")}
                   </button>
                 </div>
 
@@ -1779,72 +1765,17 @@ export default function CheckoutPage() {
                 )}
               </form>
 
-              {/* Price Breakdown */}
-              <div className="space-y-2.5 pt-4 border-t border-slate-200 dark:border-zinc-800 text-xs">
-                <div className="flex justify-between text-slate-600 dark:text-zinc-400">
-                  <span>Subtotal</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatRupiah(rawSubtotal)}</span>
-                </div>
-
-                <div className="flex justify-between text-slate-600 dark:text-zinc-400">
-                  <span>Shipping</span>
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                    {selectedFulfillment === "click_and_collect"
-                      ? "FREE"
-                      : shippingFee === 0
-                      ? "FREE"
-                      : formatRupiah(shippingFee)}
-                  </span>
-                </div>
-
-                {appliedDiscount && (
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                    <span>Discount</span>
-                    <span className="font-bold">-{formatRupiah(appliedDiscount.amount)}</span>
-                  </div>
-                )}
-
-                {/* Indonesian Tax Itemization (PPN 11%) */}
-                <div className="pt-2 pb-1 border-t border-dashed border-slate-200 dark:border-zinc-800/80 space-y-1.5 text-[11px]">
-                  <div className="flex justify-between text-slate-400 dark:text-zinc-500">
-                    <span>Dasar Pengenaan Pajak (DPP)</span>
-                    <span>{formatRupiah(checkoutTax.dpp)}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-400 dark:text-zinc-500">
-                    <span>PPN 11% (Included)</span>
-                    <span>{formatRupiah(checkoutTax.taxAmount)}</span>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-baseline pt-4 border-t border-slate-200 dark:border-zinc-800">
-                  <div>
-                    <span className="text-base font-bold text-zinc-900 dark:text-white block">
-                      Total
-                    </span>
-                    <span className="text-[11px] text-slate-400 dark:text-zinc-500">
-                      Including 11% Indonesian PPN
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-slate-400 dark:text-zinc-500 font-medium mr-1.5">
-                      IDR
-                    </span>
-                    <span className="text-2xl font-black text-zinc-900 dark:text-white">
-                      {formatRupiah(grandTotal)}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              {quoteSummary()}
 
               {/* Reassurance Badges */}
               <div className="pt-4 border-t border-slate-200 dark:border-zinc-800 text-[11px] text-slate-500 dark:text-zinc-400 space-y-2">
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>100% Genuine Distributor Hardware Guaranteed</span>
+                  <span>{locale==="id"?"Periksa rincian produk dan cakupan garansi":"Check product details and warranty coverage"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>Bank Indonesia Licensed Midtrans Gateway</span>
+                  <span>{locale==="id"?"Pembayaran melalui Midtrans sesuai konfigurasi toko":"Payments through the store's configured Midtrans integration"}</span>
                 </div>
               </div>
             </div>
@@ -1852,68 +1783,6 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* ----------------------------------------------------------------------- */}
-      {/* INLINE LOGIN MODAL (If guest clicks 'Log in') */}
-      {/* ----------------------------------------------------------------------- */}
-      {isLoginModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 max-w-sm w-full p-6 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-base text-zinc-900 dark:text-white">Sign in to your account</h3>
-              <button
-                type="button"
-                onClick={() => setIsLoginModalOpen(false)}
-                className="text-slate-400 hover:text-zinc-900 dark:hover:text-white p-1 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {loginError && (
-              <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300 rounded-lg">
-                {loginError}
-              </div>
-            )}
-
-            <form onSubmit={handleInlineLogin} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="name@example.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs min-h-[44px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs min-h-[44px]"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold transition-colors min-h-[44px] cursor-pointer"
-              >
-                Sign in
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

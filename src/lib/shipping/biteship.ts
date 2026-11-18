@@ -1,3 +1,5 @@
+import { shippingRequest, ShippingError, shippingConfig } from "./gateway";
+import { isDemoMode } from "@/lib/runtime/environment";
 /**
  * ==============================================================================
  * BITESHIP LOGISTICS API CLIENT & MULTI-COURIER ENGINE
@@ -230,7 +232,7 @@ export class BiteshipService {
   }
 
   private hasLiveApiKey(): boolean {
-    return !!this.apiKey && this.apiKey.length > 10;
+    return !isDemoMode() && !!this.apiKey && this.apiKey.length > 10;
   }
 
   private getAuthHeaders(): Record<string, string> {
@@ -248,27 +250,10 @@ export class BiteshipService {
     if (!query || query.trim().length < 2) return [];
     const cleanQuery = query.trim().toLowerCase();
 
-    // 1. Try Live Biteship Maps API if key exists
-    if (this.hasLiveApiKey()) {
-      try {
-        const url = `${this.baseUrl}/maps/areas?countries=ID&input=${encodeURIComponent(
-          query.trim()
-        )}&type=single`;
-        const res = await fetch(url, {
-          method: "GET",
-          headers: this.getAuthHeaders(),
-          cache: "no-store",
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && Array.isArray(json.areas) && json.areas.length > 0) {
-            return json.areas;
-          }
-        }
-      } catch (err) {
-        console.warn("[BITESHIP] Live area search error, using seed cache fallback:", err);
-      }
+    if(!isDemoMode()) {
+      const data=await shippingRequest(`/maps/areas?countries=ID&input=${encodeURIComponent(query.trim())}&type=single`);
+      if(!Array.isArray(data.areas))throw new ShippingError("Invalid area response.");
+      return data.areas;
     }
 
     // 2. Fallback to rich seed cache
@@ -308,8 +293,18 @@ export class BiteshipService {
     items?: ShippableItem[];
     totalWeightGrams?: number;
     couriersFilter?: string[]; // e.g. ["jne", "jnt", "sicepat", "anteraja", "gojek", "grab"]
+    requireLive?: boolean;
+    insuranceValue?:number;
+    origin?: typeof TETHERA_WAREHOUSE_ORIGIN;
   }): Promise<ShippingRateOption[]> {
     const { destination, items = [], couriersFilter } = params;
+    if(!isDemoMode()) {
+      shippingConfig();
+      if(destination.postalCode && !/^\d{5}$/.test(String(destination.postalCode)))throw new ShippingError("Invalid destination postal code.",400);
+      if(!destination.postalCode && !destination.areaId && !(Number.isFinite(destination.latitude)&&Number.isFinite(destination.longitude)))throw new ShippingError("A verified destination is required.",400);
+      if(!items.length || items.some(i=>!Number.isInteger(i.weightGrams)||i.weightGrams<=0||!Number.isSafeInteger(i.price)||i.price<0||!Number.isInteger(i.quantity??1)||(i.quantity??1)<=0||!i.dimensionsCm||[i.dimensionsCm.length,i.dimensionsCm.width,i.dimensionsCm.height].some(n=>!Number.isFinite(n)||n<=0)))throw new ShippingError("Complete shipping package information is required.",409);
+    }
+
     const totalWeight =
       params.totalWeightGrams ||
       items.reduce((acc, i) => acc + (i.weightGrams || 1000) * (i.quantity || 1), 0) ||
@@ -325,7 +320,7 @@ export class BiteshipService {
       ? items.map((i) => ({
           name: i.name || "Hardware Component",
           description: i.name,
-          value: i.price || 500000,
+          value: i.price ?? 500000,
           quantity: i.quantity || 1,
           weight: i.weightGrams || 1000,
           length: i.dimensionsCm?.length || 25,
@@ -346,49 +341,44 @@ export class BiteshipService {
         ];
 
     // Payload following Biteship Rates API specs
+    const shippingOrigin=params.origin??TETHERA_WAREHOUSE_ORIGIN;
     const body: Record<string, any> = {
-      origin_area_id: TETHERA_WAREHOUSE_ORIGIN.areaId,
-      origin_postal_code: TETHERA_WAREHOUSE_ORIGIN.postalCode,
-      origin_latitude: TETHERA_WAREHOUSE_ORIGIN.latitude,
-      origin_longitude: TETHERA_WAREHOUSE_ORIGIN.longitude,
+      ...(isDemoMode()?{origin_area_id:TETHERA_WAREHOUSE_ORIGIN.areaId,origin_latitude:TETHERA_WAREHOUSE_ORIGIN.latitude,origin_longitude:TETHERA_WAREHOUSE_ORIGIN.longitude}:{}),
+      origin_postal_code: shippingOrigin.postalCode,
       couriers: requestedCouriers,
       items: biteshipItems,
+      ...(params.insuranceValue!==undefined?{courier_insurance:params.insuranceValue}:{}),
     };
 
     if (destination.areaId) {
       body.destination_area_id = destination.areaId;
     }
     if (destination.postalCode) {
-      body.destination_postal_code = Number(destination.postalCode) || 12190;
+      body.destination_postal_code = Number(destination.postalCode);
     }
     if (destination.latitude && destination.longitude) {
       body.destination_latitude = destination.latitude;
       body.destination_longitude = destination.longitude;
     }
 
-    // Attempt Live Biteship API if configured
-    if (this.hasLiveApiKey()) {
-      try {
-        const res = await fetch(`${this.baseUrl}/rates/couriers`, {
-          method: "POST",
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(body),
-          cache: "no-store",
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && Array.isArray(json.pricing)) {
-            return json.pricing.map((p: any) => this.mapBiteshipRateToOption(p, destination));
-          }
+    if(!isDemoMode()) {
+      const data=await shippingRequest("/rates/couriers",body);
+      if(!Array.isArray(data.pricing) || data.pricing.some((p:any)=>typeof p.price!=="number"||!Number.isSafeInteger(p.price)||p.price<=0||typeof p.courier_code!=="string"||!p.courier_code||typeof p.courier_service_code!=="string"||!p.courier_service_code))throw new ShippingError("Live courier rates are unavailable.");
+      return data.pricing.map((p:any)=>{
+        const rate=this.mapBiteshipRateToOption(p,destination);
+        if(params.insuranceValue!==undefined && params.insuranceValue>0){
+          if(p.available_for_insurance!==true || !Number.isSafeInteger(p.insurance_fee) || p.insurance_fee<0)return {...rate,isAvailable:false,ineligibilityReason:"Full goods-value insurance is unavailable."};
+          rate.insuranceValue=params.insuranceValue;rate.insuranceFee=p.insurance_fee;
         }
-      } catch (err) {
-        console.warn("[BITESHIP] Live rate calculation failed, generating accurate rate quotes:", err);
-      }
+        if(["gojek","grab"].includes(rate.courierId))return {...rate,isAvailable:false,ineligibilityReason:"Verified coordinates are required for instant delivery."};
+        if(Array.isArray(p.available_collection_method)&&!p.available_collection_method.includes("pickup"))return {...rate,isAvailable:false,ineligibilityReason:"Warehouse pickup is unavailable for this service."};
+        return rate;
+      });
     }
 
-    // Fallback: Generate real-market rates based on weight, distance, and sub-district mapping
-    return this.generateSimulatedRates(destination, totalWeight, requestedCouriers.split(","));
+    // Explicit demo fixtures only.
+    const simulated=this.generateSimulatedRates(destination,Math.max(totalWeight,items.reduce((sum,item)=>sum+Math.ceil((item.dimensionsCm?.length||0)*(item.dimensionsCm?.width||0)*(item.dimensionsCm?.height||0)/6000*1000)*(item.quantity||1),0)),requestedCouriers.split(","));
+    return simulated.map(rate=>{const fee=params.insuranceValue?Math.ceil(params.insuranceValue*0.005):0;return {...rate,...(params.insuranceValue!==undefined?{insuranceValue:params.insuranceValue,insuranceFee:fee}:{}),price:rate.price+fee,priceFormatted:formatRupiah(rate.price+fee)};});
   }
 
   /**
@@ -432,88 +422,14 @@ export class BiteshipService {
     const deliveryDate = params.deliveryDate || todayStr;
     const deliveryTime = params.deliveryTime || "14:00";
 
-    const payload = {
-      shipper_contact_name: TETHERA_WAREHOUSE_ORIGIN.contactName,
-      shipper_contact_phone: TETHERA_WAREHOUSE_ORIGIN.contactPhone,
-      shipper_contact_email: TETHERA_WAREHOUSE_ORIGIN.contactEmail,
-      shipper_organization: "Tethera High Performance Computers",
-      origin_contact_name: TETHERA_WAREHOUSE_ORIGIN.contactName,
-      origin_contact_phone: TETHERA_WAREHOUSE_ORIGIN.contactPhone,
-      origin_address: TETHERA_WAREHOUSE_ORIGIN.address,
-      origin_postal_code: TETHERA_WAREHOUSE_ORIGIN.postalCode,
-      origin_area_id: TETHERA_WAREHOUSE_ORIGIN.areaId,
-      origin_coordinate: {
-        latitude: TETHERA_WAREHOUSE_ORIGIN.latitude,
-        longitude: TETHERA_WAREHOUSE_ORIGIN.longitude,
-      },
-      origin_collection_method: "pickup", // Automated pickup from shop warehouse!
-      destination_contact_name: params.destinationName,
-      destination_contact_phone: params.destinationPhone,
-      destination_contact_email: params.destinationEmail || "customer@example.com",
-      destination_address: params.destinationAddress,
-      destination_area_id: params.destinationAreaId || "IDNP6IDNC148IDND843IDZ12250",
-      destination_postal_code: Number(params.destinationPostalCode) || 12250,
-      destination_coordinate: params.destinationCoordinates,
-      destination_note: params.destinationNote || "Please handle with care. Fragile PC components.",
-      courier_company: params.courierCompany.toLowerCase(),
-      courier_type: params.courierType.toLowerCase(),
-      delivery_type: deliveryType,
-      delivery_date: deliveryType === "scheduled" ? deliveryDate : undefined,
-      delivery_time: deliveryType === "scheduled" ? deliveryTime : undefined,
-      reference_id: params.orderNumber,
-      order_note: params.orderNote || `Pickup from Mangga Dua Hub for Order #${params.orderNumber}`,
-      items: (params.items.length > 0 ? params.items : [{ name: "Hardware", price: 1000000, weightGrams: 2000 }]).map(
-        (i) => ({
-          name: i.name,
-          description: i.name,
-          category: "electronic",
-          value: i.price,
-          quantity: (i as any).quantity || 1,
-          weight: i.weightGrams || 1500,
-        })
-      ),
-    };
+    if(!isDemoMode())throw new ShippingError("Use the durable dispatch operation to create a real shipment.",409);
 
-    // If live API key is present, execute against Biteship API
-    if (this.hasLiveApiKey()) {
-      try {
-        const res = await fetch(`${this.baseUrl}/orders`, {
-          method: "POST",
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(payload),
-        });
-
-        const json = await res.json();
-        if (res.ok && json.success) {
-          const courier = json.courier || {};
-          const waybill = courier.waybill_id || json.courier_waybill_id || `AWB-${Date.now()}`;
-          const trackingId = courier.tracking_id || json.courier_tracking_id || json.id;
-
-          return {
-            success: true,
-            biteshipOrderId: json.id,
-            waybillId: waybill,
-            trackingId,
-            courierCompany: courier.company || params.courierCompany,
-            courierType: courier.type || params.courierType,
-            status: json.status || "scheduled",
-            trackingUrl: courier.link || `https://biteship.com/track/${trackingId}`,
-            pickupTime: `${deliveryDate} ${deliveryTime}`,
-            message: `Waybill ${waybill} generated successfully. Pickup scheduled from Mangga Dua Flagship Hub.`,
-            raw: json,
-          };
-        }
-      } catch (err) {
-        console.warn("[BITESHIP] Live order creation error, generating verified waybill response:", err);
-      }
-    }
-
-    // Deterministic & verified Waybill generation
+    // Dummy identifiers for the legacy demo adapter only.
     const company = params.courierCompany.toUpperCase();
     const randNum = Math.floor(10000000 + Math.random() * 90000000);
-    const waybillId = `BIT-${company}-${randNum}`;
-    const biteshipOrderId = `bite_${Math.random().toString(36).substring(2, 15)}`;
-    const trackingId = `TRK-${company}-${Date.now().toString().slice(-6)}`;
+    const waybillId = `DEMO-${company}-${randNum}`;
+    const biteshipOrderId = `demo_${Math.random().toString(36).substring(2, 15)}`;
+    const trackingId = `DEMO-TRK-${company}-${Date.now().toString().slice(-6)}`;
 
     return {
       success: true,
@@ -523,9 +439,9 @@ export class BiteshipService {
       courierCompany: params.courierCompany,
       courierType: params.courierType,
       status: deliveryType === "now" ? "allocated" : "scheduled",
-      trackingUrl: `https://biteship.com/track/${waybillId}`,
+      trackingUrl: "",
       pickupTime: deliveryType === "now" ? "Immediate (Within 45 mins)" : `${deliveryDate} ${deliveryTime}`,
-      message: `Biteship Waybill ${waybillId} generated! Courier pickup scheduled from Mangga Dua Hub.`,
+      message: `Demo waybill ${waybillId} generated. No real courier pickup was scheduled.`,
       raw: {
         id: biteshipOrderId,
         courier_waybill_id: waybillId,

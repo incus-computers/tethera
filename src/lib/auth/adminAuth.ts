@@ -1,176 +1,57 @@
 import "server-only";
 import { NextRequest } from "next/server";
+import { isDemoMode } from "@/lib/runtime/environment";
+import { demoAuth, normaliseIdentifier } from "./demo";
+import { authClient, authDatabase, limitAuth, readSession } from "./session";
+import { AuthError } from "./errors";
 
-export type AdminRole =
-  | "SUPER_ADMIN"
-  | "CATALOG_MANAGER"
-  | "FULFILLMENT_OPERATOR"
-  | "SUPPORT_AGENT"
-  | "admin"
-  | "superadmin";
-
+export type AdminRole = "SUPER_ADMIN" | "CATALOG_MANAGER" | "FULFILLMENT_OPERATOR" | "SUPPORT_AGENT";
 export interface AdminUser {
-  id: string;
-  username: string;
-  email: string;
-  name: string;
-  role: AdminRole;
-  clearanceLevel: number; // 1 = Staff/Admin, 2 = Superadmin
+  id: string; username: string; email: string; name: string; role: AdminRole; clearanceLevel: number;
 }
-
-// Configured Administrative Credentials
-const ADMIN_ACCOUNTS: (AdminUser & { passwordHash: string })[] = [
-  {
-    id: "admin-super",
-    username: "superadmin",
-    email: "superadmin@tethera.com",
-    name: "Master Superadmin",
-    role: "SUPER_ADMIN",
-    clearanceLevel: 2,
-    passwordHash: "SuperAdmin2026!",
-  },
-  {
-    id: "admin-catalog",
-    username: "catalog",
-    email: "catalog@tethera.com",
-    name: "Catalog Lead",
-    role: "CATALOG_MANAGER",
-    clearanceLevel: 1,
-    passwordHash: "Catalog2026!",
-  },
-  {
-    id: "admin-dispatch",
-    username: "dispatch",
-    email: "dispatch@tethera.com",
-    name: "Warehouse Dispatch Lead",
-    role: "FULFILLMENT_OPERATOR",
-    clearanceLevel: 1,
-    passwordHash: "Dispatch2026!",
-  },
-  {
-    id: "admin-support",
-    username: "support",
-    email: "support@tethera.com",
-    name: "Support Representative",
-    role: "SUPPORT_AGENT",
-    clearanceLevel: 1,
-    passwordHash: "Support2026!",
-  },
-  {
-    id: "admin-ops",
-    username: "admin",
-    email: "admin@tethera.com",
-    name: "Store Operations Admin",
-    role: "SUPER_ADMIN",
-    clearanceLevel: 2,
-    passwordHash: "AdminPass2026!",
-  },
-];
-
-export function authenticateAdminCredentials(
-  identifier: string,
-  passwordAttempt: string
-): AdminUser | null {
-  const cleanId = identifier.trim().toLowerCase();
-  const account = ADMIN_ACCOUNTS.find(
-    (acc) =>
-      (acc.username.toLowerCase() === cleanId || acc.email.toLowerCase() === cleanId) &&
-      acc.passwordHash === passwordAttempt
-  );
-
-  if (!account) return null;
-
-  return {
-    id: account.id,
-    username: account.username,
-    email: account.email,
-    name: account.name,
-    role: account.role,
-    clearanceLevel: account.clearanceLevel,
-  };
+const roles: string[] = ["SUPER_ADMIN", "CATALOG_MANAGER", "FULFILLMENT_OPERATOR", "SUPPORT_AGENT"];
+async function staffUser(id: string, token: string): Promise<AdminUser> {
+  const { data, error } = await authDatabase().from("admin_users").select("id,email,name,role,is_active").eq("user_id", id).eq("is_active", true).maybeSingle();
+  if (error) throw new AuthError("Staff directory unavailable.", 503);
+  if (!data || !roles.includes(data.role)) throw new AuthError("Staff access denied.", 403);
+  // getUser has already validated this token with the provider; only then inspect its AAL claim.
+  let aal: string | undefined;
+  try { aal = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).aal; } catch { /* deny */ }
+  if (aal !== "aal2") throw new AuthError("An enrolled authenticator and verification code are required.", 403);
+  return { id: data.id, username: data.email, email: data.email, name: data.name, role: data.role, clearanceLevel: data.role === "SUPER_ADMIN" ? 2 : 1 };
 }
-
-/**
- * Validates request authorization header or cookie for admin clearance.
- */
-export function verifyAdminClearance(
-  req: NextRequest,
-  requiredLevel: "admin" | "superadmin" = "admin"
-): { authorized: boolean; user?: AdminUser; error?: string } {
-  const authHeader = req.headers.get("authorization");
-  const cookieVal = req.cookies.get("tethera_admin_token")?.value;
-  const rawToken = authHeader?.replace(/^Bearer\s+/i, "") || cookieVal;
-  const token = rawToken ? decodeURIComponent(rawToken.trim().replace(/^"|"$/g, "")) : null;
-
-  if (!token) {
-    return { authorized: false, error: "Administrative clearance required. Please sign in." };
+export async function authenticateAdminCredentials(identifier: string, password: string, totpCode?: string) {
+  if (typeof password !== "string" || !password || password.length > 256) throw new AuthError("Invalid credentials.");
+  const contact = normaliseIdentifier(identifier);
+  await limitAuth("admin-login", contact);
+  if (isDemoMode()) {
+    const account = demoAuth().login(contact, password, true);
+    const user: AdminUser = { id: account.id, username: account.contact, email: account.profile.email, name: account.profile.fullName, role: account.role as AdminRole, clearanceLevel: account.role === "SUPER_ADMIN" ? 2 : 1 };
+    return { user, providerId: account.id, contact };
   }
-
-  // Support direct demo tokens
-  if (token === "superadmin" || token === "admin-super") {
-    const user = ADMIN_ACCOUNTS[0];
-    return { authorized: true, user: { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role, clearanceLevel: user.clearanceLevel } };
-  }
-  if (token === "catalog" || token === "admin-catalog") {
-    if (requiredLevel === "superadmin") {
-      return { authorized: false, error: "Insufficient privileges. This action requires Superadmin clearance." };
-    }
-    const user = ADMIN_ACCOUNTS[1];
-    return { authorized: true, user: { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role, clearanceLevel: user.clearanceLevel } };
-  }
-  if (token === "dispatch" || token === "admin-dispatch") {
-    if (requiredLevel === "superadmin") {
-      return { authorized: false, error: "Insufficient privileges. This action requires Superadmin clearance." };
-    }
-    const user = ADMIN_ACCOUNTS[2];
-    return { authorized: true, user: { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role, clearanceLevel: user.clearanceLevel } };
-  }
-  if (token === "support" || token === "admin-support") {
-    if (requiredLevel === "superadmin") {
-      return { authorized: false, error: "Insufficient privileges. This action requires Superadmin clearance." };
-    }
-    const user = ADMIN_ACCOUNTS[3];
-    return { authorized: true, user: { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role, clearanceLevel: user.clearanceLevel } };
-  }
-  if (token === "admin" || token === "admin-ops") {
-    const user = ADMIN_ACCOUNTS[4];
-    return { authorized: true, user: { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role, clearanceLevel: user.clearanceLevel } };
-  }
-
-  // Token format: base64(userId:role:clearanceLevel:timestamp)
-  try {
-    const decoded = Buffer.from(token, "base64").toString("utf-8");
-    const [userId, role] = decoded.split(":");
-
-    const user = ADMIN_ACCOUNTS.find((a) => a.id === userId);
-    if (!user) {
-      return { authorized: false, error: "Invalid admin clearance token." };
-    }
-
-    if (requiredLevel === "superadmin" && user.role !== "SUPER_ADMIN") {
-      return {
-        authorized: false,
-        error: "Insufficient privileges. This action requires Superadmin clearance.",
-      };
-    }
-
-    return {
-      authorized: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        clearanceLevel: user.clearanceLevel,
-      },
-    };
-  } catch {
-    return { authorized: false, error: "Malformed clearance token." };
-  }
+  const client = authClient();
+  const { data, error } = await client.auth.signInWithPassword(contact.includes("@") ? { email: contact, password } : { phone: contact, password });
+  if (error || !data.session || !data.user) throw new AuthError("Invalid credentials.");
+  const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
+  const factor = factors?.totp.find(f => f.status === "verified");
+  if (factorError || !factor || !/^\d{6}$/.test(totpCode || "")) throw new AuthError("Enter your authenticator code. Staff must enrol MFA before access.", 403);
+  const { data: verified, error: mfaError } = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code: totpCode! });
+  if (mfaError || !verified) throw new AuthError("Invalid authenticator code.");
+  const token = verified.access_token;
+  const user = await staffUser(data.user.id, token);
+  return { user, providerId: data.user.id, contact, token, expiresAt: Math.floor(Date.now() / 1000) + verified.expires_in };
 }
-
-export function generateAdminClearanceToken(user: AdminUser): string {
-  const payload = `${user.id}:${user.role}:${user.clearanceLevel}:${Date.now()}`;
-  return Buffer.from(payload).toString("base64");
+export async function verifyAdminClearance(req: NextRequest, requiredLevel: "admin" | "superadmin" = "admin"): Promise<{ authorized: boolean; user?: AdminUser; error?: string }> {
+  const session = await readSession(req, "admin");
+  if (!session) return { authorized: false, error: "Staff sign-in required." };
+  let user: AdminUser;
+  if (isDemoMode()) {
+    if (!session.role || !roles.includes(session.role)) return { authorized: false, error: "Staff access denied." };
+    user = { id: session.id, username: session.email, email: session.email, name: session.profile!.fullName, role: session.role as AdminRole, clearanceLevel: session.role === "SUPER_ADMIN" ? 2 : 1 };
+  } else {
+    try { user = await staffUser(session.id, session.token); }
+    catch (error) { if (error instanceof AuthError && error.status === 403) return { authorized: false, error: error.message }; throw error; }
+  }
+  if (requiredLevel === "superadmin" && user.role !== "SUPER_ADMIN") return { authorized: false, error: "Superadmin permission required." };
+  return { authorized: true, user };
 }

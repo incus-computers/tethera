@@ -1,14 +1,18 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { ShippingError } from "@/lib/shipping/gateway";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
 import { getAggregatedShippingRates } from "@/lib/shipping/registry";
 import { FLAGSHIP_ORIGIN, resolveDistanceKm } from "@/lib/shipping/distance";
 import { ShippingEstimateRequest, ShippingEstimateResponse, DeliveryLocation, ShippableItem } from "@/lib/shipping/types";
 
-export async function POST(req: NextRequest) {
+ async function protectedPOST(req: NextRequest) {
   try {
     const body = await req.json();
 
     const destination: DeliveryLocation = body.destination || {
-      address: body.address || "Jakarta",
+      address: body.address || "",
       areaId: body.areaId,
       subdistrict: body.subdistrict,
       district: body.district,
@@ -72,10 +76,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(responsePayload);
   } catch (error: any) {
-    console.error("Shipping estimate API error:", error);
+    if(error instanceof ShippingError)return NextResponse.json({success:false,message:error.message},{status:error.status});
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, message: error.message || "Failed to calculate courier rates." },
+      { success: false, message: "Failed to calculate courier rates." },
       { status: 500 }
     );
   }
 }
+export const POST = withApiProtection(protectedPOST);

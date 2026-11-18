@@ -1,5 +1,10 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { RefundError } from "@/lib/refunds/contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +12,7 @@ export const dynamic = "force-dynamic";
  * GET /api/orders/rma?orderNumber=...&email=...
  * Customer checks their active return request status (CUST-05)
  */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const orderNumber = searchParams.get("orderNumber");
@@ -22,6 +27,7 @@ export async function GET(req: NextRequest) {
     }
 
     let requests = await db.rma.getReturnRequests({
+      orderId: searchParams.get("_ownedOrderId") || undefined,
       customerEmail: email || undefined,
     });
 
@@ -41,12 +47,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       count: requests.length,
-      returnRequests: requests,
+      returnRequests: requests.map(r=>({id:r.id,rma_number:r.rma_number,order_id:r.order_id,status:r.status,reason:r.reason,customer_notes:r.customer_notes,requested_at:r.requested_at})),
     });
   } catch (error: any) {
-    console.error("[CUSTOMER RMA GET ERROR]:", error);
+    if(error instanceof RefundError)return NextResponse.json({success:false,error:"Service temporarily unavailable. Please retry."},{status:error.status});
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to retrieve return requests." },
+      { success: false, error: "Failed to retrieve return requests." },
       { status: 500 }
     );
   }
@@ -56,7 +65,7 @@ export async function GET(req: NextRequest) {
  * POST /api/orders/rma
  * Customer submits a Return Merchandise Authorization (RMA) request (CUST-05)
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const body = await req.json();
     const { orderNumber, email, reason, customerNotes, photos } = body;
@@ -79,13 +88,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `Return request '${rma.rma_number}' submitted successfully. Our support team will inspect and review your request.`,
-      returnRequest: rma,
+      returnRequest: {id:rma.id,rma_number:rma.rma_number,order_id:rma.order_id,status:rma.status,reason:rma.reason,customer_notes:rma.customer_notes,requested_at:rma.requested_at},
     });
   } catch (error: any) {
-    console.error("[CUSTOMER RMA POST ERROR]:", error);
+    if(error instanceof RefundError)return NextResponse.json({success:false,error:"Service temporarily unavailable. Please retry."},{status:error.status});
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to submit return request." },
+      { success: false, error: "Failed to submit return request." },
       { status: 400 }
     );
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));

@@ -1,251 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db, CourierDispatchInfo } from "@/lib/db";
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { NextRequest,NextResponse } from "next/server";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { requireAdminPermission } from "@/lib/auth/rbac";
-import { biteship, TETHERA_WAREHOUSE_ORIGIN, COURIER_META } from "@/lib/shipping/biteship";
-
-export const dynamic = "force-dynamic";
-
-// Sample driver roster for on-demand & scheduled courier pickup
-const COURIER_DRIVERS: Record<string, Array<{ name: string; phone: string; plate: string }>> = {
-  jne: [
-    { name: "Wahyu Pratama (JNE Kurir)", phone: "+62 812-4455-8899", plate: "B 1984 JNE" },
-    { name: "Ahmad Subagyo (JNE Express)", phone: "+62 813-2233-4455", plate: "B 2031 JNE" },
-  ],
-  jnt: [
-    { name: "Rizky Firmansyah (J&T Sprinter)", phone: "+62 818-7788-9900", plate: "B 3821 JNT" },
-    { name: "Bambang Tri (J&T Sprinter)", phone: "+62 819-3344-1122", plate: "B 4912 JNT" },
-  ],
-  sicepat: [
-    { name: "Deni Ramadhan (SiCepat SIGESIT)", phone: "+62 856-7788-1122", plate: "B 5183 SCP" },
-    { name: "Hendra Wijaya (SiCepat SIGESIT)", phone: "+62 857-1122-3344", plate: "B 6124 SCP" },
-  ],
-  anteraja: [
-    { name: "Gilang Pratama (AnterAja SATRIA)", phone: "+62 878-9900-1122", plate: "B 7235 ANR" },
-  ],
-  gojek: [
-    { name: "Agus Setiawan (GoSend Driver)", phone: "+62 812-4455-6677", plate: "B 3821 TKD" },
-    { name: "Bayu Pratama (GoSend Driver)", phone: "+62 813-8899-0011", plate: "B 4912 VBN" },
-  ],
-  grab: [
-    { name: "Surya Dharma (GrabExpress)", phone: "+62 878-5566-7788", plate: "B 8346 TYU" },
-    { name: "Rian Hidayat (GrabExpress)", phone: "+62 819-3344-5566", plate: "B 7235 XCV" },
-  ],
-};
-
-export async function POST(req: NextRequest) {
-  try {
-    const perm = requireAdminPermission(req, "orders:dispatch");
-    if (!perm.authorized) {
-      return NextResponse.json({ success: false, error: perm.error }, { status: perm.status || 403 });
-    }
-
-    const body = await req.json();
-    const {
-      orderId,
-      courierProvider = "jne",
-      serviceCode = "jne-reg",
-      serviceName,
-      deliveryType = "now", // "now" | "scheduled"
-      deliveryDate,
-      deliveryTime,
-      action,
-      simulatedStatus,
-    } = body;
-
-    if (!orderId) {
-      return NextResponse.json({ success: false, error: "Order ID is required." }, { status: 400 });
-    }
-
-    const order = await db.orders.findById(orderId);
-    if (!order) {
-      return NextResponse.json({ success: false, error: "Order not found." }, { status: 404 });
-    }
-
-    // =========================================================================
-    // ACTION A: SIMULATE BITESHIP WEBHOOK STATUS TRANSITION / COURIER FAILURE
-    // =========================================================================
-    if (action === "simulate_failure" || action === "simulate_rejection") {
-      const existingCourier: CourierDispatchInfo = order.courier_info || {
-        provider: "biteship",
-        courier_company: courierProvider,
-        service_code: serviceCode,
-        service_name: serviceName || "Biteship Logistics",
-        waybill_id: (order as any).waybill_id || "N/A",
-        tracking_id: `TRK-${Date.now()}`,
-        dispatched_at: new Date().toISOString(),
-        status: "failed",
-        status_history: [],
-      };
-
-      const history = existingCourier.status_history || [];
-      history.push({
-        status: "failed",
-        note: "Courier pickup rejected or driver unavailable. Re-dispatch option unlocked.",
-        updated_at: new Date().toISOString(),
-      });
-
-      const updatedCourierInfo: CourierDispatchInfo = {
-        ...existingCourier,
-        status: "failed" as any,
-        status_history: history,
-      };
-
-      const updated = await db.orders.updateStage(orderId, "courier_failed", updatedCourierInfo);
-
-      return NextResponse.json({
-        success: true,
-        message: `Courier assignment cancelled / driver rejected for Order #${order.order_number}. Re-dispatch is now unlocked.`,
-        order: updated,
-      });
-    }
-
-    if (action === "simulate_webhook" || action === "simulate_arrival") {
-      const targetStatus = action === "simulate_arrival" ? "delivered" : simulatedStatus || "in_transit";
-      const existingCourier: CourierDispatchInfo = order.courier_info || {
-        provider: "biteship",
-        courier_company: courierProvider,
-        service_code: serviceCode,
-        service_name: serviceName || "Biteship Logistics",
-        waybill_id: `BIT-${courierProvider.toUpperCase()}-${Date.now().toString().slice(-8)}`,
-        tracking_id: `TRK-${Date.now()}`,
-        dispatched_at: new Date().toISOString(),
-        status: "dispatched",
-        status_history: [],
-      };
-
-      const history = existingCourier.status_history || [];
-      history.push({
-        status: targetStatus,
-        note: `Status updated to ${targetStatus} via Biteship webhook simulation.`,
-        updated_at: new Date().toISOString(),
-      });
-
-      const updatedCourierInfo: CourierDispatchInfo = {
-        ...existingCourier,
-        status: targetStatus === "delivered" ? "delivered" : (targetStatus as any),
-        delivered_at: targetStatus === "delivered" ? new Date().toISOString() : existingCourier.delivered_at,
-        status_history: history,
-      };
-
-      const nextDbStatus = targetStatus === "delivered" ? "delivery_arrived" : "on_delivery";
-      const updated = await db.orders.updateStage(orderId, nextDbStatus, updatedCourierInfo);
-
-      return NextResponse.json({
-        success: true,
-        message: `Order #${order.order_number} transitioned to status '${targetStatus}' (Biteship Webhook processed).`,
-        order: updated,
-      });
-    }
-
-    // =========================================================================
-    // ACTION B: CREATE BITESHIP SHIPMENT, GENERATE WAYBILL, SCHEDULE PICKUP
-    // =========================================================================
-    const courierCode = courierProvider.toLowerCase();
-    const meta = COURIER_META[courierCode] || {
-      name: courierCode.toUpperCase(),
-      brandColor: "#003399",
-      brandBg: "bg-blue-50 text-blue-800",
-      badge: "Partner",
-      category: "regular",
-    };
-
-    const shippingAddress = order.shipping_address || {
-      street: "Jl. Sudirman No. 45",
-      subdistrict: "Karet Tengsin",
-      city: "Jakarta Pusat",
-      province: "DKI Jakarta",
-      postalCode: "10220",
-    };
-
-    // 1. Call Biteship API service to create order, generate Waybill and schedule pickup
-    const biteshipResult = await biteship.createOrderAndSchedulePickup({
-      orderNumber: order.order_number,
-      courierCompany: courierCode,
-      courierType: serviceCode.replace(`${courierCode}-`, ""),
-      destinationName: order.customer_name,
-      destinationPhone: order.customer_phone,
-      destinationEmail: order.customer_email,
-      destinationAddress: `${shippingAddress.street}, ${shippingAddress.subdistrict || ""}, ${shippingAddress.city}`,
-      destinationPostalCode: shippingAddress.postalCode,
-      destinationNote: (shippingAddress as any).deliveryNotes || "Fragile PC Electronics",
-      items: [
-        {
-          id: order.id,
-          name: `Order #${order.order_number} Package`,
-          price: order.total,
-          weightGrams: 2500,
-        },
-      ],
-      deliveryType: deliveryType as "now" | "scheduled",
-      deliveryDate,
-      deliveryTime,
-      orderNote: `Pickup from Tethera Shop Mangga Dua Hub for #${order.order_number}`,
-    });
-
-    // Pick assignable driver from roster
-    const driverRoster = COURIER_DRIVERS[courierCode] || COURIER_DRIVERS.jne;
-    const driver = driverRoster[Math.floor(Math.random() * driverRoster.length)];
-
-    const courierInfo: CourierDispatchInfo = {
-      provider: "biteship",
-      courier_company: courierCode,
-      service_code: serviceCode,
-      service_name: serviceName || `${meta.name} (${serviceCode.toUpperCase()})`,
-      waybill_id: biteshipResult.waybillId, // Official courier AWB (Waybill)
-      tracking_id: biteshipResult.trackingId,
-      biteship_order_id: biteshipResult.biteshipOrderId,
-      tracking_url: biteshipResult.trackingUrl,
-      driver_name: driver.name,
-      driver_phone: driver.phone,
-      vehicle_plate: driver.plate,
-      collection_method: "pickup",
-      pickup_scheduled_time: biteshipResult.pickupTime,
-      pickup_address: TETHERA_WAREHOUSE_ORIGIN.address,
-      dispatched_at: new Date().toISOString(),
-      estimated_arrival: courierCode === "gojek" || courierCode === "grab" ? "1 - 2 Hours" : "1 - 2 Days",
-      status: "dispatched",
-      status_history: [
-        {
-          status: "dispatched",
-          note: `Courier found and assigned via Biteship. Waybill ${biteshipResult.waybillId} generated. Automated pickup scheduled from Mangga Dua Flagship Hub.`,
-          updated_at: new Date().toISOString(),
-        },
-      ],
-    };
-
-    // Transition order state in DB automatically to Dispatched
-    const nextOrderStatus = "dispatched";
-    const updated = await db.orders.updateStage(orderId, nextOrderStatus, courierInfo);
-
-    // Record immutable audit log
-    await db.auditLogs.log({
-      actor_id: perm.user?.id || "unknown",
-      actor_name: perm.user?.name || "Staff Admin",
-      role: perm.user?.role || "ADMIN",
-      action: "ORDER_DISPATCHED",
-      entity_type: "order",
-      entity_id: orderId,
-      before_state: { status: order.status },
-      after_state: {
-        status: nextOrderStatus,
-        waybill_id: biteshipResult.waybillId,
-        courier: meta.name,
-        service: serviceName,
-      },
-      ip_address: req.headers.get("x-forwarded-for") || "127.0.0.1",
-      user_agent: req.headers.get("user-agent") || undefined,
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: `Courier found! Waybill #${biteshipResult.waybillId} assigned via ${meta.name}. Order automatically progressed to Dispatched.`,
-      order: updated,
-      waybillId: biteshipResult.waybillId,
-      trackingUrl: biteshipResult.trackingUrl,
-      pickupTime: biteshipResult.pickupTime,
-    });
-  } catch (error: any) {
-    console.error("[ADMIN COURIER DISPATCH ERROR]:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { isDemoMode } from "@/lib/runtime/environment";
+import { dispatchOrder,shippingOperations,applyShipment,reconcileShipment } from "@/lib/shipping/dispatch";
+import { ShippingError,shipmentEvidence } from "@/lib/shipping/gateway";
+export const dynamic="force-dynamic";
+export const POST=withApiProtection(withAccess(async(req:NextRequest)=>{
+ try{
+  const access=await requireAdminPermission(req,"orders:dispatch");if(!access.authorized)return NextResponse.json({success:false,error:access.error},{status:access.status||403});
+  const body=await req.json();if(typeof body.orderId!=="string")throw new ShippingError("Order ID is required.",400);
+  const operationForOrder=async()=>{const list=await shippingOperations.findMany({order_id:body.orderId});const selected=body.operationId?list.find(op=>op.id===body.operationId):list.length===1?list[0]:null;if(!selected)throw new ShippingError("Choose the individual parcel operation for reconciliation or simulation.",409);return selected;};
+  let result;
+  if(body.action?.startsWith("simulate_")){
+   if(!isDemoMode())throw new ShippingError("Shipping simulation is available only in demo mode.",403);
+   const operation=await operationForOrder();if(!operation?.provider_id)throw new ShippingError("Book a demo shipment before simulating updates.",409);
+   const status=body.action==="simulate_arrival"?"delivered":body.action==="simulate_failure"?"failed":body.action==="simulate_rejection"?"rejected":body.simulatedStatus||"in_transit";
+   result=await applyShipment(operation,shipmentEvidence({success:true,id:operation.provider_id,reference_id:operation.reference_id,status,courier:{waybill_id:operation.evidence?.waybill_id,tracking_id:operation.evidence?.tracking_id}},operation.reference_id,operation.provider_id));
+  }else if(body.action==="reconcile"){
+   const operation=await operationForOrder();if(!operation)throw new ShippingError("Dispatch operation not found.",404);result=await reconcileShipment(operation,body.biteshipOrderId);
+  }else{
+   if(body.action && body.action!=="dispatch")throw new ShippingError("Unsupported dispatch action.",400);
+   result=await dispatchOrder(body.orderId,body,access.user?.id||"staff");
   }
-}
+  return NextResponse.json({success:true,message:result.operation?.state==="review"?"Shipment needs review; no new booking was created.":"Shipment booking is recorded. Tracking reflects actual courier progress.",order:result.order,operationId:result.operation?.id,waybillId:result.operation?.evidence?.waybill_id||null,trackingUrl:result.operation?.evidence?.tracking_url||null,pickupTime:null});
+ }catch(error){return databaseFailureResponse(error)||NextResponse.json({success:false,error:error instanceof ShippingError?error.message:"Dispatch could not complete. Retry the existing operation."},{status:error instanceof ShippingError?error.status:503});}
+}));

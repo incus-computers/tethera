@@ -37,8 +37,7 @@ export async function getAggregatedShippingRates(
       return a.price - b.price;
     });
   } catch (err) {
-    console.error("Failed to fetch shipping rates from Biteship:", err);
-    return [];
+    throw err;
   }
 }
 

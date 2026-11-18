@@ -4,9 +4,11 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default {
+  envDir: false,
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "server-only": path.resolve(__dirname, "./tests/support/server-only.ts"),
     },
   },
   oxc: {
@@ -15,10 +17,13 @@ export default {
     },
   },
   test: {
+    ...(process.env.VALIDATION_RESULTS_DIR ? {
+      reporters: ["default", "junit", "json"],
+      outputFile: { junit: path.join(process.env.VALIDATION_RESULTS_DIR, "unit.xml"), json: path.join(process.env.VALIDATION_RESULTS_DIR, "unit.json") },
+    } : {}),
+    setupFiles: ["./tests/support/setup.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
-    exclude: [
-      "tests/*variations*.test.ts",
-      "tests/catalog-tiles.test.ts",
-    ],
+    passWithNoTests: false,
+    maxWorkers: 4,
   },
 };

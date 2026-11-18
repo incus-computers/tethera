@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { MOCK_COMPONENTS, ProductVariation } from "../src/lib/data/mockHardware";
 
 test("Variation attribute resolution, grouping, and stock checks", () => {

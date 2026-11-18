@@ -38,7 +38,7 @@ export const CANONICAL_PROMO_BANNERS: DynamicBannerSlide[] = [
     cta_link: "/builder",
     secondary_cta_text: "Browse Pre-Builts",
     secondary_cta_link: "/prebuilts",
-    perk: "Hemat hingga Rp 3.500.000 untuk sasis putih & komponen premium",
+    perk: "Save up to Rp 3,500,000 on white cases & premium components",
     bg_gradient: "from-slate-50 via-white to-slate-100",
     tag_color: "bg-[#37baf2] text-[#0A0B0E]",
     is_active: true,

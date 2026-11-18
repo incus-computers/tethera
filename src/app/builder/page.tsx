@@ -1,12 +1,13 @@
 import { PCBuilderView } from "../../components/builder/PCBuilderView";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Custom PC Builder | Incus Precision Studio",
+  title: "PC Builder | Incus Computers",
   description:
-    "Configure high-performance gaming desktops and workstations with real-time socket matching, clearance checks, and Click & Collect fulfillment.",
+    "Customize your PC configuration, compare replacement parts and review component pricing with Incus Computers.",
 };
 
 export default function BuilderPage() {
-  return <PCBuilderView />;
+  return <Suspense fallback={<div className="p-8" role="status">Loading your configuration...</div>}><PCBuilderView /></Suspense>;
 }

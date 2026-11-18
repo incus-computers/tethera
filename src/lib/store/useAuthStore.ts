@@ -1,177 +1,47 @@
+"use client";
 import { create } from "zustand";
 import { CustomerProfile, RegistrationInput } from "../types/customer";
-import { useLocationStore } from "./useLocationStore";
-
 interface AuthState {
-  user: CustomerProfile | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-
-  // Actions
-  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: RegistrationInput) => Promise<{ success: boolean; error?: string; message?: string }>;
-  updateProfile: (updates: Partial<CustomerProfile>) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
-  clearError: () => void;
-  initSession: () => void;
+ user:CustomerProfile|null; isAuthenticated:boolean; isLoading:boolean; error:string|null;
+ login:(identifier:string,password?:string)=>Promise<{success:boolean;error?:string}>;
+ register:(input:RegistrationInput)=>Promise<{success:boolean;error?:string;message?:string}>;
+ updateProfile:(updates:Partial<CustomerProfile>)=>Promise<{success:boolean;error?:string}>;
+ logout:()=>Promise<void>; initSession:()=>Promise<void>; clearError:()=>void;
 }
-
-const STORAGE_KEY = "tethera_customer_session";
-
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  isAuthenticated: false,
-  isLoading: false,
-  error: null,
-
-  initSession: () => {
-    if (typeof window === "undefined") return;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const user: CustomerProfile = JSON.parse(stored);
-        set({ user, isAuthenticated: true });
-
-        // Synchronize customer location with useLocationStore for instant shipping
-        if (user.address) {
-          const locStore = useLocationStore.getState();
-          locStore.setLocation({
-            address: `${user.address.street}, ${user.address.subdistrict}`,
-            city: user.address.city,
-            subdistrict: user.address.subdistrict,
-            postalCode: user.address.postalCode,
-            latitude: -6.2088, // Standard Jakarta coordinates
-            longitude: 106.8456,
-          });
-        }
-      }
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  },
-
-  login: async (identifier: string, password?: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, email: identifier, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        set({ isLoading: false, error: data.error || "Login failed" });
-        return { success: false, error: data.error || "Login failed" };
-      }
-
-      const user: CustomerProfile = data.user;
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-      }
-
-      set({ user, isAuthenticated: true, isLoading: false, error: null });
-
-      // Automatically sync customer's primary address to shipping delivery selector
-      if (user.address) {
-        useLocationStore.getState().setLocation({
-          address: `${user.address.street}, ${user.address.subdistrict}`,
-          city: user.address.city,
-          subdistrict: user.address.subdistrict,
-          postalCode: user.address.postalCode,
-          latitude: -6.2088,
-          longitude: 106.8456,
-        });
-      }
-
-      return { success: true };
-    } catch (err: any) {
-      set({ isLoading: false, error: err.message || "Network error during sign in" });
-      return { success: false, error: err.message };
-    }
-  },
-
-  register: async (input: RegistrationInput) => {
-    set({ isLoading: true, error: null });
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        set({ isLoading: false, error: data.error || "Registration failed" });
-        return { success: false, error: data.error || "Registration failed" };
-      }
-
-      const user: CustomerProfile = data.user;
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-      }
-
-      set({ user, isAuthenticated: true, isLoading: false, error: null });
-
-      // Automatically sync customer's newly registered address with shipping selector
-      if (user.address) {
-        useLocationStore.getState().setLocation({
-          address: `${user.address.street}, ${user.address.subdistrict}`,
-          city: user.address.city,
-          subdistrict: user.address.subdistrict,
-          postalCode: user.address.postalCode,
-          latitude: -6.2088,
-          longitude: 106.8456,
-        });
-      }
-
-      return { success: true, message: data.message };
-    } catch (err: any) {
-      set({ isLoading: false, error: err.message || "Network error during registration" });
-      return { success: false, error: err.message };
-    }
-  },
-
-  updateProfile: async (updates: Partial<CustomerProfile>) => {
-    const current = get().user;
-    if (!current) return { success: false, error: "Not authenticated" };
-
-    set({ isLoading: true });
-    try {
-      const res = await fetch("/api/account/update", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: current.id, updates }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        set({ isLoading: false, error: data.error || "Update failed" });
-        return { success: false, error: data.error };
-      }
-
-      const updated: CustomerProfile = data.user;
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      }
-
-      set({ user: updated, isLoading: false });
-      return { success: true };
-    } catch (err: any) {
-      set({ isLoading: false });
-      return { success: false, error: err.message };
-    }
-  },
-
-  logout: () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    set({ user: null, isAuthenticated: false, error: null });
-  },
-
-  clearError: () => set({ error: null }),
+let epoch=0;
+export const useAuthStore=create<AuthState>((set,get)=>({
+ user:null,isAuthenticated:false,isLoading:false,error:null,
+ initSession:async()=>{
+   const current=epoch;
+   localStorage.removeItem("tethera_customer_session");
+   try { const response=await fetch("/api/auth/me",{cache:"no-store"});const data=await response.json();
+     if(current===epoch) set({user:response.ok?data.user:null,isAuthenticated:response.ok,isLoading:false});
+   } catch {if(current===epoch)set({user:null,isAuthenticated:false,isLoading:false});}
+ },
+ login:async(identifier,password)=>{
+   ++epoch;set({isLoading:true,error:null});
+   try {const response=await fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({identifier,password})});const data=await response.json();
+     if(!response.ok)throw new Error(data.error);
+     set({user:data.user,isAuthenticated:true,isLoading:false});return {success:true};
+   }catch(error){const message=error instanceof Error?error.message:"Sign-in failed.";set({user:null,isAuthenticated:false,isLoading:false,error:message});return {success:false,error:message};}
+ },
+ register:async(input)=>{
+   ++epoch;set({isLoading:true,error:null});
+   try{const response=await fetch("/api/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});const data=await response.json();if(!response.ok)throw new Error(data.error);
+     set({user:data.user,isAuthenticated:true,isLoading:false});return {success:true};
+   }catch(error){const message=error instanceof Error?error.message:"Registration failed.";set({isLoading:false,error:message});return {success:false,error:message};}
+ },
+ updateProfile:async(updates)=>{
+   if(!get().user)return {success:false,error:"Sign in first."};
+   try{const response=await fetch("/api/account/update",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({updates})});const data=await response.json();if(!response.ok)throw new Error(data.error);set({user:data.user});return {success:true};
+   }catch(error){return {success:false,error:error instanceof Error?error.message:"Update failed."};}
+ },
+ logout:async()=>{
+   ++epoch;
+   const response=await fetch("/api/auth/logout",{method:"POST"});
+   if(!response.ok){set({error:"Could not sign out. Please retry."});return;}
+   localStorage.removeItem("tethera_customer_session");
+   set({user:null,isAuthenticated:false,error:null});
+ },
+ clearError:()=>set({error:null})
 }));

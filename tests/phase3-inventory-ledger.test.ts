@@ -1,3 +1,7 @@
+import { randomUUID } from "crypto";
+import { receiveReturn } from "@/lib/refunds/service";
+import { BaseRepository, InventoryReservationRow } from "@/lib/db";
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 
@@ -132,6 +136,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
 
       // Reserve stock initially
       await db.inventory.reserveStock("ram-1", 2);
+      await new BaseRepository<InventoryReservationRow>("inventory_reservations").create({order_id:order.id,product_id:"ram-1",store_id:"00000000-0000-0000-0000-000000000001",quantity:2,status:"reserved",expires_at:new Date(Date.now()+900000).toISOString()});
 
       // Process payment success (e.g. from Midtrans webhook)
       const res = await db.orders.processPaymentSuccess(order.id, `PAY-${Date.now()}`);
@@ -148,7 +153,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
       expect(saleMovement?.reference_order_id).toBe(order.id);
     });
 
-    it("automatically logs RETURN ledger entry when RMA refund with restock is processed", async () => {
+    it("logs RETURN only for separately inspected item quantities", async () => {
       // Create paid order
       const { order } = await db.orders.createOrderWithItems(
         {
@@ -159,6 +164,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
           fulfillment_type: "delivery",
           payment_method: "QRIS",
           status: "delivery_arrived",
+          paid_at:new Date().toISOString(),
           subtotal: 3000000,
           shipping_fee: 25000,
           assembly_fee: 0,
@@ -182,18 +188,24 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
         reason: "Ordered wrong wattage specification",
       });
 
-      // Staff processes refund with restockInventory: true
+      for(const status of ["approved","item_received","inspected"] as const)await db.rma.updateRmaStatus(rma.id,{status,handledBy:"staff-lead"});
+      const details=await db.orders.getOrderWithItems(order.id);
+      await new BaseRepository<InventoryReservationRow>("inventory_reservations").create({order_id:order.id,product_id:"psu-1",store_id:"00000000-0000-0000-0000-000000000001",quantity:1,status:"settled",expires_at:new Date().toISOString()});
+      // Financial refund and physical recovery are distinct operations.
       const refundRes = await db.rma.processRefund({
         orderId: order.id,
+        requestKey:randomUUID(),
         returnRequestId: rma.id,
         amount: 3355000,
         reason: "Item returned unopened in mint condition",
-        restockInventory: true,
+        restockInventory: false,
         processedBy: "staff-lead",
       });
 
       expect(refundRes.refund.status).toBe("completed");
-      expect(refundRes.refund.restock_inventory).toBe(true);
+      expect(refundRes.refund.restock_inventory).toBe(false);
+      expect(await db.inventoryLedger.getMovementsByOrder(order.id)).toHaveLength(0);
+      await receiveReturn({rmaId:rma.id,requestKey:randomUUID(),items:[{orderItemId:details.items[0].id,quantity:1,disposition:"restock"}]},"staff-lead");
 
       // Verify RETURN entry in inventory ledger
       const orderMovements = await db.inventoryLedger.getMovementsByOrder(order.id);
@@ -204,7 +216,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
       expect(returnMovement?.actor_id).toBe("staff-lead");
     });
 
-    it("automatically logs CANCELLED_ORDER ledger entry when paid order is cancelled", async () => {
+    it("rejects paid cancellation without automatically restocking inventory", async () => {
       const { order } = await db.orders.createOrderWithItems(
         {
           order_number: `TET-CANCEL-${Date.now()}`,
@@ -236,15 +248,9 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
         order.id,
         "Customer requested cancellation before assembly"
       );
-      expect(cancelRes.success).toBe(true);
-      expect(cancelRes.order?.status).toBe("cancelled");
-
-      // Verify CANCELLED_ORDER entry in inventory ledger
-      const orderMovements = await db.inventoryLedger.getMovementsByOrder(order.id);
-      const cancelMovement = orderMovements.find((m) => m.product_id === "cas-1");
-      expect(cancelMovement).toBeDefined();
-      expect(cancelMovement?.reason_code).toBe("CANCELLED_ORDER");
-      expect(cancelMovement?.delta_quantity).toBe(1);
+      expect(cancelRes.success).toBe(false);
+      expect((await db.orders.findById(order.id))!.status).toBe("payment_received");
+      expect(await db.inventoryLedger.getMovementsByOrder(order.id)).toEqual([]);
     });
   });
 
@@ -262,7 +268,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
     it("allows CATALOG_MANAGER to query inventory and view low-stock summary", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/inventory", {
         method: "GET",
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
       });
 
       const res = await inventoryGET(req);
@@ -279,7 +285,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
     it("filters inventory when lowStockOnly=true is requested", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/inventory?lowStockOnly=true", {
         method: "GET",
-        headers: { authorization: "Bearer dispatch" },
+        headers: { cookie: fixtureCookie("FULFILLMENT_OPERATOR") },
       });
 
       const res = await inventoryGET(req);
@@ -292,7 +298,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
     it("blocks SUPPORT_AGENT from adjusting inventory with 403 Forbidden", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/inventory", {
         method: "POST",
-        headers: { authorization: "Bearer support" },
+        headers: { cookie: fixtureCookie("SUPPORT_AGENT") },
         body: JSON.stringify({
           productId: "cpu-1",
           deltaQuantity: 5,
@@ -310,7 +316,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
     it("rejects inventory adjustment with invalid reasonCode with 400 Bad Request", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/inventory", {
         method: "POST",
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
         body: JSON.stringify({
           productId: "cpu-1",
           deltaQuantity: 5,
@@ -332,7 +338,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
       const req = new NextRequest("http://localhost:3000/api/admin/inventory", {
         method: "POST",
         headers: {
-          authorization: "Bearer dispatch",
+          cookie: fixtureCookie("FULFILLMENT_OPERATOR"),
           "x-forwarded-for": "10.0.1.50",
           "user-agent": "StaffInventoryScanner/1.0",
         },
@@ -368,7 +374,7 @@ describe("Phase 3 Milestone 4: Stock Movement & Inventory Ledger (INV-01, INV-02
     it("allows staff to record DAMAGE write-off reducing stock", async () => {
       const req = new NextRequest("http://localhost:3000/api/admin/inventory", {
         method: "POST",
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
         body: JSON.stringify({
           productId: "clr-1",
           deltaQuantity: -2,

@@ -1,8 +1,5 @@
-/**
- * Indonesian Tax Calculation Engine (PPN / VAT)
- * Complies with Indonesian Law on Harmonization of Tax Regulations (UU HPP).
- * Default PPN rate is 11% (0.11), with support for 12% (0.12).
- */
+/** Commercial effective-rate arithmetic. Merchant tax treatment requires separate review. */
+import { idr,rateBps,splitIncluded,allocateIdr } from "@/lib/checkout/financials";
 
 export const DEFAULT_PPN_RATE = 0.11;
 
@@ -53,11 +50,8 @@ export function calculateInclusiveTax(
   grossAmount: number,
   rate: number = DEFAULT_PPN_RATE
 ): TaxCalculationResult {
-  const safeGross = Math.max(0, Math.round(grossAmount));
-  const safeRate = rate > 0 ? rate : DEFAULT_PPN_RATE;
-
-  const dpp = Math.round(safeGross / (1 + safeRate));
-  const taxAmount = safeGross - dpp;
+  const safeGross=idr(grossAmount),safeRate=rate;
+  const split=splitIncluded(safeGross,rateBps(safeRate)),dpp=split.net,taxAmount=split.tax;
 
   return {
     grossAmount: safeGross,
@@ -75,11 +69,9 @@ export function calculateExclusiveTax(
   netAmount: number,
   rate: number = DEFAULT_PPN_RATE
 ): TaxCalculationResult {
-  const safeNet = Math.max(0, Math.round(netAmount));
-  const safeRate = rate > 0 ? rate : DEFAULT_PPN_RATE;
-
-  const taxAmount = Math.round(safeNet * safeRate);
-  const grossAmount = safeNet + taxAmount;
+  const safeNet=idr(netAmount),safeRate=rate;
+  const taxAmount=Number((BigInt(safeNet)*BigInt(rateBps(rate))+BigInt(5000))/BigInt(10000));
+  const grossAmount=idr(safeNet+taxAmount);
 
   return {
     grossAmount,
@@ -101,69 +93,11 @@ export function calculateOrderTaxBreakdown(params: {
   taxRate?: number;
   isInclusive?: boolean;
 }): OrderTaxBreakdown {
-  const rate = params.taxRate !== undefined && params.taxRate > 0 ? params.taxRate : DEFAULT_PPN_RATE;
-  const isInclusive = params.isInclusive ?? true;
-  const shippingFee = Math.max(0, Math.round(params.shippingFee || 0));
-  const assemblyFee = Math.max(0, Math.round(params.assemblyFee || 0));
-  const discountAmount = Math.max(0, Math.round(params.discountAmount || 0));
-
-  let itemsGross = 0;
-  const lineItems: OrderTaxLineItem[] = [];
-
-  for (const it of params.items) {
-    const qty = Math.max(1, Math.round(it.quantity || 1));
-    const unitPrice = Math.max(0, Math.round(it.unitPrice || 0));
-    const lineTotal = unitPrice * qty;
-    itemsGross += lineTotal;
-
-    if (isInclusive) {
-      const unitTaxRes = calculateInclusiveTax(unitPrice, rate);
-      const lineTaxRes = calculateInclusiveTax(lineTotal, rate);
-      lineItems.push({
-        id: it.id,
-        name: it.name,
-        unitPrice,
-        quantity: qty,
-        lineTotal,
-        unitDpp: unitTaxRes.dpp,
-        lineDpp: lineTaxRes.dpp,
-        lineTax: lineTaxRes.taxAmount,
-        taxRate: rate,
-      });
-    } else {
-      const unitTaxRes = calculateExclusiveTax(unitPrice, rate);
-      const lineTaxRes = calculateExclusiveTax(lineTotal, rate);
-      lineItems.push({
-        id: it.id,
-        name: it.name,
-        unitPrice,
-        quantity: qty,
-        lineTotal: lineTaxRes.grossAmount,
-        unitDpp: unitTaxRes.dpp,
-        lineDpp: lineTaxRes.dpp,
-        lineTax: lineTaxRes.taxAmount,
-        taxRate: rate,
-      });
-    }
-  }
-
-  // Subtotal includes hardware items plus custom assembly fees
-  const grossSubtotal = itemsGross + assemblyFee;
-  const subtotalTaxRes = isInclusive
-    ? calculateInclusiveTax(grossSubtotal, rate)
-    : calculateExclusiveTax(grossSubtotal, rate);
-
-  const grandTotal = Math.max(0, grossSubtotal + shippingFee - discountAmount);
-
-  return {
-    grossSubtotal,
-    dpp: subtotalTaxRes.dpp,
-    taxAmount: subtotalTaxRes.taxAmount,
-    taxRate: rate,
-    shippingFee,
-    assemblyFee,
-    discountAmount,
-    grandTotal,
-    lineItems,
-  };
+  const rate=params.taxRate??DEFAULT_PPN_RATE,bps=rateBps(rate),inclusive=params.isInclusive??true;
+  const quantity=(n:number)=>{if(!Number.isInteger(n)||n<1||n>100)throw new Error("Invalid quantity.");return n;};
+  const gross=(n:number)=>inclusive?idr(n):calculateExclusiveTax(n,rate).grossAmount;
+  const raw=params.items.map(item=>gross(idr(item.unitPrice)*quantity(item.quantity))),assemblyFee=gross(params.assemblyFee??0),shippingFee=gross(params.shippingFee??0),discountAmount=idr(params.discountAmount??0);
+  const parts=raw.concat(assemblyFee,shippingFee),discounts=allocateIdr(discountAmount,parts),splits=parts.map((n,i)=>splitIncluded(n-discounts[i],bps));
+  const lineItems=params.items.map((item,i)=>({id:item.id,name:item.name,unitPrice:item.unitPrice,quantity:item.quantity,lineTotal:splits[i].gross,unitDpp:splitIncluded(gross(item.unitPrice),bps).net,lineDpp:splits[i].net,lineTax:splits[i].tax,taxRate:rate}));
+  return {grossSubtotal:raw.reduce((a,b)=>a+b,0)+assemblyFee,dpp:splits.reduce((sum,l)=>sum+l.net,0),taxAmount:splits.reduce((sum,l)=>sum+l.tax,0),taxRate:rate,shippingFee,assemblyFee,discountAmount,grandTotal:splits.reduce((sum,l)=>sum+l.gross,0),lineItems};
 }

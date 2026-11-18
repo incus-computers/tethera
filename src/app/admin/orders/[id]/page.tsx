@@ -1,5 +1,6 @@
 "use client";
 
+import { FinancialSummary } from "@/components/orders/FinancialSummary";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -489,10 +490,10 @@ export default function ExclusiveOrderPage() {
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to All Orders</span>
             </Link>
-            <span>/</span>
+            <span aria-hidden="true">/</span>
             <span className="text-slate-300">Order Management</span>
-            <span>/</span>
-            <span className="text-white font-bold">#{order.order_number || order.id}</span>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page" className="text-white font-bold">#{order.order_number || order.id}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -762,33 +763,7 @@ export default function ExclusiveOrderPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Cost lines */}
-                <div className="space-y-2.5 text-xs">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span>Component Subtotal</span>
-                    <span>{formatRupiah(Number(order.subtotal) || totalVal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span>Shipping &amp; Logistics Fee</span>
-                    <span>{formatRupiah(Number(order.shipping_fee) || 0)}</span>
-                  </div>
-                  {Number(order.assembly_fee) > 0 && (
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span>Custom PC Assembly Fee</span>
-                      <span>{formatRupiah(Number(order.assembly_fee))}</span>
-                    </div>
-                  )}
-                  {Number(order.discount_amount) > 0 && (
-                    <div className="flex items-center justify-between text-emerald-400">
-                      <span>Promotional Discount</span>
-                      <span>-{formatRupiah(Number(order.discount_amount))}</span>
-                    </div>
-                  )}
-                  <div className="pt-3 border-t border-white/10 flex items-center justify-between text-base font-black text-white">
-                    <span>Total Settled Amount</span>
-                    <span className="text-[#37baf2]">{formatRupiah(totalVal)}</span>
-                  </div>
-                </div>
+                <FinancialSummary order={order}/>
 
                 {/* Gateway Details */}
                 <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-2 text-xs">

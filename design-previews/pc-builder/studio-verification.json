@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "version": 3,
+  "date": "2026-11-10T11:45:32.681Z",
+  "results": [
+    "Eight original-style rows, a separate summary and no inspiration hero.",
+    "Focused selection, search and deliberate comparison return to the component list.",
+    "Remove/replace, assembly, extras, checks and the price breakdown reconcile.",
+    "Saved names/selections restore, and shared links reproduce the subtotal in a fresh context.",
+    "Platform changes require confirmation and remove only the mismatched part.",
+    "Empty search recovery and escaped names work without script errors.",
+    "Mobile selection/review works; six widths have no page overflow or missing images."
+  ],
+  "viewports": [
+    {
+      "width": 320,
+      "overflow": false,
+      "brokenImages": 0
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "brokenImages": 0
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "brokenImages": 0
+    },
+    {
+      "width": 1024,
+      "overflow": false,
+      "brokenImages": 0
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "brokenImages": 0
+    },
+    {
+      "width": 1920,
+      "overflow": false,
+      "brokenImages": 0
+    }
+  ]
+}

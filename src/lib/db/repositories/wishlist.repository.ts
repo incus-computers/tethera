@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import "server-only";
 import { BaseRepository } from "./base.repository";
 import { WishlistItemRow } from "../types";
@@ -21,7 +22,7 @@ export class WishlistRepository extends BaseRepository<WishlistItemRow> {
     const all = await this.findMany({});
     return all.filter((item) => {
       if (filter.userId && item.user_id === filter.userId) return true;
-      if (filter.sessionToken && item.anonymous_session_token === filter.sessionToken) {
+      if (!filter.userId && !item.user_id && filter.sessionToken && item.anonymous_session_token === filter.sessionToken) {
         return true;
       }
       return false;
@@ -57,9 +58,9 @@ export class WishlistRepository extends BaseRepository<WishlistItemRow> {
     }
 
     return this.create({
-      id: `wish-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      id: `wish-${randomUUID()}`,
       user_id: filter.userId || null,
-      anonymous_session_token: filter.sessionToken || null,
+      anonymous_session_token: filter.userId ? null : filter.sessionToken || null,
       product_id: productId,
       created_at: new Date().toISOString(),
     });
@@ -95,7 +96,7 @@ export class WishlistRepository extends BaseRepository<WishlistItemRow> {
     for (const item of guestItems) {
       if (!userProductIds.has(item.product_id)) {
         await this.create({
-          id: `wish-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+          id: `wish-${randomUUID()}`,
           user_id: userId,
           anonymous_session_token: null,
           product_id: item.product_id,

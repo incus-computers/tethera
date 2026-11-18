@@ -1,33 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
-import { MarketplaceSyncService, InboundStockWebhook } from "@/lib/integrations/marketplace";
-
-export async function POST(req: NextRequest) {
-  try {
-    const authHeader = req.headers.get("x-marketplace-token");
-    if (authHeader !== process.env.MARKETPLACE_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: "Unauthorized webhook" }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const syncService = new MarketplaceSyncService();
-
-    // Standardized payload format
-    const webhookData: InboundStockWebhook = {
-      provider: body.provider, // 'ginee' | 'jubelio'
-      channel: body.channel,   // 'tokopedia' | 'shopee'
-      externalSku: body.sku || body.item_code,
-      newStockOnHand: body.available_stock || body.qty,
-      timestamp: new Date().toISOString()
-    };
-
-    await syncService.handleInboundMarketplaceWebhook(webhookData);
-
-    return NextResponse.json({ success: true, processedAt: new Date().toISOString() });
-  } catch (error: any) {
-    console.error("Error processing marketplace webhook:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Internal server error" },
-      { status: 500 }
-    );
-  }
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { NextRequest,NextResponse } from "next/server";
+import { isDemoMode } from "@/lib/runtime/environment";
+import { MarketplaceSyncService } from "@/lib/integrations/marketplace";
+ async function protectedPOST(req:NextRequest){
+ // A real provider adapter/authentication and stock authority must be selected first.
+ if(!isDemoMode())return NextResponse.json({success:false,error:"Marketplace connection is not enabled."},{status:503});
+ if(req.headers.get("x-marketplace-token")!=="demo-webhook-only")return NextResponse.json({success:false},{status:401});
+ try{const b=await req.json(),stock=b.available_stock??b.qty;
+  if(!["ginee","jubelio"].includes(b.provider)||!["tokopedia","shopee","lazada"].includes(b.channel)||typeof b.eventId!=="string"||!/^[A-Za-z0-9_-]{1,100}$/.test(b.eventId)||typeof (b.sku??b.item_code)!=="string"||!Number.isSafeInteger(stock)||stock<0)throw new Error("Invalid event.");
+  const job=await new MarketplaceSyncService().handleInboundMarketplaceWebhook({provider:b.provider,channel:b.channel,externalSku:b.sku??b.item_code,newStockOnHand:stock,timestamp:b.timestamp||"",eventId:b.eventId});
+  return NextResponse.json({success:true,queued:true,jobId:job.id},{status:202});
+ }catch{return NextResponse.json({success:false,error:"Invalid or conflicting marketplace event."},{status:400});}
 }
+export const POST = withApiProtection(protectedPOST);

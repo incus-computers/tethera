@@ -1,3 +1,4 @@
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 import fs from "fs";
@@ -165,7 +166,7 @@ describe("P2.3 Cache Invalidation Engine (OPT-BE-02)", () => {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: "Bearer superadmin",
+          cookie: fixtureCookie("SUPER_ADMIN"),
         },
         body: JSON.stringify({
           name: "Incomplete GPU",
@@ -188,7 +189,7 @@ describe("P2.3 Cache Invalidation Engine (OPT-BE-02)", () => {
     it("returns RFC 7807 403 Forbidden when review submission is from unverified buyer", async () => {
       const req = new NextRequest("http://localhost:3000/api/products/cpu-1/reviews", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json",cookie:fixtureCookie("unverified-guest@example.com") },
         body: JSON.stringify({
           customerEmail: "unverified-guest@example.com",
           customerName: "Guest",
@@ -198,7 +199,7 @@ describe("P2.3 Cache Invalidation Engine (OPT-BE-02)", () => {
         }),
       });
 
-      const res = await postReviewRoute(req, { params: { id: "cpu-1" } });
+      const res = await postReviewRoute(req, { params: Promise.resolve({ id: "cpu-1" }) });
       expect(res.status).toBe(403);
       expect(res.headers.get("content-type")).toContain("application/problem+json");
 

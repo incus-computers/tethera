@@ -1,561 +1,226 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  Cpu,
-  Layers,
-  HardDrive,
-  Monitor,
-  Fan,
-  Box,
-  Zap,
-  Disc,
-  Wrench,
-  CheckCircle,
-  AlertTriangle,
-  RotateCcw,
-  Share2,
-  ShoppingCart,
-  MessageSquare,
-  ShieldCheck,
-  Plus,
-  Store,
-  Mouse,
-  Keyboard,
-  Headphones,
-  RectangleHorizontal,
-  Gamepad2,
-} from "lucide-react";
-import { useBuilderStore, BuilderSlotKey } from "../../lib/store/useBuilderStore";
-import { SERVICE_TIERS, MOCK_COMPONENTS } from "../../lib/data/mockHardware";
-import { ComponentSelectModal } from "./ComponentSelectModal";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AlertTriangle, ArrowRight, Box, ChevronDown, Cpu, Disc, Fan, HardDrive, Headphones, Keyboard, Layers, Monitor, Mouse, Network, Plus, RectangleHorizontal, RotateCcw, Share2, ShieldCheck, ShoppingCart, Trash2, Wrench, X, Zap, type LucideIcon } from "lucide-react";
+import { useBuilderStore, type BuilderSlotKey } from "../../lib/store/useBuilderStore";
+import { ComponentItem, SERVICE_TIERS } from "../../lib/data/mockHardware";
+import { builderDisplayName, prebuiltModelName } from "../../lib/data/prebuiltNames";
+import { BUILDER_SLOTS, REQUIRED_SLOTS, replacementIssues, resolveBuilderParts } from "../../lib/builder/configuration";
 import { useCartStore } from "../../lib/store/useCartStore";
-import { WhatsAppInquiryButton } from "../whatsapp/WhatsAppInquiryButton";
 import { formatRupiah } from "../../lib/utils/currency";
-import { useHeaderStore } from "../../lib/store/useHeaderStore";
+import { WhatsAppInquiryButton } from "../whatsapp/WhatsAppInquiryButton";
+import { InlineComponentPicker } from "./InlineComponentPicker";
+import { BuildCodeControls } from "./BuildCodeControls";
+import { customizedCartSlots, prebuiltCartBaseline } from "../../lib/builder/cartParts";
+import { type BuildSnapshot, snapshotParts, snapshotUrl } from "../../lib/builder/snapshots";
+import styles from "./PCBuilderView.module.css";
+
+const definitions: Record<BuilderSlotKey, { name: string; icon: LucideIcon }> = {
+  cpu: { name: "CPU", icon: Cpu }, gpu: { name: "Graphics card", icon: Monitor }, ram: { name: "RAM", icon: HardDrive },
+  storage_primary: { name: "Primary storage", icon: HardDrive }, storage_secondary: { name: "Secondary storage", icon: HardDrive }, storage_tertiary: { name: "Tertiary storage", icon: HardDrive }, motherboard: { name: "Motherboard", icon: Layers }, cooler: { name: "CPU cooler", icon: Fan },
+  case: { name: "Case", icon: Box }, psu: { name: "Power supply", icon: Zap }, os: { name: "Operating system", icon: Disc },
+  mouse: { name: "Mouse", icon: Mouse }, keyboard: { name: "Keyboard", icon: Keyboard }, headphones: { name: "Headphones", icon: Headphones },
+  mousepad: { name: "Mousepad", icon: RectangleHorizontal }, other_peripherals: { name: "Accessories", icon: Network },
+};
+const partGroups: { name: string; keys: BuilderSlotKey[] }[] = [
+  { name: "Main Components", keys: ["cpu", "motherboard", "ram", "gpu", "storage_primary", "case", "psu"] },
+  { name: "Additional Components", keys: ["storage_secondary", "storage_tertiary", "cooler", "os", "other_peripherals", "mouse", "keyboard", "headphones", "mousepad"] },
+];
+const orderedSlots = partGroups.flatMap(group => group.keys);
+function priceDifference(value: number) { return value ? `${value < 0 ? "−" : "+"}${formatRupiah(Math.abs(value))}` : "No price change"; }
 
 export function PCBuilderView() {
-  const [activeSlot, setActiveSlot] = useState<BuilderSlotKey | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState(false);
-  const { isCategoryBarVisible } = useHeaderStore();
+  const [activeSlot, setActiveSlot] = useState<BuilderSlotKey | null>("gpu");
+  const [notice, setNotice] = useState("");
+  const [entryWarning, setEntryWarning] = useState("");
+  const [shareFallback, setShareFallback] = useState("");
+  const [loadingCode, setLoadingCode] = useState(false);
+  const [simulationCode, setSimulationCode] = useState("");
+  const router = useRouter();
+  const search = useSearchParams().toString();
+  const lastLoaded = useRef<string | null>(null);
+  const reviewDialog = useRef<HTMLDialogElement>(null);
+  const reviewTrigger = useRef<HTMLElement | null>(null);
+  const { slots, originalSlots, selectedService, originalService, buildName, sourceProductId, loadBuild, restoreBuild, selectSlotItem, removeSlotItem, setServiceTier, getWattage, getTotalPrice, getCompatibility, getBuildShareUrl } = useBuilderStore();
+  const displayBuildName = buildName ? builderDisplayName(buildName) : null;
 
-  const {
-    slots,
-    selectSlotItem,
-    removeSlotItem,
-    selectedService,
-    setServiceTier,
-    resetBuild,
-    getWattage,
-    getTotalPrice,
-    getCompatibility,
-    getBuildShareUrl,
-  } = useBuilderStore();
+  const applySavedBuild = useCallback((snapshot: BuildSnapshot, code: string) => {
+    const resolved = resolveBuilderParts(snapshotParts(snapshot));
+    loadBuild(resolved.slots, { name: snapshot.name || undefined, sourceProductId: snapshot.sourceProductId || undefined, serviceId: snapshot.serviceId });
+    setEntryWarning(resolved.rejected.length ? "Some saved parts are no longer available. Choose replacements for the missing parts below." : "");
+    setShareFallback(""); setSimulationCode(code); setNotice(`Build ${code} loaded.`);
+  }, [loadBuild]);
 
-  const { addCustomPC } = useCartStore();
+  function loadSavedBuild(snapshot: BuildSnapshot, code: string) {
+    applySavedBuild(snapshot, code);
+    const url = snapshotUrl(snapshot);
+    lastLoaded.current = url.slice(url.indexOf("?") + 1);
+    router.replace(url, { scroll: false });
+  }
 
-  // Restore build from URL share query parameters if provided
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const urlParams = new URLSearchParams(window.location.search);
-    const partsParam = urlParams.get("parts");
-    if (!partsParam) return;
+    if (lastLoaded.current === search) return;
+    const params = new URLSearchParams(search);
+    if (!params.has("parts") && params.has("code")) {
+      const request = new AbortController();
+      setLoadingCode(true); setEntryWarning(""); setNotice("");
+      void (async () => {
+        try {
+          const response = await fetch(`/api/builder/builds/${encodeURIComponent(params.get("code") || "")}`, { signal: request.signal, cache: "no-store" });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.error || "Could not load this build. Please try again.");
+          if (!request.signal.aborted) { lastLoaded.current = search; applySavedBuild(result.build, result.code); }
+        } catch (failure) {
+          if (!request.signal.aborted) setEntryWarning(failure instanceof Error ? failure.message : "Could not load this build. Please try again.");
+        } finally { if (!request.signal.aborted) setLoadingCode(false); }
+      })();
+      return () => request.abort();
+    }
+    lastLoaded.current = search;
+    setLoadingCode(false);
+    setSimulationCode("");
+    if (!params.has("parts")) { setEntryWarning(""); return; }
+    const resolved = resolveBuilderParts(params.get("parts") || "");
+    loadBuild(resolved.slots, { name: prebuiltModelName(params.get("name") || "") || undefined, sourceProductId: params.get("source") || undefined, serviceId: params.get("service") || undefined });
+    setEntryWarning(resolved.rejected.length ? "Some linked parts could not be loaded. Choose replacements for the missing parts below." : "");
+    setNotice(""); setShareFallback("");
+  }, [search, loadBuild, applySavedBuild]);
 
-    const pairs = partsParam.split(",");
-    pairs.forEach((pair) => {
-      const [slotKey, partId] = pair.split(":");
-      if (slotKey && partId) {
-        const item = MOCK_COMPONENTS.find((p) => p.id === partId);
-        if (item && slotKey in slots) {
-          selectSlotItem(slotKey as BuilderSlotKey, item);
-        }
-      }
-    });
-  }, [selectSlotItem]);
-
-  const { estimated, recommendedPsu } = getWattage();
-  const totalPrice = getTotalPrice();
   const compatibility = getCompatibility();
+  const { estimated, recommendedPsu } = getWattage();
+  const partsTotal = Object.values(slots).reduce((sum, item) => sum + (item?.price || 0), 0);
+  const total = getTotalPrice();
+  const originalTotal = Object.values(originalSlots).reduce((sum, item) => sum + (item?.price || 0), 0) + originalService.price;
+  const changed = BUILDER_SLOTS.filter(key => slots[key]?.id !== originalSlots[key]?.id);
+  const serviceChanged = selectedService.id !== originalService.id;
+  const hasChanges = !!changed.length || serviceChanged;
+  const hasOriginal = Object.values(originalSlots).some(Boolean);
+  const missing = REQUIRED_SLOTS.filter(key => !slots[key]);
+  const outOfStock = BUILDER_SLOTS.filter(key => slots[key] && (!slots[key]!.inStock || slots[key]!.stockCount <= 0));
+  const canAdd = !missing.length && compatibility.isCompatible && !compatibility.warnings.length && !outOfStock.length;
+  const fitIssues = [...compatibility.issues, ...compatibility.warnings];
 
-  const slotDefinitions: {
-    key: BuilderSlotKey;
-    name: string;
-    description: string;
-    icon: React.ReactNode;
-    required: boolean;
-  }[] = [
-    {
-      key: "cpu",
-      name: "Processor (CPU)",
-      description: "AMD Ryzen AM5 or Intel Core Ultra",
-      icon: <Cpu className="w-5 h-5" />,
-      required: true,
-    },
-    {
-      key: "motherboard",
-      name: "Motherboard",
-      description: "Socket & chipset matching your chosen CPU",
-      icon: <Layers className="w-5 h-5" />,
-      required: true,
-    },
-    {
-      key: "ram",
-      name: "Memory (RAM)",
-      description: "DDR5 high-speed dual channel kits",
-      icon: <HardDrive className="w-5 h-5" />,
-      required: true,
-    },
-    {
-      key: "gpu",
-      name: "Graphics Card (GPU)",
-      description: "NVIDIA GeForce RTX 40-Series or AMD Radeon",
-      icon: <Monitor className="w-5 h-5" />,
-      required: false,
-    },
-    {
-      key: "cooler",
-      name: "CPU Cooling",
-      description: "AIO liquid cooling or high-efficiency air tower",
-      icon: <Fan className="w-5 h-5" />,
-      required: true,
-    },
-    {
-      key: "storage_primary",
-      name: "Primary Storage (M.2 NVMe SSD)",
-      description: "PCIe 4.0 / 5.0 high-speed NVMe boot drive",
-      icon: <HardDrive className="w-5 h-5" />,
-      required: true,
-    },
-    {
-      key: "case",
-      name: "PC Chassis / Case",
-      description: "Chassis form factor with optimized thermal airflow",
-      icon: <Box className="w-5 h-5" />,
-      required: true,
-    },
-    {
-      key: "psu",
-      name: "Power Supply (PSU)",
-      description: "80+ Gold ATX 3.0 certified modular power",
-      icon: <Zap className="w-5 h-5" />,
-      required: true,
-    },
-    {
-      key: "os",
-      name: "Operating System",
-      description: "Genuine Windows 11 USB flash drive & license",
-      icon: <Disc className="w-5 h-5" />,
-      required: false,
-    },
-    {
-      key: "mouse",
-      name: "Gaming Mouse",
-      description: "Ergonomic, wireless, and ultra-lightweight precision gaming mice",
-      icon: <Mouse className="w-5 h-5" />,
-      required: false,
-    },
-    {
-      key: "keyboard",
-      name: "Mechanical Keyboard",
-      description: "Custom hot-swappable mechanical or rapid-trigger magnetic switch keyboards",
-      icon: <Keyboard className="w-5 h-5" />,
-      required: false,
-    },
-    {
-      key: "headphones",
-      name: "Headphones / Headset",
-      description: "High-fidelity spatial audio gaming headsets or studio monitor headphones",
-      icon: <Headphones className="w-5 h-5" />,
-      required: false,
-    },
-    {
-      key: "mousepad",
-      name: "Desk Mat / Mousepad",
-      description: "Micro-woven cloth, cordura, or precision control desk pads",
-      icon: <RectangleHorizontal className="w-5 h-5" />,
-      required: false,
-    },
-    {
-      key: "other_peripherals",
-      name: "Other Peripherals",
-      description: "Streaming microphones, 4K webcams, desktop DACs, and monitor arm mounts",
-      icon: <Gamepad2 className="w-5 h-5" />,
-      required: false,
-    },
-  ];
-
-  const handleShare = () => {
+  function choose(slot: BuilderSlotKey, item: ComponentItem) {
+    const problems = replacementIssues(slot, item, slots);
+    if (problems.length) { setNotice(problems[0]); return; }
+    if (!item.inStock || item.stockCount <= 0) return;
+    selectSlotItem(slot, item);
+    setNotice("");
+  }
+  function undo(slot: BuilderSlotKey) {
+    const original = originalSlots[slot];
+    if (original) {
+      const problems = replacementIssues(slot, original, slots);
+      if (problems.length) { setNotice("This original part conflicts with your current choices. Use Reset changes to restore the linked parts together."); return; }
+      selectSlotItem(slot, original);
+    } else removeSlotItem(slot);
+    setNotice(`${definitions[slot].name} restored.`);
+  }
+  function resetChanges() { restoreBuild(); setNotice(hasOriginal ? "Original configuration restored." : "Build cleared."); }
+  async function share() {
     const url = getBuildShareUrl();
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(true);
-    setTimeout(() => setCopiedUrl(false), 2000);
-  };
-
-  const handleAddToCart = () => {
-    const partsMap: any = {};
-    Object.entries(slots).forEach(([k, item]) => {
-      if (item) partsMap[k] = item;
-    });
-
-    addCustomPC({
-      id: `custom-pc-${Date.now()}`,
-      name: slots.cpu ? `${slots.cpu.brand} Custom Gaming Rig` : "Custom Configured System",
-      parts: partsMap,
-      serviceTier: {
-        name: selectedService.name,
-        price: selectedService.price,
-        leadTime: selectedService.leadTime,
-      },
-      totalPrice,
-      wattage: estimated,
-    });
-  };
-
-  const filledCount = Object.values(slots).filter((v) => v !== null).length;
-  const wattagePct = Math.min(100, Math.round((estimated / (slots.psu?.specs.wattage || 850)) * 100));
-
-  return (
-    <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-12 2xl:px-16 py-8">
-      {/* Title Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between pb-6 mb-8 border-b border-slate-200 dark:border-zinc-800 gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-900 dark:text-zinc-100 bg-slate-200/80 dark:bg-zinc-800 px-2.5 py-0.5 rounded">
-              Incus Precision Studio
-            </span>
-            <span className="text-xs text-slate-400 dark:text-zinc-400 font-medium">Auto-Compatibility Engine</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-            Custom PC Builder & Configurator
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mt-1 max-w-xl">
-            Configure your custom desktop system with real-time socket matching, clearance validation, and in-store Click & Collect fulfillment.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleShare}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs tactile-btn active:scale-95"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>{copiedUrl ? "Link Copied!" : "Share Build"}</span>
-          </button>
-          <button
-            onClick={resetBuild}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 text-xs font-bold transition-all flex items-center gap-1.5 tactile-btn active:scale-95"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset</span>
-          </button>
-        </div>
+    try { await navigator.clipboard.writeText(url); setNotice("Build link copied."); setShareFallback(""); }
+    catch { setShareFallback(url); setNotice("Copy the build link below."); }
+  }
+  function showReview() { reviewTrigger.current = document.activeElement as HTMLElement; reviewDialog.current?.showModal(); }
+  function addToCart() {
+    if (!canAdd) return;
+    const parts: Record<string, ComponentItem> = {};
+    for (const key of BUILDER_SLOTS) if (slots[key]) parts[key] = slots[key]!;
+    const customizedSlots = sourceProductId
+      ? customizedCartSlots(parts, prebuiltCartBaseline(sourceProductId) ?? originalSlots)
+      : undefined;
+    // Let the cart drawer own focus after this dialog closes.
+    reviewTrigger.current = null;
+    reviewDialog.current?.close();
+    useCartStore.getState().addCustomPC({ id: `custom-pc-${Date.now()}`, name: buildName ? `${buildName.slice(0, 85)} - Customized` : "Custom configured PC", parts, customizedSlots,
+      serviceTier: { id: selectedService.id, name: selectedService.name, price: selectedService.price, leadTime: selectedService.leadTime }, totalPrice: total, wattage: estimated });
+  }
+  function openPart(key: BuilderSlotKey) {
+    reviewDialog.current?.close();
+    setActiveSlot(key);
+    requestAnimationFrame(() => { const part = document.getElementById(`builder-part-${key}`); part?.scrollIntoView({ block: "start", behavior: "smooth" }); part?.querySelector("button")?.focus({ preventScroll: true }); });
+  }
+  function renderPart(key: BuilderSlotKey) {
+    const def = definitions[key], Icon = def.icon, item = slots[key], original = originalSlots[key], expanded = activeSlot === key;
+    const isChanged = item?.id !== original?.id;
+    return <article key={key} id={`builder-part-${key}`} className={`${styles.part} ${expanded ? styles.openPart : ""}`}>
+      <div className={styles.partHeader}>
+        <button className={styles.partToggle} aria-expanded={expanded} aria-controls={`builder-options-${key}`} aria-label={`${item ? "Change" : "Select"} ${def.name.toLowerCase()}`} aria-describedby={isChanged ? `builder-change-${key}` : undefined} onClick={() => setActiveSlot(expanded ? null : key)}>
+          <span className={styles.partIcon}><Icon size={22} /></span><span className={styles.partName}><small>{def.name}{isChanged && <><span className={styles.changedDot} aria-hidden="true" /><span id={`builder-change-${key}`} className={styles.srOnly}>Changed component</span></>}</small><strong>{item?.name || "Choose a component"}</strong></span>
+          <span className={styles.partPricing}>{sourceProductId && isChanged && <span className={styles.originalComponent}>(Original component: {original?.name || "None"})</span>}<span className={styles.partPrice}>{item ? formatRupiah(item.price) : "Not selected"}</span></span><span className={styles.partAction}>{expanded ? "Close" : item ? "Change" : "Select"}{expanded ? <X size={14} /> : <Plus size={14} />}</span>
+        </button>
+        {item && <button className={styles.removePart} aria-label={`Remove ${def.name.toLowerCase()}`} onClick={() => { removeSlotItem(key); setNotice(`${def.name} removed.`); }}><Trash2 size={14} /></button>}
       </div>
+      <div id={`builder-options-${key}`} hidden={!expanded}>{expanded && <InlineComponentPicker key={key} slot={key} name={def.name} slots={slots} onSelect={item => choose(key, item)} />}</div>
+    </article>;
+  }
+  function renderReadiness(showMissingParts = false) {
+    return <div className={styles.readiness}>
+      {showMissingParts && missing.length > 0 && <><strong><Plus size={15} /> Complete your configuration</strong><div className={styles.missingParts}>{missing.map(key => <button key={key} onClick={() => openPart(key)}>{definitions[key].name}<ArrowRight size={12} /></button>)}</div></>}
+      {fitIssues.length > 0 ? <div className={styles.fitWarnings}>{fitIssues.map(issue => <p key={issue}><AlertTriangle size={13} />{issue}</p>)}</div> : missing.length > 0 ? <p><ShieldCheck size={15} />Fit checks update as you choose parts.</p> : null}
+      {outOfStock.length > 0 && <p className={styles.warningText}>Unavailable: {outOfStock.map(key => definitions[key].name).join(", ")}.</p>}
+      <small>Final physical fit, BIOS and cooling capacity need review.</small>
+    </div>;
+  }
 
-      {/* Main Grid: Slots (Left 65%) + Control Hub (Right 35%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* ========================================================================= */}
-        {/* LEFT COLUMN: Slots Accordion / Rack */}
-        {/* ========================================================================= */}
-        <div className="lg:col-span-8 space-y-3">
-          {slotDefinitions.map((def, idx) => {
-            const currentItem = slots[def.key];
-
-            return (
-              <React.Fragment key={def.key}>
-                {idx === 9 && (
-                  <div className="pt-5 pb-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Mouse className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-                        <h3 className="text-sm font-black text-zinc-900 dark:text-white tracking-tight">
-                          Peripherals &amp; Battlestation Setup
-                        </h3>
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-slate-200 dark:border-zinc-700">
-                        Optional Add-ons
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 dark:text-zinc-400 mt-0.5">
-                      Pair your build with precision gaming mice, mechanical keyboards, spatial headsets, desk pads, and streaming accessories.
-                    </p>
-                  </div>
-                )}
-                <div
-                  style={{ animationDelay: `${idx * 45}ms` }}
-                  className={`rounded-2xl border transition-all duration-200 animate-pop-in ${
-                    currentItem
-                      ? "bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 shadow-xs hover:border-slate-300 dark:hover:border-zinc-700 hover:shadow-md hover:scale-[1.008]"
-                      : "bg-slate-50/70 dark:bg-zinc-900/40 border-dashed border-slate-300 dark:border-zinc-800 hover:bg-white dark:hover:bg-zinc-800/60 hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-sm"
-                  }`}
-                >
-                <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  {/* Slot Identifier & Content */}
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-                        currentItem
-                          ? "bg-zinc-900 dark:bg-zinc-800 text-emerald-400 border border-transparent dark:border-zinc-700 shadow-xs"
-                          : "bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700"
-                      }`}
-                    >
-                      {def.icon}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-400 uppercase tracking-wider">
-                          Step {idx + 1}
-                        </span>
-                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                          {def.name}
-                        </span>
-                        {def.required && !currentItem && (
-                          <span className="text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded font-semibold border border-amber-200 dark:border-amber-800">
-                            Required
-                          </span>
-                        )}
-                      </div>
-
-                      {currentItem ? (
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <h4 className="text-xs sm:text-sm font-semibold text-zinc-800 dark:text-zinc-100 truncate">
-                            {currentItem.name}
-                          </h4>
-                          <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-400">
-                            ({currentItem.sku})
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 dark:text-zinc-400 mt-0.5">
-                          {def.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions & Price */}
-                  <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 shrink-0">
-                    {currentItem ? (
-                      <>
-                        <div className="text-left sm:text-right">
-                          <div className="text-sm sm:text-base font-black text-zinc-900 dark:text-zinc-100">
-                            {formatRupiah(currentItem.price)}
-                          </div>
-                          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                            Flagship In Stock
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => setActiveSlot(def.key)}
-                            className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100 font-bold text-xs transition-colors tactile-btn active:scale-95"
-                          >
-                            Change
-                          </button>
-                          <button
-                            onClick={() => removeSlotItem(def.key)}
-                            className="p-1.5 rounded-lg text-slate-400 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors tactile-btn active:scale-90"
-                            aria-label="Remove"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => setActiveSlot(def.key)}
-                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 hover:bg-zinc-900 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-100 hover:text-white dark:hover:text-white border border-slate-300 dark:border-zinc-700 hover:border-zinc-900 dark:hover:border-zinc-600 font-bold text-xs transition-all shadow-2xs flex items-center justify-center gap-1.5 tactile-btn active:scale-95"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Select {def.name.split(" ")[0]}</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </React.Fragment>
-          );
-        })}
-
-          {/* Assembly & Testing Tier Card */}
-          <div className="p-5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xs space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-800 dark:text-zinc-200">
-                <Wrench className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Assembly, Tuning & Stress-Testing Service</h3>
-                <p className="text-xs text-slate-500 dark:text-zinc-400">Every system built by Incus Computers undergoes thorough quality assurance</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {SERVICE_TIERS.map((tier) => (
-                <button
-                  key={tier.id}
-                  onClick={() => setServiceTier(tier)}
-                  className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between gap-3 tactile-btn active:scale-98 ${
-                    selectedService.id === tier.id
-                      ? "bg-slate-50 dark:bg-zinc-800 border-zinc-900 dark:border-zinc-400 ring-1 ring-zinc-900 dark:ring-zinc-400 shadow-xs"
-                      : "bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700"
-                  }`}
-                >
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{tier.name}</span>
-                      <span className="text-xs font-black text-zinc-900 dark:text-zinc-100">
-                        {tier.price === 0 ? "FREE" : formatRupiah(tier.price)}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded mt-1.5 inline-block">
-                      {tier.leadTime}
-                    </span>
-                  </div>
-                  <ul className="text-[11px] text-slate-500 dark:text-zinc-400 space-y-1">
-                    {tier.features.slice(0, 2).map((feat, idx) => (
-                      <li key={idx} className="flex items-center gap-1">
-                        <span className="text-emerald-500 dark:text-emerald-400">✓</span> {feat}
-                      </li>
-                    ))}
-                  </ul>
-                </button>
-              ))}
-            </div>
+  return <div className={styles.builder}>
+    <div className={styles.workspace}>
+      <header className={styles.heading}>
+        <nav className={styles.breadcrumb} aria-label="Breadcrumb"><Link href="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">PC Builder</span></nav>
+        <div className={styles.headingContent}>
+          <div className={styles.headingMain}>
+            <div className={styles.headingIntro}><h1>{buildName ? "Customize your PC" : "Build your PC"}</h1><p>{buildName ? "Change the parts you want. Keep the rest of your configuration." : "Choose your components. Open a row to compare parts and pricing."}</p><div className={styles.headingActions}><button className={styles.secondary} onClick={share}><Share2 size={14} />Share build</button><button className={styles.secondary} onClick={resetChanges} disabled={!hasChanges}><RotateCcw size={14} />Reset changes</button></div></div>
+            {buildName && <div className={styles.buildNameCard}><h2 className={styles.buildTitle}>{sourceProductId ? <Link href={`/products/${encodeURIComponent(sourceProductId)}`}>{displayBuildName}</Link> : displayBuildName}</h2></div>}
           </div>
         </div>
-
-        {/* ========================================================================= */}
-        {/* RIGHT COLUMN: Live Technical Station & Summary (Sticky) */}
-        {/* ========================================================================= */}
-        <div
-          className={`lg:col-span-4 sticky space-y-4 transition-[top] duration-300 ease-in-out ${
-            isCategoryBarVisible ? "top-36" : "top-28"
-          }`}
-        >
-          {/* Main Price & Action Card */}
-          <div className="rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-md p-6 space-y-5">
-            <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-400 block mb-1">
-                Estimated System Total
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl sm:text-4xl font-black text-zinc-900 dark:text-white tracking-tight">
-                  {formatRupiah(totalPrice)}
-                </span>
-                <span className="text-xs text-slate-400 dark:text-zinc-500 font-semibold">incl. tax</span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">
-                {filledCount} of {slotDefinitions.length} components configured
-              </p>
-            </div>
-
-            {/* Live Wattage Meter */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 space-y-2.5">
-              <div className="flex justify-between items-center text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-zinc-800 dark:text-zinc-200">
-                  <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span>Estimated Power Draw</span>
-                </div>
-                <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
-                  {estimated}W <span className="text-slate-400 dark:text-zinc-500">/ {slots.psu?.specs.wattage || 850}W PSU</span>
-                </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-slate-200 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    wattagePct > 85 ? "bg-red-500" : wattagePct > 65 ? "bg-amber-500" : "bg-emerald-500"
-                  }`}
-                  style={{ width: `${wattagePct}%` }}
-                />
-              </div>
-
-              <div className="flex justify-between text-[11px] text-slate-500 dark:text-zinc-400">
-                <span>Recommended PSU: <strong className="text-zinc-800 dark:text-zinc-200">{recommendedPsu}W+</strong></span>
-                <span>Load: <strong className="text-zinc-800 dark:text-zinc-200">{wattagePct}%</strong></span>
-              </div>
-            </div>
-
-            {/* Compatibility Alert Box */}
-            <div
-              className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
-                compatibility.isCompatible
-                  ? "bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-300"
-                  : "bg-red-50/70 dark:bg-red-950/30 border-red-200 dark:border-red-800/60 text-red-900 dark:text-red-300"
-              }`}
-            >
-              {compatibility.isCompatible ? (
-                <>
-                  <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="font-bold">Hardware Compatibility: 100% Verified</strong>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                      No socket, dimension, or power conflicts detected.
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <strong className="font-bold">Compatibility Attention Required:</strong>
-                    {compatibility.issues.map((iss, i) => (
-                      <p key={i} className="text-[11px] text-red-700 dark:text-red-300">{iss}</p>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Omnichannel Click & Collect Guarantee */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-950/60 border border-slate-200 dark:border-zinc-800 flex items-center gap-3">
-              <Store className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div className="text-xs">
-                <div className="font-bold text-zinc-900 dark:text-zinc-100">Click & Collect Eligible</div>
-                <div className="text-slate-500 dark:text-zinc-400 text-[11px]">
-                  Pick up at Flagship Experience Store after {selectedService.leadTime}.
-                </div>
-              </div>
-            </div>
-
-            {/* Primary Actions */}
-            <div className="space-y-2.5 pt-2">
-              <button
-                onClick={handleAddToCart}
-                disabled={!compatibility.isCompatible}
-                className="w-full min-h-[44px] py-3.5 px-4 bg-[#52E394] hover:brightness-105 active:brightness-95 text-[#0A0B0E] font-semibold text-xs sm:text-sm rounded-md transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed tactile-btn active:scale-98"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                <span>Add Assembled PC to Cart</span>
-              </button>
-
-              {/* WhatsApp Consultation Button */}
-              <WhatsAppInquiryButton
-                mode="builder"
-                build={{
-                  buildSlug: "custom",
-                  buildUrl: typeof window !== "undefined" ? window.location.href : "https://incuscomputers.com/builder",
-                  estimatedWattage: estimated,
-                  totalPrice: formatRupiah(totalPrice),
-                }}
-              />
-            </div>
-
-            <div className="text-[11px] text-slate-400 dark:text-zinc-400 text-center flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Includes Incus 2-Year Precision Hardware Warranty</span>
-            </div>
-          </div>
+        <BuildCodeControls onLoad={loadSavedBuild} disabled={loadingCode} initialCode={simulationCode} />
+      </header>
+      {entryWarning && <p className={styles.entryWarning}><AlertTriangle size={16} />{entryWarning}</p>}
+      {loadingCode && <p role="status" className={styles.notice}>Loading saved build...</p>}
+      {notice && <p role="status" aria-live="polite" className={styles.notice}>{notice}</p>}
+      {shareFallback && <label className={styles.shareFallback}>Build link<input readOnly value={shareFallback} onFocus={event => event.currentTarget.select()} /></label>}
+      <div className={styles.layout}>
+        <div className={styles.components}>
+          {partGroups.map((group, index) => <section key={group.name} className={styles.group} aria-labelledby={`builder-group-${index}`}><div className={styles.groupHeading}><h2 id={`builder-group-${index}`}>{group.name}</h2><span>{group.keys.filter(key => slots[key]).length} / {group.keys.length} selected</span></div><div className={styles.partList}>{group.keys.map(renderPart)}</div></section>)}
+          <section className={styles.services}><div className={styles.groupHeading}><h2><Wrench size={17} /> Assembly & testing</h2><span>Choose a service</span></div><div className={styles.serviceGrid}>{SERVICE_TIERS.map(tier => <label key={tier.id} className={`${styles.service} ${selectedService.id === tier.id ? styles.selectedService : ""}`}><input type="radio" name="builder-service" value={tier.id} checked={selectedService.id === tier.id} onChange={() => setServiceTier(tier)} /><span><strong>{tier.name}</strong><small>{tier.leadTime}</small><b>{tier.price ? formatRupiah(tier.price) : "No assembly fee"}</b></span></label>)}</div></section>
         </div>
+        <aside className={styles.summary} aria-label="Your configuration">
+          <div className={styles.summaryTitle}><h2>Your configuration</h2></div>
+          <span className={styles.totalLabel}>Estimated total</span><strong className={styles.total} data-builder-total>{formatRupiah(total)}</strong><p className={styles.totalNote}>Shipping calculated at checkout.</p>
+          <dl className={styles.breakdown}><div><dt>Components</dt><dd>{formatRupiah(partsTotal)}</dd></div><div><dt>Assembly & testing</dt><dd>{formatRupiah(selectedService.price)}</dd></div></dl>
+          {hasOriginal && <p className={styles.pricingNote}>Custom configurations use individual component pricing. Prebuilt package offers may differ.</p>}
+          {sourceProductId && <div className={styles.changes}>
+            {hasChanges ? <details>
+              <summary className={styles.changesToggle}>
+                <span className={styles.changesHeading}><strong>{changed.length + Number(serviceChanged)} {changed.length + Number(serviceChanged) === 1 ? "change" : "changes"}</strong><span>{priceDifference(total - originalTotal)}</span></span>
+                <ChevronDown size={18} className={styles.changesChevron} aria-hidden="true" />
+              </summary>
+              <div className={styles.changeList}>
+                {changed.map(key => <div key={key}><span><small>{definitions[key].name} · {priceDifference((slots[key]?.price || 0) - (originalSlots[key]?.price || 0))}</small><strong>{slots[key]?.name || "Removed"}</strong></span><button onClick={() => undo(key)} aria-label={`Undo ${definitions[key].name.toLowerCase()} change`}>Undo</button></div>)}
+                {serviceChanged && <div><span><small>Assembly & testing</small><strong>{selectedService.name}</strong></span><button onClick={() => setServiceTier(originalService)}>Undo</button></div>}
+              </div>
+            </details> : <><div className={styles.changesHeading}><strong>Original configuration</strong><span>{priceDifference(total - originalTotal)}</span></div><p>{hasOriginal ? "Your original parts are unchanged." : "Choose a component to begin."}</p></>}
+          </div>}
+          {renderReadiness()}
+          <div className={styles.power}><span><Zap size={14} />Estimated power</span><strong>{estimated} W</strong><small>Recommended PSU: {recommendedPsu} W+{slots.psu ? ` · selected ${slots.psu.specs.wattage || "unknown"} W` : ""}</small></div>
+          <button className={styles.primary} onClick={showReview}>Review build<ArrowRight size={15} /></button>
+          <WhatsAppInquiryButton mode="builder" className={styles.consult} label="Ask about this build" build={{ buildSlug: "custom", buildUrl: getBuildShareUrl(), estimatedWattage: estimated, totalPrice: formatRupiah(total) }} />
+        </aside>
       </div>
-
-      {/* Component Picker Modal */}
-      <ComponentSelectModal
-        slot={activeSlot}
-        onClose={() => setActiveSlot(null)}
-      />
     </div>
-  );
+    <div className={styles.mobileBar}><div><span>Estimated total</span><strong>{formatRupiah(total)}</strong></div><button className={styles.primary} onClick={showReview}>Review build<ArrowRight size={14} /></button></div>
+    <dialog ref={reviewDialog} className={styles.review} aria-labelledby="builder-review-title" onClose={() => reviewTrigger.current?.focus({ preventScroll: true })} onClick={event => { if (event.target === event.currentTarget) reviewDialog.current?.close(); }}>
+      <div className={styles.reviewHeading}><div><span className={styles.eyebrow}>YOUR CONFIGURATION</span><h2 id="builder-review-title">Review your build</h2></div><button className={styles.iconButton} aria-label="Close build review" onClick={() => reviewDialog.current?.close()}><X size={20} /></button></div>
+      {displayBuildName && <p className={styles.reviewName}>{displayBuildName}</p>}
+      <div className={styles.reviewParts}>{orderedSlots.filter(key => slots[key]).map(key => { const item = slots[key]!, Icon = definitions[key].icon; return <div key={key}><Icon size={18} /><span><small>{definitions[key].name}</small><strong>{item.name}</strong></span><b>{formatRupiah(item.price)}</b></div>; })}</div>
+      <dl className={styles.reviewTotals}><div><dt>Components</dt><dd>{formatRupiah(partsTotal)}</dd></div><div><dt>{selectedService.name}</dt><dd>{formatRupiah(selectedService.price)}</dd></div><div><dt>Estimated total</dt><dd>{formatRupiah(total)}</dd></div></dl>
+      <p className={styles.totalNote}>Shipping calculated at checkout. Final prices and availability are verified at checkout.</p>
+      <div className={styles.reviewReadiness}>{renderReadiness(true)}</div>
+      <button className={styles.primary} disabled={!canAdd} onClick={addToCart}><ShoppingCart size={16} />Add configured PC to cart</button>
+      <button className={styles.reviewBack} onClick={() => reviewDialog.current?.close()}>Continue editing</button>
+    </dialog>
+  </div>;
 }

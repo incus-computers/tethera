@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { DeliveryLocation, ShippingRateOption } from "../shipping/types";
 import { POPULAR_LOCATIONS, FLAGSHIP_ORIGIN } from "../shipping/distance";
+import { validCustomerLocation } from "../shipping/locationValidation";
 
 interface LocationState {
   userLocation: DeliveryLocation | null;
@@ -20,18 +21,20 @@ interface LocationState {
 export const useLocationStore = create<LocationState>((set, get) => {
   return {
     // Deterministic default on both server and client to eliminate hydration mismatch
-    userLocation: POPULAR_LOCATIONS[0], // Default to SCBD
+    userLocation: null,
     selectedRate: null,
     isLocationModalOpen: false,
-    recentLocations: POPULAR_LOCATIONS.slice(0, 4),
+    recentLocations: [],
 
     // Load from localStorage only after component mounts
     initLocation: () => {
       if (typeof window === "undefined") return;
       try {
-        const saved = localStorage.getItem("tethera_user_location");
+        const saved = localStorage.getItem("tethera_user_location_v2");
         if (saved) {
-          const location = JSON.parse(saved);
+          const record=JSON.parse(saved);
+          if(record.confirmed!==true||!validCustomerLocation(record.location))return;
+          const location = record.location;
           set((state) => ({
             userLocation: location,
             recentLocations: [
@@ -46,9 +49,10 @@ export const useLocationStore = create<LocationState>((set, get) => {
     },
 
     setLocation: (location) => {
+      if(!validCustomerLocation(location))throw new Error("Enter a complete Indonesian delivery address before confirming.");
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem("tethera_user_location", JSON.stringify(location));
+          localStorage.setItem("tethera_user_location_v2", JSON.stringify({confirmed:true,location}));
         } catch {
           // ignore
         }
@@ -75,6 +79,7 @@ export const useLocationStore = create<LocationState>((set, get) => {
     clearLocation: () => {
       if (typeof window !== "undefined") {
         localStorage.removeItem("tethera_user_location");
+        localStorage.removeItem("tethera_user_location_v2");
       }
       set({ userLocation: null, selectedRate: null });
     },

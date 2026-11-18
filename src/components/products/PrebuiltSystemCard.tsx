@@ -63,6 +63,7 @@ export function PrebuiltSystemCard({
       originalPrice: hasDiscount ? rig.price : undefined,
       wattage: 750,
       isPrebuilt: true,
+      catalogProductId: rig.id,
       image: primaryImage,
     });
     useCartStore.getState().openCart();

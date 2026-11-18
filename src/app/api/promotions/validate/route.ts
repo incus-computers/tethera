@@ -1,3 +1,6 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
@@ -8,7 +11,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
+ async function protectedPOST(req: NextRequest) {
   try {
     const instance = req.nextUrl?.pathname || "/api/promotions/validate";
     let body: any = {};
@@ -30,11 +33,10 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await db.promotions.validatePromotion(code.trim(), {
-      subtotal: Math.max(0, Number(subtotal || 0)),
-      shippingFee: Math.max(0, Number(shippingFee || 0)),
+      subtotal: subtotal ?? 0,
+      shippingFee: shippingFee ?? 0,
       items: Array.isArray(items) ? items : undefined,
-      customerEmail: typeof customerEmail === "string" ? customerEmail.trim() : undefined,
-      customerId: typeof customerId === "string" ? customerId.trim() : undefined,
+
     });
 
     if (!result.valid) {
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      advisory: true,
       valid: true,
       code: result.code,
       discountAmount: result.discountAmount,
@@ -65,10 +68,13 @@ export async function POST(req: NextRequest) {
         : undefined,
     });
   } catch (error: any) {
-    console.error("[PROMOTIONS VALIDATE API ERROR]:", error);
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return internalServerErrorProblem(
-      error.message || "Failed to validate promotion code",
+      "Failed to validate promotion code",
       { instance: req.nextUrl?.pathname || "/api/promotions/validate" }
     );
   }
 }
+export const POST = withApiProtection(protectedPOST);

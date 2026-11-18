@@ -1,10 +1,17 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { safeFailure } from "@/lib/operations/telemetry";
+import { limitAuth, authResponse } from "@/lib/auth/session";
+import { AuthError } from "@/lib/auth/errors";
+import { isDemoMode } from "@/lib/runtime/environment";
+import { initiateHostedPayment } from "@/lib/payment/attempts";
+import { GatewayError } from "@/lib/payment/gateway";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { MIDTRANS_PAYMENT_METHODS, generateMidtransPaymentDetails } from "@/lib/payment/midtrans";
-import { WhatsAppNotificationService } from "@/lib/notifications/whatsapp";
-import { sendOrderNotificationEmail, sendInvoiceEmail } from "@/lib/notifications/email";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
     const body = await req.json();
     const { orderId, orderNumber, paymentChannel } = body;
@@ -27,6 +34,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if(!isDemoMode()){await limitAuth("gateway-create",order.id,10);return NextResponse.json(await initiateHostedPayment(order.id),{headers:{"Cache-Control":"no-store"}});}
+
     const channel = paymentChannel || "qris";
     const method = MIDTRANS_PAYMENT_METHODS.find((m) => m.id === channel);
     const channelName = method?.name || "Midtrans Instant Pay";
@@ -37,94 +46,23 @@ export async function POST(req: NextRequest) {
       channel,
       order.total
     );
-    const paymentReference = paymentDetails.paymentId;
+    const paymentReference = `DEMO-${order.id}`;
 
     // 2. Process stock reservation & transition order state
     const rpcResult = await db.orders.processPaymentSuccess(order.id, paymentReference);
 
+    if(!rpcResult.success)return NextResponse.json({success:false,error:rpcResult.error},{status:409});
+
     // 3. Update order with payment method details
-    const updatedOrder = await db.orders.update(order.id, {
+    const updatedOrder = rpcResult.changed ? await db.orders.update(order.id, {
       payment_method: `${channelName} (Midtrans)`,
       payment_reference: paymentReference,
       status: rpcResult.status as any || order.status,
-      paid_at: new Date().toISOString(),
-    });
+    }) : await db.orders.findById(order.id);
 
     const activeOrder = updatedOrder || order;
 
-    // 4. Send dual WhatsApp & Email notifications
-    try {
-      if (order?.customer_phone) {
-        const whatsappService = new WhatsAppNotificationService();
-        if (order.fulfillment_type === "click_and_collect" && order.pickup_code) {
-          whatsappService.sendClickAndCollectReadyMessage({
-            customerPhone: order.customer_phone,
-            customerName: order.customer_name,
-            orderNumber: order.order_number,
-            pickupCode: order.pickup_code,
-            storeName: "Tethera Flagship Experience Store",
-            storeAddress: "Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat",
-            tradingHours: "Mon-Sat 09:00 - 18:00",
-            qrUrl: `https://tethera.com/orders/pickup/${order.pickup_code}`,
-          }).catch(console.error);
-        } else {
-          whatsappService.sendPaymentConfirmedMessage(
-            order.customer_phone,
-            order.customer_name,
-            order.order_number,
-            order.fulfillment_type,
-            false
-          ).catch(console.error);
-        }
-      }
-
-      if (order?.customer_email) {
-        // Fetch order items if available for itemized invoice
-        const orderDetails = await db.orders.getOrderWithItems(orderId).catch(() => null);
-        const invoiceItems = orderDetails?.items?.map((it: any) => ({
-          name: it.product?.name || (it.is_custom_build ? "Custom PC Build" : `Hardware Component (${it.product_id || it.id})`),
-          sku: it.product?.sku,
-          quantity: it.quantity,
-          price: it.unit_price,
-          totalPrice: it.quantity * it.unit_price,
-        }));
-
-        // Send official tax invoice to customer registered email
-        sendInvoiceEmail({
-          toEmail: order.customer_email,
-          customerName: order.customer_name,
-          orderNumber: order.order_number,
-          paymentId: paymentReference,
-          paymentMethod: `${channelName} (Midtrans)`,
-          fulfillmentType: order.fulfillment_type,
-          pickupCode: order.pickup_code || undefined,
-          shippingAddress: order.shipping_address
-            ? `${order.shipping_address.street}, ${order.shipping_address.city} ${order.shipping_address.postalCode}`
-            : undefined,
-          items: invoiceItems,
-          subtotal: order.subtotal,
-          shippingFee: order.shipping_fee,
-          grandTotal: order.total,
-        }).catch(console.error);
-
-        sendOrderNotificationEmail({
-          toEmail: order.customer_email,
-          customerName: order.customer_name,
-          orderNumber: order.order_number,
-          fulfillmentType: order.fulfillment_type,
-          pickupCode: order.pickup_code || undefined,
-          total: `IDR ${order.total.toLocaleString("id-ID")}`,
-          isCustomPc: false,
-          storeDetails: {
-            name: "Tethera Flagship Store",
-            address: "Mangga Dua Mall Lt. 3 No. 36, Jakarta Pusat",
-            hours: "Mon-Sat 09:00 - 18:00",
-          },
-        }).catch(console.error);
-      }
-    } catch (notifErr) {
-      console.warn("Notification dispatch warning:", notifErr);
-    }
+    // Order transition and notification jobs committed together.
 
     return NextResponse.json({
       success: true,
@@ -132,14 +70,20 @@ export async function POST(req: NextRequest) {
       orderNumber: order?.order_number || orderNumber,
       paymentMethod: `${channelName} (Midtrans)`,
       transactionStatus: "settlement",
-      paidAt: new Date().toISOString(),
+      paidAt: activeOrder?.paid_at,
       details: paymentDetails,
     });
   } catch (error: any) {
-    console.error("Midtrans charge error:", error);
+    if(error instanceof AuthError)return authResponse(error);
+    if(error instanceof GatewayError)return NextResponse.json({success:false,error:"Service temporarily unavailable. Please retry."},{status:error.status});
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    safeFailure();
     return NextResponse.json(
-      { error: error.message || "Midtrans payment processing failed" },
+      { error: "Midtrans payment processing failed" },
       { status: 500 }
     );
   }
 }
+
+export const POST = withApiProtection(withAccess(handlePOST));

@@ -1,3 +1,4 @@
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect } from "vitest";
 import fs from "fs";
@@ -45,7 +46,7 @@ describe("Admin Featured Prebuilt Systems Configuration", () => {
   });
 
   it("API route GET returns featuredPrebuiltIds", async () => {
-    const res = await GET();
+    const res = await GET(new NextRequest("http://localhost:3000/api/admin/homepage-modules"));
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.featuredPrebuiltIds).toBeDefined();
@@ -56,6 +57,7 @@ describe("Admin Featured Prebuilt Systems Configuration", () => {
   it("API route PUT updates and returns updated featuredPrebuiltIds", async () => {
     const req = new NextRequest("http://localhost:3000/api/admin/homepage-modules", {
       method: "PUT",
+      headers: { cookie: fixtureCookie() },
       body: JSON.stringify({
         featuredPrebuiltIds: ["pb-3", "pb-2", "pb-1"],
       }),
@@ -66,13 +68,14 @@ describe("Admin Featured Prebuilt Systems Configuration", () => {
     expect(data.featuredPrebuiltIds).toEqual(["pb-3", "pb-2", "pb-1"]);
 
     // Verify subsequent GET returns the newly set order
-    const getRes = await GET();
+    const getRes = await GET(new NextRequest("http://localhost:3000/api/admin/homepage-modules"));
     const getData = await getRes.json();
     expect(getData.featuredPrebuiltIds).toEqual(["pb-3", "pb-2", "pb-1"]);
 
     // Restore to default
     const restoreReq = new NextRequest("http://localhost:3000/api/admin/homepage-modules", {
       method: "PUT",
+      headers: { cookie: fixtureCookie() },
       body: JSON.stringify({
         featuredPrebuiltIds: DEFAULT_FEATURED_PREBUILT_IDS,
       }),

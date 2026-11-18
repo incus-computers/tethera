@@ -1,0 +1,56 @@
+name: Validation
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Use the pinned npm version
+        run: npm install --global npm@11.19.0 --ignore-scripts --no-audit --no-fund
+      - name: Install the exact lockfile without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject known high or critical production dependency advisories
+        if: runner.os == 'Linux'
+        run: npm audit --omit=dev --audit-level=high --ignore-scripts
+      - name: Install the pinned Chromium browser and Linux dependencies
+        if: runner.os == 'Linux'
+        run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+      - name: Regressions, typecheck, production build and browser journeys
+        if: runner.os == 'Linux'
+        run: npm run validate
+      - name: Windows regression and typecheck compatibility
+        if: runner.os == 'Windows'
+        run: npm run validate -- --stage unit
+      - name: Retain synthetic validation evidence
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: validation-${{ matrix.os }}
+          path: validation-results/
+          if-no-files-found: warn
+          retention-days: 7

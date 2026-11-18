@@ -1176,6 +1176,7 @@ export const MOCK_COMPONENTS: ComponentItem[] = [
 ];
 
 export interface PrebuiltSystem {
+  builderParts?: Record<string, string>;
   id: string;
   name: string;
   sku: string;
@@ -1206,7 +1207,8 @@ export interface PrebuiltSystem {
 export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   {
     id: "pb-1",
-    name: "Incus Apex Ryzen 7 RTX 4080S",
+    builderParts: { cpu: "cpu-1", motherboard: "mb-1", ram: "ram-1-var-ram-1-white-32", gpu: "gpu-1", cooler: "clr-1", storage_primary: "str-1", case: "cas-1", psu: "psu-1", os: "os-1" },
+    name: "Apex RTX 4080S",
     sku: "INC-APEX-7800X3D",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -1255,7 +1257,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-2",
-    name: "Incus Kinetic Core i7 RTX 4070Ti",
+    name: "Kinetic Core RTX 4070 Ti",
     sku: "INC-KIN-14700K",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -1304,7 +1306,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-3",
-    name: "Incus Minimalist White Workstation",
+    name: "Minimalist White RTX 4080S",
     sku: "INC-MIN-7950X",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -1353,7 +1355,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-4",
-    name: "Incus Creator Studio RTX 4070",
+    name: "Creator Studio RTX 4070",
     sku: "INC-CREATOR-14700",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -1402,7 +1404,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-5",
-    name: "Incus Stealth Compact ITX",
+    name: "Stealth Compact RTX 4060 Ti",
     sku: "INC-ITX-7600X",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -1451,7 +1453,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-6",
-    name: "Incus Valkyrie",
+    name: "Valkyrie RTX 4070S",
     sku: "INC-VALK-7800X3D",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -1500,7 +1502,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-7",
-    name: "Incus Titan Threadripper Studio",
+    name: "Titan Studio RTX 4090",
     sku: "INC-TITAN-7960X",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -1549,7 +1551,7 @@ export const PREBUILT_SYSTEMS: PrebuiltSystem[] = [
   },
   {
     id: "pb-8",
-    name: "Incus Precision CAD Core i9",
+    name: "Precision CAD RTX 4080S",
     sku: "INC-CAD-14900K",
     brand: "Incus Computers",
     category: "Pre-Built Systems",
@@ -2045,9 +2047,9 @@ export function getProductOverviewData(
 export const SERVICE_TIERS = [
   {
     id: "srv-standard",
-    name: "Standard Build & 24h Thermal Stress Test",
+    name: "Standard Build 5-7 Working Days",
     price: 250000,
-    leadTime: "2-3 Days",
+    leadTime: "After all parts have been sourced",
     features: [
       "Precision Cable Management",
       "Latest BIOS Flash & XMP/EXPO Tuning",
@@ -2057,9 +2059,9 @@ export const SERVICE_TIERS = [
   },
   {
     id: "srv-express",
-    name: "Express Priority Build & 48h Extreme Benchmark",
+    name: "Express Priority Build 2-3 Working Days",
     price: 450000,
-    leadTime: "24 Hours (Click & Collect Express)",
+    leadTime: "After all parts have been sourced",
     features: [
       "Front-of-Line Priority Workbench Queue",
       "Overclocking / Undervolting Stability Profile",
@@ -2071,7 +2073,7 @@ export const SERVICE_TIERS = [
     id: "srv-self",
     name: "Parts Only / Self-Assembly Kit",
     price: 0,
-    leadTime: "Ready Today",
+    leadTime: "After all parts have been sourced",
     features: [
       "Individual Brand Sealed Boxes",
       "Thermal Paste Included",

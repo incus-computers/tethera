@@ -1,3 +1,6 @@
+import { withApiProtection } from "@/lib/operations/apiProtection";
+import { databaseFailureResponse } from "@/lib/api/problemDetails";
+import { withAccess } from "@/lib/auth/routeGuard";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyAdminClearance } from "@/lib/auth/adminAuth";
@@ -10,9 +13,9 @@ import { safeRevalidate } from "@/lib/cache/revalidate";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "admin");
+    const clearance = await verifyAdminClearance(req, "admin");
     const isAdmin = clearance.authorized;
 
     const banners = await db.banners.findMany(
@@ -25,14 +28,16 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, count: banners.length, banners });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // POST: Add new promotional banner (SUPERADMIN ONLY)
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
+    const clearance = await verifyAdminClearance(req, "superadmin");
     if (!clearance.authorized) {
       return forbiddenProblem(clearance.error || "Superadmin authorization required.", {
         instance: req.nextUrl.pathname,
@@ -97,14 +102,16 @@ export async function POST(req: NextRequest) {
       banner: newBanner,
     });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // PUT: Update banner (SUPERADMIN ONLY)
-export async function PUT(req: NextRequest) {
+async function handlePUT(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
+    const clearance = await verifyAdminClearance(req, "superadmin");
     if (!clearance.authorized) {
       return forbiddenProblem(clearance.error || "Superadmin authorization required.", {
         instance: req.nextUrl.pathname,
@@ -131,14 +138,16 @@ export async function PUT(req: NextRequest) {
       banner: updated,
     });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
 
 // DELETE: Remove banner (SUPERADMIN ONLY)
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   try {
-    const clearance = verifyAdminClearance(req, "superadmin");
+    const clearance = await verifyAdminClearance(req, "superadmin");
     if (!clearance.authorized) {
       return forbiddenProblem(clearance.error || "Superadmin authorization required.", {
         instance: req.nextUrl.pathname,
@@ -164,6 +173,13 @@ export async function DELETE(req: NextRequest) {
       message: "Promotional banner deleted successfully.",
     });
   } catch (error: any) {
-    return internalServerErrorProblem(error.message, { instance: req.nextUrl.pathname });
+    const databaseFailure = databaseFailureResponse(error);
+    if (databaseFailure) return databaseFailure;
+    return internalServerErrorProblem("Service temporarily unavailable. Please retry.", { instance: req.nextUrl.pathname });
   }
 }
+
+export const GET = withApiProtection(withAccess(handleGET));
+export const POST = withApiProtection(withAccess(handlePOST));
+export const PUT = withApiProtection(withAccess(handlePUT));
+export const DELETE = withApiProtection(withAccess(handleDELETE));

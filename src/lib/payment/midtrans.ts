@@ -1,3 +1,4 @@
+import { isDemoMode } from "@/lib/runtime/environment";
 import crypto from "crypto";
 
 // Midtrans Payment Gateway Integration for Tethera E-Commerce
@@ -484,7 +485,8 @@ export function generateMidtransSignature(
   grossAmount: string | number,
   serverKey?: string
 ): string {
-  const key = serverKey || process.env.MIDTRANS_SERVER_KEY || "SB-Mid-server-test-tethera";
+  const key = serverKey || (isDemoMode() ? "demo-midtrans-only" : process.env.MIDTRANS_SERVER_KEY);
+  if (!key) throw new Error("Midtrans server key is required.");
   const amountStr = typeof grossAmount === "number" ? grossAmount.toFixed(2) : grossAmount;
   const rawString = `${orderId}${statusCode}${amountStr}${key}`;
   return crypto.createHash("sha512").update(rawString).digest("hex");
@@ -501,8 +503,9 @@ export function verifyMidtransSignature(
   serverKey?: string
 ): boolean {
   if (!signatureKey) return false;
-  const key = serverKey || process.env.MIDTRANS_SERVER_KEY || "SB-Mid-server-test-tethera";
+  const key = serverKey || (isDemoMode() ? "demo-midtrans-only" : process.env.MIDTRANS_SERVER_KEY);
 
+  if (!key) return false;
   const candidate1 = crypto
     .createHash("sha512")
     .update(`${orderId}${statusCode}${grossAmount}${key}`)

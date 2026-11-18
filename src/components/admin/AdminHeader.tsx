@@ -8,7 +8,6 @@ import {
   Bell,
   Plus,
   ShieldCheck,
-  ChevronRight,
   Database,
   Calendar,
 } from "lucide-react";
@@ -80,8 +79,8 @@ export function AdminHeader({
         <nav aria-label="Breadcrumb" className="min-w-0">
           <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
             <span className="hover:text-slate-300 transition-colors">Admin</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-            <span className="text-white font-bold truncate">
+            <span className="text-slate-600 shrink-0" aria-hidden="true">/</span>
+            <span aria-current="page" className="text-white font-bold truncate">
               {currentTabInfo.title}
             </span>
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { FinancialSummary } from "@/components/orders/FinancialSummary";
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import {
@@ -286,8 +287,8 @@ export function FluxOrdersTab({
                 {filteredOrders.map((order) => {
                   const isExpanded = !!expandedOrderIds[order.id];
                   const badge = getStatusBadge(order.status);
-                  const nextStep = getNextWorkflowStep(order.status);
-                  const canDispatch = canDispatchOrder(order.status);
+                  const nextStep = getNextWorkflowStep(order.status,order.fulfillment_type);
+                  const canDispatch = (order.fulfillment_type==="delivery" && canDispatchOrder(order.status));
                   const isDispatched = isOrderDispatched(order.status);
                   const totalVal = Number(order.total ?? order.total_amount ?? order.totalPrice) || 0;
                   const address = order.shipping_address || {};
@@ -589,12 +590,12 @@ export function FluxOrdersTab({
                                         <span className="font-semibold text-white">
                                           {order.waybill_id ||
                                             order.tracking_number ||
-                                            order.courier_info?.tracking_number ||
+                                            order.courier_info?.waybill_id || order.courier_info?.tracking_number ||
                                             "Not assigned"}
                                         </span>
                                         {(order.waybill_id ||
                                           order.tracking_number ||
-                                          order.courier_info?.tracking_number) && (
+                                          order.courier_info?.waybill_id || order.courier_info?.tracking_number) && (
                                           <button
                                             type="button"
                                             onClick={(e) => {
@@ -602,7 +603,7 @@ export function FluxOrdersTab({
                                               copyToClipboard(
                                                 order.waybill_id ||
                                                   order.tracking_number ||
-                                                  order.courier_info?.tracking_number
+                                                  order.courier_info?.waybill_id || order.courier_info?.tracking_number
                                               );
                                             }}
                                             className="p-1 rounded text-slate-400 hover:text-white"
@@ -682,26 +683,7 @@ export function FluxOrdersTab({
                                         {order.payment_reference || "N/A"}
                                       </span>
                                     </div>
-                                    <div className="flex items-center justify-between text-slate-300">
-                                      <span>Subtotal</span>
-                                      <span>{formatRupiah(Number(order.subtotal) || totalVal)}</span>
-                                    </div>
-                                    {order.shipping_fee !== undefined && (
-                                      <div className="flex items-center justify-between text-slate-300">
-                                        <span>Shipping Fee</span>
-                                        <span>{formatRupiah(Number(order.shipping_fee) || 0)}</span>
-                                      </div>
-                                    )}
-                                    {Number(order.assembly_fee) > 0 && (
-                                      <div className="flex items-center justify-between text-slate-300">
-                                        <span>Assembly Fee</span>
-                                        <span>{formatRupiah(Number(order.assembly_fee))}</span>
-                                      </div>
-                                    )}
-                                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-sm font-bold text-white">
-                                      <span>Total Paid</span>
-                                      <span className="text-[#37baf2]">{formatRupiah(totalVal)}</span>
-                                    </div>
+                                    <FinancialSummary order={order}/>
                                   </div>
                                 </div>
                               </div>

@@ -1,3 +1,4 @@
+import { fixtureCookie } from "./support/session";
 // @ts-ignore
 import { describe, it, expect, vi } from "vitest";
 
@@ -185,7 +186,7 @@ CPU-AMD-9800X3D,,AMD Ryzen 7 9800X3D,,AMD,CPU,8999000,,7200000,25,,ACTIVE,"High 
       const { GET: exportGET } = await import("@/app/api/admin/products/bulk/export/route");
       const { NextRequest } = await import("next/server");
       const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/export", {
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
       });
       const res = await exportGET(req);
       expect(res.status).toBe(200);
@@ -200,7 +201,7 @@ CPU-AMD-9800X3D,,AMD Ryzen 7 9800X3D,,AMD,CPU,8999000,,7200000,25,,ACTIVE,"High 
       const { GET: exportGET } = await import("@/app/api/admin/products/bulk/export/route");
       const { NextRequest } = await import("next/server");
       const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/export?template=true", {
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
       });
       const res = await exportGET(req);
       expect(res.status).toBe(200);
@@ -217,7 +218,7 @@ CPU-AMD-9800X3D,,AMD Ryzen 7 9800X3D,,AMD,CPU,8999000,,7200000,25,,ACTIVE,"High 
       const { NextRequest } = await import("next/server");
       const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/import", {
         method: "POST",
-        headers: { authorization: "Bearer support" },
+        headers: { cookie: fixtureCookie("SUPPORT_AGENT") },
         body: JSON.stringify({ csvContent: "sku,name,category,retail_price\nCPU-TEST,Test,CPU,1000\n" }),
       });
       const res = await importPOST(req);
@@ -236,7 +237,7 @@ BAD-ROW-ITEM-2,Bad Item 2,UnknownCategory,-9999,5
 `;
       const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/import", {
         method: "POST",
-        headers: { authorization: "Bearer catalog" },
+        headers: { cookie: fixtureCookie("CATALOG_MANAGER") },
         body: JSON.stringify({ csvContent: badCsv }),
       });
 
@@ -270,7 +271,7 @@ ${testSkuExisting},,AMD Ryzen 7 7800X3D 8-Core 16-Thread Processor,,AMD,CPU,7199
       const req = new NextRequest("http://localhost:3000/api/admin/products/bulk/import", {
         method: "POST",
         headers: {
-          authorization: "Bearer catalog",
+          cookie: fixtureCookie("CATALOG_MANAGER"),
           "x-forwarded-for": "10.0.4.88",
           "user-agent": "StaffBulkUploader/2.0",
         },
@@ -305,7 +306,7 @@ ${testSkuExisting},,AMD Ryzen 7 7800X3D 8-Core 16-Thread Processor,,AMD,CPU,7199
       const auditLogs = await db.auditLogs.getRecentLogs(10, "catalog");
       const bulkLog = auditLogs.find((l) => l.action === "BULK_CATALOG_IMPORT");
       expect(bulkLog).toBeDefined();
-      expect(bulkLog?.actor_name).toBe("Catalog Lead");
+      expect(bulkLog?.actor_name).toBe("CATALOG MANAGER");
       expect(bulkLog?.after_state?.summary?.created).toBe(1);
     });
   });

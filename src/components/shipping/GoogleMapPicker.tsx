@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/components/storefront/StorefrontProvider";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -7,7 +8,7 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
-import { FLAGSHIP_ORIGIN, calculateHaversineDistanceKm } from "../../lib/shipping/distance";
+import { validCustomerLocation } from "@/lib/shipping/locationValidation";
 import { DeliveryLocation } from "../../lib/shipping/types";
 
 interface GoogleMapPickerProps {
@@ -26,6 +27,7 @@ interface PlacePrediction {
   lng?: number;
   subdistrict?: string;
   city?: string;
+  province?: string;
   postalCode?: string;
   areaId?: string;
 }
@@ -35,9 +37,11 @@ export function GoogleMapPicker({
   onLocationSelect,
   onCancel,
 }: GoogleMapPickerProps) {
+  const {t}=useTranslation();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<any>(null);
   const leafletMarkerRef = useRef<any>(null);
+  const lookupSequence=useRef(0);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
@@ -47,61 +51,56 @@ export function GoogleMapPicker({
 
   // Current selected pin position
   const [pinPosition, setPinPosition] = useState<{ lat: number; lng: number }>({
-    lat: initialLocation?.latitude || -6.2272,
-    lng: initialLocation?.longitude || 106.8086,
+    lat: initialLocation?.latitude ?? -2.5489,
+    lng: initialLocation?.longitude ?? 118.0149,
   });
 
   const [currentAddress, setCurrentAddress] = useState<string>(
-    initialLocation?.address || "Sudirman Central Business District (SCBD)"
+    initialLocation?.address || ""
   );
   const [currentSubdistrict, setCurrentSubdistrict] = useState<string>(
-    initialLocation?.subdistrict || "Senayan"
+    initialLocation?.subdistrict || ""
   );
   const [currentCity, setCurrentCity] = useState<string>(
-    initialLocation?.city || "Jakarta Selatan"
+    initialLocation?.city || ""
   );
   const [currentPostalCode, setCurrentPostalCode] = useState<string>(
-    initialLocation?.postalCode || "12190"
+    initialLocation?.postalCode || ""
   );
   const [currentAreaId, setCurrentAreaId] = useState<string | undefined>(
     initialLocation?.areaId
   );
-  const [distanceKm, setDistanceKm] = useState<number>(
-    initialLocation?.distanceKm || 12.4
-  );
+  const [currentProvince,setCurrentProvince]=useState(initialLocation?.province||"");
+  const [hasSelectedCoordinates,setHasSelectedCoordinates]=useState(initialLocation?.latitude!==undefined&&initialLocation?.longitude!==undefined);
 
   // =========================================================================
   // 1. REVERSE GEOCODE COORDINATES
   // =========================================================================
   const handleReverseGeocode = async (lat: number, lng: number) => {
+    const lookup=++lookupSequence.current;
     setIsGeocoding(true);
+    setCurrentAddress("");setCurrentSubdistrict("");setCurrentCity("");setCurrentProvince("");setCurrentPostalCode("");setCurrentAreaId(undefined);
 
-    const dist = calculateHaversineDistanceKm(
-      FLAGSHIP_ORIGIN.latitude!,
-      FLAGSHIP_ORIGIN.longitude!,
-      lat,
-      lng
-    );
-    setDistanceKm(dist);
 
     try {
       const res = await fetch(`/api/shipping/google/geocode?lat=${lat}&lng=${lng}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json();if(lookup!==lookupSequence.current)return;
         if (data.success && data.location) {
           setCurrentAddress(data.location.address);
-          setCurrentSubdistrict(data.location.subdistrict || "Jakarta");
-          setCurrentCity(data.location.city || "Jakarta");
+          setCurrentSubdistrict(data.location.subdistrict || "");
+          setCurrentCity(data.location.city || "");
+          setCurrentProvince(data.location.province || "");
           setCurrentPostalCode(data.location.postalCode || "");
           setCurrentAreaId(data.location.areaId);
-          setDistanceKm(data.location.distanceKm || dist);
+
         }
       }
     } catch (err) {
       console.warn("Reverse geocode request error:", err);
-      setCurrentAddress(`Point (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+      setCurrentAddress("");setCurrentSubdistrict("");setCurrentCity("");setCurrentProvince("");setCurrentPostalCode("");setCurrentAreaId(undefined);
     } finally {
-      setIsGeocoding(false);
+      if(lookup===lookupSequence.current)setIsGeocoding(false);
     }
   };
 
@@ -124,7 +123,7 @@ export function GoogleMapPicker({
       // Initialize map centered at pinPosition
       const map = L.map(mapContainerRef.current, {
         center: [pinPosition.lat, pinPosition.lng],
-        zoom: 14,
+        zoom: initialLocation?.latitude!==undefined ? 14 : 5,
         zoomControl: true,
         attributionControl: false,
       });
@@ -166,20 +165,21 @@ export function GoogleMapPicker({
       const marker = L.marker([pinPosition.lat, pinPosition.lng], {
         icon: customPinIcon,
         draggable: true,
+        opacity:initialLocation?.latitude!==undefined?1:0,
         autoPan: true,
       }).addTo(map);
 
       // Listener: Drag Marker moves pin & triggers reverse geocode
       marker.on("dragend", () => {
         const latLng = marker.getLatLng();
-        setPinPosition({ lat: latLng.lat, lng: latLng.lng });
+        setPinPosition({ lat: latLng.lat, lng: latLng.lng });setHasSelectedCoordinates(true);marker.setOpacity(1);
         handleReverseGeocode(latLng.lat, latLng.lng);
       });
 
       // Listener: Click on Map moves marker & triggers reverse geocode
       map.on("click", (e: any) => {
         marker.setLatLng(e.latlng);
-        setPinPosition({ lat: e.latlng.lat, lng: e.latlng.lng });
+        setPinPosition({ lat: e.latlng.lat, lng: e.latlng.lng });setHasSelectedCoordinates(true);marker.setOpacity(1);
         handleReverseGeocode(e.latlng.lat, e.latlng.lng);
       });
 
@@ -204,7 +204,7 @@ export function GoogleMapPicker({
 
   // Update map and marker when coordinates change programmatically
   const updateMapMarker = useCallback((lat: number, lng: number) => {
-    setPinPosition({ lat, lng });
+    setPinPosition({ lat, lng });setHasSelectedCoordinates(true);leafletMarkerRef.current?.setOpacity(1);
     if (leafletMapRef.current && leafletMarkerRef.current) {
       leafletMarkerRef.current.setLatLng([lat, lng]);
       leafletMapRef.current.flyTo([lat, lng], 15, { duration: 0.8 });
@@ -215,6 +215,7 @@ export function GoogleMapPicker({
   // 3. AUTOCOMPLETE SEARCH
   // =========================================================================
   useEffect(() => {
+    let active=true;
     if (!searchQuery || searchQuery.trim().length < 2) {
       setPredictions([]);
       setIsSearching(false);
@@ -228,7 +229,7 @@ export function GoogleMapPicker({
           `/api/shipping/google/autocomplete?input=${encodeURIComponent(searchQuery.trim())}`
         );
         if (res.ok) {
-          const data = await res.json();
+          const data = await res.json();if(!active)return;
           if (data.success && Array.isArray(data.predictions)) {
             setPredictions(data.predictions);
           }
@@ -236,11 +237,11 @@ export function GoogleMapPicker({
       } catch (err) {
         console.warn("Error fetching autocomplete predictions:", err);
       } finally {
-        setIsSearching(false);
+        if(active)setIsSearching(false);
       }
     }, 280);
 
-    return () => clearTimeout(timer);
+    return () => {active=false;clearTimeout(timer);};
   }, [searchQuery]);
 
   // =========================================================================
@@ -250,6 +251,9 @@ export function GoogleMapPicker({
     setSearchQuery(prediction.main_text);
     setPredictions([]);
 
+    if(prediction.source==="biteship"&&prediction.city&&prediction.province&&prediction.postalCode){
+      ++lookupSequence.current;setIsGeocoding(false);setCurrentAddress("");setCurrentSubdistrict(prediction.subdistrict||"");setCurrentCity(prediction.city);setCurrentProvince(prediction.province);setCurrentPostalCode(prediction.postalCode);setCurrentAreaId(prediction.areaId);setHasSelectedCoordinates(false);leafletMarkerRef.current?.setOpacity(0);return;
+    }
     // If prediction already has coordinates (from Photon / OSM / Biteship)
     if (prediction.lat !== undefined && prediction.lng !== undefined) {
       updateMapMarker(prediction.lat, prediction.lng);
@@ -258,23 +262,26 @@ export function GoogleMapPicker({
     }
 
     // Geocode place_id via API
+    const lookup=++lookupSequence.current;
     setIsGeocoding(true);
+    setCurrentAddress("");setCurrentSubdistrict("");setCurrentCity("");setCurrentProvince("");setCurrentPostalCode("");setCurrentAreaId(undefined);
     try {
       const res = await fetch(
         `/api/shipping/google/geocode?place_id=${encodeURIComponent(prediction.place_id)}`
       );
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json();if(lookup!==lookupSequence.current)return;
         if (data.success && data.location) {
           const loc: DeliveryLocation = data.location;
           setCurrentAddress(loc.address);
-          setCurrentSubdistrict(loc.subdistrict || "Jakarta");
-          setCurrentCity(loc.city || "Jakarta");
+          setCurrentSubdistrict(loc.subdistrict || "");
+          setCurrentCity(loc.city || "");
+          setCurrentProvince(loc.province || "");
           setCurrentPostalCode(loc.postalCode || "");
           setCurrentAreaId(loc.areaId);
-          setDistanceKm(loc.distanceKm || 12);
 
-          if (loc.latitude && loc.longitude) {
+
+          if (loc.latitude!==undefined && loc.longitude!==undefined) {
             updateMapMarker(loc.latitude, loc.longitude);
           }
         }
@@ -282,7 +289,7 @@ export function GoogleMapPicker({
     } catch (err) {
       console.error("Failed to geocode prediction:", err);
     } finally {
-      setIsGeocoding(false);
+      if(lookup===lookupSequence.current)setIsGeocoding(false);
     }
   };
 
@@ -297,12 +304,12 @@ export function GoogleMapPicker({
       subdistrict: currentSubdistrict,
       district: currentSubdistrict,
       city: currentCity,
+      province: currentProvince,
       postalCode: currentPostalCode,
-      latitude: pinPosition.lat,
-      longitude: pinPosition.lng,
-      distanceKm,
+      ...(hasSelectedCoordinates?{latitude:pinPosition.lat,longitude:pinPosition.lng}:{}),
     };
 
+    if(!validCustomerLocation(finalLocation))return;
     onLocationSelect(finalLocation);
   };
 
@@ -311,15 +318,14 @@ export function GoogleMapPicker({
       {/* SEARCH BAR WITH LIVE AUTOCOMPLETE */}
       <div className="relative space-y-1.5">
         <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200">
-          Search Location or Sub-district:
-        </label>
+          {t("Search Location or Sub-district:")}</label>
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search location..."
+            placeholder={t("Search location...")}
             className="w-full pl-10 pr-10 py-2.5 bg-slate-100/90 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-400 focus:bg-white dark:focus:bg-zinc-800 transition-all shadow-2xs"
           />
           {isSearching && (
@@ -351,8 +357,7 @@ export function GoogleMapPicker({
                   </div>
                 </div>
                 <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded shrink-0">
-                  Select
-                </span>
+                  {t("Select")}</span>
               </button>
             ))}
           </div>
@@ -369,7 +374,7 @@ export function GoogleMapPicker({
           <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-2xs flex items-center justify-center z-30">
             <div className="px-4 py-2 bg-white dark:bg-zinc-900 rounded-xl shadow-lg border border-slate-200 dark:border-zinc-700 flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200">
               <Loader2 className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400" />
-              <span>Pinpoint geocoding address...</span>
+              <span>{t("Pinpoint geocoding address...")}</span>
             </div>
           </div>
         )}
@@ -402,14 +407,14 @@ export function GoogleMapPicker({
             </div>
           </div>
 
-          <div className="text-right shrink-0">
-            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-              {distanceKm.toFixed(1)} km
-            </div>
-          </div>
+
         </div>
       </div>
 
+      <p className="text-xs text-slate-500">{t("The map starts at a preview location. Enter and confirm your actual delivery address.")}</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[["Street address",currentAddress,setCurrentAddress],["Subdistrict",currentSubdistrict,setCurrentSubdistrict],["City",currentCity,setCurrentCity],["Province",currentProvince,setCurrentProvince],["Postal code",currentPostalCode,setCurrentPostalCode]].map(([label,value,setter])=><label key={label as string} className="text-xs">{t(label as string)}<input value={value as string} maxLength={label==="Postal code"?5:250} onChange={e=>{(setter as (s:string)=>void)(e.target.value);setCurrentAreaId(undefined);}} className="mt-1 block min-h-[44px] w-full rounded-lg border bg-transparent px-3"/></label>)}
+      </div>
       {/* MODAL ACTIONS */}
       <div className="flex items-center justify-end gap-2.5 pt-1">
         {onCancel && (
@@ -418,17 +423,16 @@ export function GoogleMapPicker({
             onClick={onCancel}
             className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-bold text-xs transition"
           >
-            Cancel
-          </button>
+            {t("Cancel")}</button>
         )}
         <button
           type="button"
-          disabled={isGeocoding}
+          disabled={isGeocoding||!validCustomerLocation({address:currentAddress,subdistrict:currentSubdistrict,city:currentCity,province:currentProvince,postalCode:currentPostalCode,...(hasSelectedCoordinates?{latitude:pinPosition.lat,longitude:pinPosition.lng}:{})})}
           onClick={handleConfirmLocation}
           className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white dark:text-white border border-transparent dark:border-zinc-700 font-bold text-xs shadow-md transition flex items-center gap-2"
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>Confirm Delivery Location</span>
+          <span>{t("Confirm Delivery Location")}</span>
         </button>
       </div>
     </div>
