@@ -552,16 +552,16 @@ function ProductDetailContent() {
     return () => clearInterval(timer);
   }, [galleryImages.length, selectedImage]);
 
-  // Keep active thumbnail centered and visible when image changes
+  // Center the active thumbnail within the strip without scrolling the page.
   useEffect(() => {
     const activeThumb = thumbnailRefs.current[selectedImage];
-    if (activeThumb && thumbnailContainerRef.current) {
-      activeThumb.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    }
+    const container = thumbnailContainerRef.current;
+    if (!activeThumb || !container || container.scrollWidth <= container.clientWidth) return;
+
+    const thumbBounds = activeThumb.getBoundingClientRect();
+    const stripBounds = container.getBoundingClientRect();
+    const thumbCenter = thumbBounds.left - stripBounds.left - container.clientLeft + thumbBounds.width / 2;
+    container.scrollTo({ left: container.scrollLeft + thumbCenter - container.clientWidth / 2 });
   }, [selectedImage]);
 
   // Fullscreen keyboard navigation and body scroll lock
